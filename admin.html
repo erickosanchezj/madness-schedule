@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Panel de Administrador</title>
+    <title>Panel de Administrador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -38,15 +38,11 @@
         <div class="space-y-8">
             <div>
                 <h2 class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de Hoy</h2>
-                <div id="today-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-                    <!-- Clases de hoy se inyectarán aquí -->
-                </div>
+                <div id="today-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
             </div>
             <div>
                 <h2 class="text-2xl font-bold mb-4 text-sky-400 border-b border-zinc-700 pb-2">Clases de Mañana</h2>
-                <div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-                    <!-- Clases de mañana se inyectarán aquí -->
-                </div>
+                <div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
             </div>
         </div>
 
@@ -74,8 +70,8 @@
             <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded">
             <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
             <div class="grid grid-cols-2 gap-4">
-                <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="bg-zinc-700 p-2 rounded">
-                <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="bg-zinc-700 p-2 rounded">
+                <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
+                <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
             </div>
             <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
             
@@ -101,18 +97,8 @@
     const admin = {
         db: null,
         auth: null,
-        state: { classes: [], bookings: [] },
+        state: { classes: [], bookings: [], weeklySchedule: {} },
         
-        weeklySchedule: {
-            1: [ { time: '08:00', name: 'Funcional' }, { time: '18:00', name: 'TRX' }, { time: '19:00', name: 'Funcional' }, { time: '20:00', name: 'Funcional' }, { time: '21:00', name: 'TRX' } ],
-            2: [ { time: '10:00', name: 'Funcional' }, { time: '19:00', name: 'Funcional' }, { time: '20:00', name: 'Funcional' }, { time: '21:00', name: 'HIIT' } ],
-            3: [ { time: '08:00', name: 'Yoga' }, { time: '18:00', name: 'TRX' }, { time: '19:00', name: 'TRX' }, { time: '20:00', name: 'Yoga' }, { time: '21:00', name: 'TRX' } ],
-            4: [ { time: '10:00', name: 'Funcional' }, { time: '19:00', name: 'Funcional' }, { time: '20:00', name: 'Funcional' }, { time: '21:00', name: 'HIIT' } ],
-            5: [ { time: '08:00', name: 'TRX' }, { time: '19:00', name: 'Funcional' }, { time: '20:00', name: 'TRX' } ],
-            6: [ { time: '10:00', name: 'Funcional' }, { time: '11:00', name: 'Capoeira' } ],
-            0: []
-        },
-
         dateHelper: {
             getYYYYMMDD(date) { return date.toISOString().split('T')[0]; },
             get today() { return this.getYYYYMMDD(new Date()); },
@@ -142,7 +128,7 @@
                         if (!!idTokenResult.claims.admin) {
                             document.getElementById('login-screen').classList.add('hidden');
                             document.getElementById('admin-panel').classList.remove('hidden');
-                            this.listenToData();
+                            this.loadWeeklyScheduleTemplate().then(() => this.listenToData());
                         } else { this.logout(); alert('Acceso denegado.'); }
                     });
                 } else {
@@ -150,6 +136,20 @@
                     document.getElementById('admin-panel').classList.add('hidden');
                 }
             });
+        },
+
+        async loadWeeklyScheduleTemplate() {
+            console.log("Cargando plantilla de horario desde Firestore...");
+            const snapshot = await this.db.collection('schedule_template').get();
+            if (snapshot.empty) {
+                console.error("¡La colección 'schedule_template' está vacía en Firestore!");
+                alert("Error: No se encontró la plantilla de horario en la base de datos.");
+                return;
+            }
+            snapshot.forEach(doc => {
+                this.state.weeklySchedule[doc.id] = doc.data().classes || [];
+            });
+            console.log("Plantilla cargada:", this.state.weeklySchedule);
         },
         
         listenToData() {
@@ -164,6 +164,10 @@
         },
 
         async generateDailyClasses() {
+            if (Object.keys(this.state.weeklySchedule).length === 0) {
+                alert("La plantilla de horario no se ha cargado. No se pueden generar clases.");
+                return;
+            }
             alert('Verificando y generando clases...');
             const today = new Date();
             const tomorrow = new Date();
@@ -175,14 +179,23 @@
             const batch = this.db.batch();
             let classesCreated = 0;
             for (const day of daysToGenerate) {
-                const scheduleForDay = this.weeklySchedule[day.dayOfWeek] || [];
+                const scheduleForDay = this.state.weeklySchedule[day.dayOfWeek] || [];
                 if (scheduleForDay.length === 0) continue;
                 const existingClassesSnap = await this.db.collection('classes').where('classDate', '==', day.dateStr).get();
                 const existingTimes = existingClassesSnap.docs.map(doc => doc.data().time);
                 for (const classTemplate of scheduleForDay) {
                     if (!existingTimes.includes(classTemplate.time)) {
                         const newClassRef = this.db.collection('classes').doc();
-                        batch.set(newClassRef, { name: classTemplate.name, time: classTemplate.time, classDate: day.dateStr, capacity: 15, instructor: 'Por Asignar', description: `Clase de ${classTemplate.name}`, icon: '💪', image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}` });
+                        batch.set(newClassRef, { 
+                            name: classTemplate.name, 
+                            time: classTemplate.time, 
+                            instructor: classTemplate.instructor || 'Por Asignar', // Usa el instructor de la plantilla
+                            classDate: day.dateStr, 
+                            capacity: 15, 
+                            description: `Clase de ${classTemplate.name}`, 
+                            icon: '�', 
+                            image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}` 
+                        });
                         classesCreated++;
                     }
                 }
@@ -251,23 +264,74 @@
             tomorrowList.innerHTML = tomorrowHTML || '<p class="text-zinc-500">No hay reservas para mañana.</p>';
         },
 
-        login() { /* ... sin cambios ... */ },
-        logout() { /* ... sin cambios ... */ },
-        hideClassModal() { /* ... sin cambios ... */ },
-        showClassModal(cls = null) { /* ... sin cambios ... */ },
-        async loadBookingsForClass(classId) { /* ... sin cambios ... */ },
-        async saveClass() { /* ... sin cambios ... */ },
-        async deleteClass() { /* ... sin cambios ... */ },
+        login() {
+            const email = document.getElementById('email-input').value;
+            const pass = document.getElementById('password-input').value;
+            const errorMsg = document.getElementById('error-message');
+            errorMsg.classList.add('hidden');
+            this.auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                errorMsg.innerText = "Error: " + err.message;
+                errorMsg.classList.remove('hidden');
+            });
+        },
+        logout() {
+            this.auth.signOut();
+        },
+        hideClassModal() {
+            document.getElementById('class-modal').classList.add('hidden');
+        },
+        showClassModal(cls = null) {
+            const modal = document.getElementById('class-modal');
+            document.getElementById('class-id').value = cls.id;
+            document.getElementById('modal-title').innerText = 'Editar Clase';
+            document.getElementById('class-name').value = cls.name;
+            document.getElementById('class-instructor').value = cls.instructor;
+            document.getElementById('class-time').value = cls.time;
+            document.getElementById('class-icon').value = cls.icon;
+            document.getElementById('class-description').value = cls.description;
+            const bookingsContainer = document.getElementById('bookings-list-container');
+            bookingsContainer.classList.remove('hidden');
+            this.loadBookingsForClass(cls.id);
+            modal.classList.remove('hidden');
+        },
+        async loadBookingsForClass(classId) {
+            const bookingsList = document.getElementById('bookings-list');
+            const bookingsCount = document.getElementById('bookings-count');
+            const snapshot = await this.db.collection('bookings').where('classId', '==', classId).get();
+            bookingsCount.innerText = snapshot.size;
+            if (snapshot.empty) {
+                bookingsList.innerHTML = 'No hay reservas.';
+                return;
+            }
+            bookingsList.innerHTML = snapshot.docs.map(doc => `<div>- ${doc.data().userName || 'Anónimo'}</div>`).join('');
+        },
+        async saveClass() {
+            const id = document.getElementById('class-id').value;
+            if (!id) return;
+            const data = {
+                name: document.getElementById('class-name').value,
+                instructor: document.getElementById('class-instructor').value,
+                time: document.getElementById('class-time').value,
+                icon: document.getElementById('class-icon').value,
+                description: document.getElementById('class-description').value,
+                capacity: 15
+            };
+            await this.db.collection('classes').doc(id).set(data, { merge: true });
+            this.hideClassModal();
+        },
+        async deleteClass() {
+            if (!confirm('¿Estás seguro?')) return;
+            const id = document.getElementById('class-id').value;
+            if (id) {
+                const bookingsSnapshot = await this.db.collection('bookings').where('classId', '==', id).get();
+                const batch = this.db.batch();
+                bookingsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                await this.db.collection('classes').doc(id).delete();
+            }
+            this.hideClassModal();
+        }
     };
-    
-    // Copia de funciones sin cambios
-    admin.login = function() { const email = document.getElementById('email-input').value; const pass = document.getElementById('password-input').value; const errorMsg = document.getElementById('error-message'); errorMsg.classList.add('hidden'); this.auth.signInWithEmailAndPassword(email, pass).catch(err => { errorMsg.innerText = "Error: " + err.message; errorMsg.classList.remove('hidden'); }); };
-    admin.logout = function() { this.auth.signOut(); };
-    admin.hideClassModal = function() { document.getElementById('class-modal').classList.add('hidden'); };
-    admin.showClassModal = function(cls = null) { const modal = document.getElementById('class-modal'); document.getElementById('class-id').value = cls.id; document.getElementById('modal-title').innerText = 'Editar Clase'; document.getElementById('class-name').value = cls.name; document.getElementById('class-instructor').value = cls.instructor; document.getElementById('class-time').value = cls.time; document.getElementById('class-icon').value = cls.icon; document.getElementById('class-description').value = cls.description; const bookingsContainer = document.getElementById('bookings-list-container'); bookingsContainer.classList.remove('hidden'); this.loadBookingsForClass(cls.id); modal.classList.remove('hidden'); };
-    admin.loadBookingsForClass = async function(classId) { const bookingsList = document.getElementById('bookings-list'); const bookingsCount = document.getElementById('bookings-count'); const snapshot = await this.db.collection('bookings').where('classId', '==', classId).get(); bookingsCount.innerText = snapshot.size; if (snapshot.empty) { bookingsList.innerHTML = 'No hay reservas.'; return; } bookingsList.innerHTML = snapshot.docs.map(doc => `<div>- ${doc.data().userName || 'Anónimo'}</div>`).join(''); };
-    admin.saveClass = async function() { const id = document.getElementById('class-id').value; if (!id) return; const data = { name: document.getElementById('class-name').value, instructor: document.getElementById('class-instructor').value, time: document.getElementById('class-time').value, icon: document.getElementById('class-icon').value, description: document.getElementById('class-description').value, capacity: 15 }; await this.db.collection('classes').doc(id).set(data, { merge: true }); this.hideClassModal(); };
-    admin.deleteClass = async function() { if (!confirm('¿Estás seguro?')) return; const id = document.getElementById('class-id').value; if (id) { const bookingsSnapshot = await this.db.collection('bookings').where('classId', '==', id).get(); const batch = this.db.batch(); bookingsSnapshot.docs.forEach(doc => batch.delete(doc.ref)); await batch.commit(); await this.db.collection('classes').doc(id).delete(); } this.hideClassModal(); };
 
     admin.init();
     </script>
