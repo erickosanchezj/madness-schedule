@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GymApp - Reserva de Clases</title>
+    <title>Madness - Reserva de Clases</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -77,6 +77,12 @@
                 const tomorrowDate = new Date();
                 tomorrowDate.setDate(tomorrowDate.getDate() + 1);
                 return this.getYYYYMMDD(tomorrowDate);
+            },
+            get currentTime() {
+                const now = new Date();
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                return `${hours}:${minutes}`;
             }
         };
 
@@ -166,7 +172,17 @@
         }
 
         function getHomeScreenHTML() {
-            const nextBooking = state.bookings.map(id => state.classes.find(c => c.id === id)).filter(Boolean).sort((a, b) => (a.classDate + a.time).localeCompare(b.classDate + b.time))[0];
+            const nextBooking = state.bookings
+                .map(id => state.classes.find(c => c.id === id))
+                .filter(Boolean)
+                .filter(cls => {
+                    if (cls.classDate === dateHelper.today) {
+                        return cls.time >= dateHelper.currentTime;
+                    }
+                    return true;
+                })
+                .sort((a, b) => (a.classDate + a.time).localeCompare(b.classDate + b.time))[0];
+
             let nextClassHTML = `<h2 class="text-xl font-semibold mb-4">No tienes clases reservadas</h2><div class="bg-zinc-800 rounded-2xl p-5 text-center"><p class="text-zinc-400">¡Anímate a reservar tu próxima sesión!</p><button data-action="navigate" data-screen="schedule" class="mt-4 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg">Ver Horario</button></div>`;
             if (nextBooking) {
                 const dayText = nextBooking.classDate === dateHelper.today ? 'Hoy' : 'Mañana';
@@ -177,20 +193,13 @@
         
         function getScheduleScreenHTML() {
             const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
-            const filteredClasses = state.classes.filter(cls => cls.classDate === targetDate);
-            return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header><div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg"><button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button><button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button></div><div class="space-y-4">${filteredClasses.length > 0 ? filteredClasses.map(cls => { 
-                const availableSpots = cls.capacity - (cls.enrolledCount || 0); 
-                const isBooked = state.bookings.includes(cls.id); 
-                let spotsHTML;
-                if (isBooked) {
-                    spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-                } else if (availableSpots > 0) {
-                    spotsHTML = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
-                } else {
-                    spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
-                }
-                return `<div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div><div class="flex-1 text-right">${spotsHTML}</div></div>`; 
-            }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases programadas.</div>`}</div></div>`;
+            let filteredClasses = state.classes.filter(cls => cls.classDate === targetDate);
+
+            if (state.scheduleFilter === 'today') {
+                filteredClasses = filteredClasses.filter(cls => cls.time >= dateHelper.currentTime);
+            }
+
+            return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header><div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg"><button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button><button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button></div><div class="space-y-4">${filteredClasses.length > 0 ? filteredClasses.map(cls => { const availableSpots = cls.capacity - (cls.enrolledCount || 0); const isBooked = state.bookings.includes(cls.id); let spotsHTML = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`; if (isBooked) spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`; else if (availableSpots <= 0) spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`; return `<div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div><div class="flex-1 text-right">${spotsHTML}</div></div>`; }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por hoy.</div>`}</div></div>`;
         }
 
         function getBookingsScreenHTML() {
