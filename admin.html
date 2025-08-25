@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Panel de Administrador</title>
+    <title>Panel de Administrador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -60,6 +60,18 @@
                 </div>
             </div>
         </div>
+
+        <!-- Gestión de Usuarios -->
+        <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
+            <h2 class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
+            <div>
+                <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Reinicio de Contraseña</label>
+                <div class="flex space-x-2">
+                    <input type="email" id="user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="Correo del usuario">
+                    <button onclick="admin.sendPasswordReset()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal para Editar Clase -->
@@ -106,14 +118,14 @@
         },
 
         init() {
-            const firebaseConfig = { 
+            const firebaseConfig = {
                 apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
                 authDomain: "madnessscheds.firebaseapp.com",
                 projectId: "madnessscheds",
                 storageBucket: "madnessscheds.firebasestorage.app",
                 messagingSenderId: "788538690861",
                 appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-             };
+            };
             firebase.initializeApp(firebaseConfig);
             this.db = firebase.firestore();
             this.auth = firebase.auth();
@@ -139,17 +151,14 @@
         },
 
         async loadWeeklyScheduleTemplate() {
-            console.log("Cargando plantilla de horario desde Firestore...");
             const snapshot = await this.db.collection('schedule_template').get();
             if (snapshot.empty) {
-                console.error("¡La colección 'schedule_template' está vacía en Firestore!");
                 alert("Error: No se encontró la plantilla de horario en la base de datos.");
                 return;
             }
             snapshot.forEach(doc => {
                 this.state.weeklySchedule[doc.id] = doc.data().classes || [];
             });
-            console.log("Plantilla cargada:", this.state.weeklySchedule);
         },
         
         listenToData() {
@@ -165,7 +174,7 @@
 
         async generateDailyClasses() {
             if (Object.keys(this.state.weeklySchedule).length === 0) {
-                alert("La plantilla de horario no se ha cargado. No se pueden generar clases.");
+                alert("La plantilla de horario no se ha cargado.");
                 return;
             }
             alert('Verificando y generando clases...');
@@ -173,8 +182,8 @@
             const tomorrow = new Date();
             tomorrow.setDate(today.getDate() + 1);
             const daysToGenerate = [
-                { dateObj: today, dateStr: this.dateHelper.today, dayOfWeek: today.getDay() },
-                { dateObj: tomorrow, dateStr: this.dateHelper.tomorrow, dayOfWeek: tomorrow.getDay() }
+                { dateStr: this.dateHelper.today, dayOfWeek: today.getDay() },
+                { dateStr: this.dateHelper.tomorrow, dayOfWeek: tomorrow.getDay() }
             ];
             const batch = this.db.batch();
             let classesCreated = 0;
@@ -186,7 +195,6 @@
                 for (const classTemplate of scheduleForDay) {
                     if (!existingTimes.includes(classTemplate.time)) {
                         const newClassRef = this.db.collection('classes').doc();
-                        // CORRECCIÓN: Asegurarse de que el instructor de la plantilla se use correctamente
                         batch.set(newClassRef, { 
                             name: classTemplate.name, 
                             time: classTemplate.time, 
@@ -231,8 +239,8 @@
                     tomorrowContainer.appendChild(card);
                 }
             }
-             if(todayContainer.innerHTML === '') todayContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy. Clic en "Generar" para crearlas.</p>';
-             if(tomorrowContainer.innerHTML === '') tomorrowContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana. Clic en "Generar" para crearlas.</p>';
+             if(todayContainer.innerHTML === '') todayContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
+             if(tomorrowContainer.innerHTML === '') tomorrowContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
         },
 
         renderDailyBookings() {
@@ -263,6 +271,23 @@
             }
             todayList.innerHTML = todayHTML || '<p class="text-zinc-500">No hay reservas para hoy.</p>';
             tomorrowList.innerHTML = tomorrowHTML || '<p class="text-zinc-500">No hay reservas para mañana.</p>';
+        },
+
+        sendPasswordReset() {
+            const emailInput = document.getElementById('user-email-input');
+            const email = emailInput.value;
+            if (!email) {
+                alert("Por favor, ingresa el correo del usuario.");
+                return;
+            }
+            this.auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    alert(`Se ha enviado un correo para reiniciar la contraseña a ${email}.`);
+                    emailInput.value = '';
+                })
+                .catch((error) => {
+                    alert("Error al enviar el correo: " + error.message);
+                });
         },
 
         login() {
