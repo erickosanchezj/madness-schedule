@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Panel de Administrador</title>
+    <title>Panel de Administrador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -365,6 +365,25 @@
             const saveBtn = document.getElementById('save-attendance-btn');
             
             const attendees = this.state.bookings.filter(b => b.classId === cls.id);
+            
+            // Cargar registros de asistencia existentes
+            const attendanceSnapshot = await this.db.collection('attendance').where('classId', '==', cls.id).get();
+            const existingAttendance = {};
+            attendanceSnapshot.forEach(doc => {
+                const data = doc.data();
+                existingAttendance[data.userId] = data.status;
+            });
+
+            // Pre-poblar el estado de asistencia actual
+            this.state.currentAttendance = {};
+            attendees.forEach(user => {
+                if (existingAttendance[user.userId]) {
+                    this.state.currentAttendance[user.userId] = {
+                        status: existingAttendance[user.userId],
+                        userName: user.userName
+                    };
+                }
+            });
 
             if (attendees.length === 0) {
                 statusMessage.textContent = 'No hay usuarios inscritos en esta clase.';
@@ -374,15 +393,20 @@
             }
             
             statusMessage.textContent = `${attendees.length} usuarios inscritos.`;
-            attendanceList.innerHTML = attendees.map(user => `
+            attendanceList.innerHTML = attendees.map(user => {
+                const savedStatus = existingAttendance[user.userId];
+                const attendedSelected = savedStatus === 'attended' ? 'selected-attended' : '';
+                const absentSelected = savedStatus === 'absent' ? 'selected-absent' : '';
+
+                return `
                 <div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
                     <span class="text-zinc-300">${user.userName}</span>
                     <div class="space-x-2" data-user-id="${user.userId}" data-user-name="${user.userName}">
-                        <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md" data-status="attended">Asistió</button>
-                        <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md" data-status="absent">Faltó</button>
+                        <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${attendedSelected}" data-status="attended">Asistió</button>
+                        <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${absentSelected}" data-status="absent">Faltó</button>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
             saveBtn.classList.remove('hidden');
 
             attendanceList.onclick = (e) => {
