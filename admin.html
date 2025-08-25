@@ -28,49 +28,40 @@
             <h1 class="text-3xl font-bold">Panel de Administración</h1>
             <button onclick="admin.logout()" class="text-rose-400 hover:text-rose-300 font-semibold">Cerrar Sesión</button>
         </div>
+        <div class="mt-8 mb-6">
+            <button onclick="admin.generateDailyClasses()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
+                <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Generar/Verificar Clases del Día
+            </button>
+        </div>
         <div id="classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <!-- Las clases se inyectarán aquí -->
         </div>
-        <div class="mt-8">
-            <button onclick="admin.showClassModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
-                <i data-lucide="plus" class="inline-block -mt-1"></i> Añadir Nueva Clase
-            </button>
-        </div>
 
-        <!-- NUEVA SECCIÓN: Reservas del Día -->
+        <!-- Reservas del Día -->
         <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
             <h2 class="text-2xl font-bold mb-4">Reservas del Día</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
                     <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Hoy</h3>
-                    <div id="today-bookings-list" class="space-y-4 text-sm">
-                        <!-- Reservas de hoy se inyectarán aquí -->
-                    </div>
+                    <div id="today-bookings-list" class="space-y-4 text-sm"></div>
                 </div>
                 <div>
                     <h3 class="text-lg font-semibold text-sky-400 mb-3 border-b border-zinc-700 pb-2">Mañana</h3>
-                    <div id="tomorrow-bookings-list" class="space-y-4 text-sm">
-                        <!-- Reservas de mañana se inyectarán aquí -->
-                    </div>
+                    <div id="tomorrow-bookings-list" class="space-y-4 text-sm"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal para Editar/Crear Clase -->
+    <!-- Modal para Editar Clase -->
     <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
         <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto">
-            <h2 id="modal-title" class="text-2xl font-bold"></h2>
+            <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
             <input type="hidden" id="class-id">
             <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded">
             <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
             <div class="grid grid-cols-2 gap-4">
                 <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="bg-zinc-700 p-2 rounded">
-                <input type="number" id="class-capacity" placeholder="Capacidad" class="bg-zinc-700 p-2 rounded">
-                <select id="class-day-selector" class="w-full bg-zinc-700 p-2 rounded">
-                    <option value="today">Hoy</option>
-                    <option value="tomorrow">Mañana</option>
-                </select>
                 <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="bg-zinc-700 p-2 rounded">
             </div>
             <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
@@ -83,7 +74,7 @@
             <div class="flex justify-end space-x-4 pt-4">
                 <button id="delete-button" onclick="admin.deleteClass()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">Eliminar</button>
                 <button onclick="admin.hideClassModal()" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded">Cancelar</button>
-                <button onclick="admin.saveClass()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar</button>
+                <button onclick="admin.saveClass()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar Cambios</button>
             </div>
         </div>
     </div>
@@ -97,20 +88,43 @@
     const admin = {
         db: null,
         auth: null,
-        state: {
-            classes: [],
-            bookings: []
-        },
+        state: { classes: [], bookings: [] },
         
+        weeklySchedule: {
+            // Domingo: 0, Lunes: 1, etc.
+            1: [ // Lunes
+                { time: '08:00', name: 'Funcional' }, { time: '18:00', name: 'TRX' },
+                { time: '19:00', name: 'Funcional' }, { time: '20:00', name: 'Funcional' },
+                { time: '21:00', name: 'TRX' }
+            ],
+            2: [ // Martes
+                { time: '10:00', name: 'Funcional' }, { time: '19:00', name: 'Funcional' },
+                { time: '20:00', name: 'Funcional' }, { time: '21:00', name: 'HIIT' }
+            ],
+            3: [ // Miércoles
+                { time: '08:00', name: 'Yoga' }, { time: '18:00', name: 'TRX' },
+                { time: '19:00', name: 'TRX' }, { time: '20:00', name: 'Yoga' },
+                { time: '21:00', name: 'TRX' }
+            ],
+            4: [ // Jueves
+                { time: '10:00', name: 'Funcional' }, { time: '19:00', name: 'Funcional' },
+                { time: '20:00', name: 'Funcional' }, { time: '21:00', name: 'HIIT' }
+            ],
+            5: [ // Viernes
+                { time: '08:00', name: 'TRX' }, { time: '19:00', name: 'Funcional' },
+                { time: '20:00', name: 'TRX' }
+            ],
+            6: [ // Sábado
+                { time: '10:00', name: 'Funcional' }, { time: '11:00', name: 'Capoeira' }
+            ],
+            0: [] // Domingo
+        },
+
         dateHelper: {
-            getYYYYMMDD(date) {
-                return date.toISOString().split('T')[0];
-            },
+            getYYYYMMDD(date) { return date.toISOString().split('T')[0]; },
             get today() { return this.getYYYYMMDD(new Date()); },
             get tomorrow() {
-                const tomorrowDate = new Date();
-                tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-                return this.getYYYYMMDD(tomorrowDate);
+                const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d);
             }
         },
 
@@ -139,8 +153,7 @@
                             document.getElementById('admin-panel').classList.remove('hidden');
                             this.listenToData();
                         } else {
-                            this.logout();
-                            alert('Acceso denegado. No tienes permisos de administrador.');
+                            this.logout(); alert('Acceso denegado.');
                         }
                     });
                 } else {
@@ -151,17 +164,61 @@
         },
         
         listenToData() {
-            // Escucha clases de hoy en adelante
-            this.db.collection('classes').where('classDate', '>=', this.dateHelper.today).onSnapshot(snapshot => {
-                this.state.classes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.db.collection('classes').where('classDate', '>=', this.dateHelper.today).onSnapshot(snap => {
+                this.state.classes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 this.renderAll();
             });
-            
-            // Escucha todas las reservas
-            this.db.collection('bookings').onSnapshot(snapshot => {
-                this.state.bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            this.db.collection('bookings').onSnapshot(snap => {
+                this.state.bookings = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 this.renderAll();
             });
+        },
+
+        async generateDailyClasses() {
+            alert('Verificando y generando clases para hoy y mañana...');
+            const today = new Date();
+            const tomorrow = new Date();
+            tomorrow.setDate(today.getDate() + 1);
+
+            const daysToGenerate = [
+                { dateObj: today, dateStr: this.dateHelper.today, dayOfWeek: today.getDay() },
+                { dateObj: tomorrow, dateStr: this.dateHelper.tomorrow, dayOfWeek: tomorrow.getDay() }
+            ];
+
+            const batch = this.db.batch();
+            let classesCreated = 0;
+
+            for (const day of daysToGenerate) {
+                const scheduleForDay = this.weeklySchedule[day.dayOfWeek] || [];
+                if (scheduleForDay.length === 0) continue;
+
+                const existingClassesSnap = await this.db.collection('classes').where('classDate', '==', day.dateStr).get();
+                const existingTimes = existingClassesSnap.docs.map(doc => doc.data().time);
+
+                for (const classTemplate of scheduleForDay) {
+                    if (!existingTimes.includes(classTemplate.time)) {
+                        const newClassRef = this.db.collection('classes').doc();
+                        batch.set(newClassRef, {
+                            name: classTemplate.name,
+                            time: classTemplate.time,
+                            classDate: day.dateStr,
+                            capacity: 15,
+                            instructor: 'Por Asignar',
+                            description: `Clase de ${classTemplate.name}`,
+                            icon: '💪',
+                            image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}`
+                        });
+                        classesCreated++;
+                    }
+                }
+            }
+
+            if (classesCreated > 0) {
+                await batch.commit();
+                alert(`${classesCreated} nuevas clases han sido generadas.`);
+            } else {
+                alert('No se necesitaron crear nuevas clases. El horario ya está completo para hoy y mañana.');
+            }
         },
 
         renderAll() {
@@ -169,82 +226,54 @@
             this.renderDailyBookings();
         },
 
-        renderClassCards() {
-            const container = document.getElementById('classes-container');
-            container.innerHTML = '';
-            const sortedClasses = [...this.state.classes].sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
-
-            for (const cls of sortedClasses) {
-                const enrolledCount = this.state.bookings.filter(b => b.classId === cls.id).length;
-                let dayText = 'Futuro'; let dayColor = 'text-gray-400';
-                if (cls.classDate === this.dateHelper.today) { dayText = 'Hoy'; dayColor = 'text-emerald-400'; }
-                else if (cls.classDate === this.dateHelper.tomorrow) { dayText = 'Mañana'; dayColor = 'text-sky-400'; }
-
-                const card = document.createElement('div');
-                card.className = "bg-zinc-800 p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors";
-                card.onclick = () => this.showClassModal(cls);
-                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="text-xl font-bold">${cls.name}</p><p class="text-sm text-zinc-400">${cls.instructor}</p></div><span class="text-2xl">${cls.icon || '💪'}</span></div><div class="mt-4 flex justify-between items-center text-sm"><span class="font-semibold ${dayColor}">${dayText} a las ${cls.time}</span><span class="font-bold ${enrolledCount >= cls.capacity ? 'text-rose-400' : 'text-white'}">${enrolledCount} / ${cls.capacity}</span></div>`;
-                container.appendChild(card);
-            }
-        },
-
-        renderDailyBookings() {
-            const todayList = document.getElementById('today-bookings-list');
-            const tomorrowList = document.getElementById('tomorrow-bookings-list');
-            todayList.innerHTML = '';
-            tomorrowList.innerHTML = '';
-
-            const bookingsByClass = {};
-
-            for (const booking of this.state.bookings) {
-                const cls = this.state.classes.find(c => c.id === booking.classId);
-                if (!cls) continue; // Si la clase no existe o es pasada, la ignora
-
-                if (!bookingsByClass[cls.id]) {
-                    bookingsByClass[cls.id] = {
-                        ...cls,
-                        attendees: []
-                    };
-                }
-                bookingsByClass[cls.id].attendees.push(booking.userName || 'Usuario Anónimo');
-            }
-
-            const sortedClassesWithBookings = Object.values(bookingsByClass).sort((a,b) => a.time.localeCompare(b.time));
-
-            let todayHTML = '';
-            let tomorrowHTML = '';
-
-            for (const cls of sortedClassesWithBookings) {
-                const attendeesHTML = cls.attendees.map(name => `<li class="text-zinc-400 ml-4">- ${name}</li>`).join('');
-                const classBlock = `<div class="mb-3"><p class="font-bold text-white">${cls.time} - ${cls.name}</p><ul class="list-none">${attendeesHTML}</ul></div>`;
-
-                if (cls.classDate === this.dateHelper.today) {
-                    todayHTML += classBlock;
-                } else if (cls.classDate === this.dateHelper.tomorrow) {
-                    tomorrowHTML += classBlock;
-                }
-            }
-
-            todayList.innerHTML = todayHTML || '<p class="text-zinc-500">No hay reservas para hoy.</p>';
-            tomorrowList.innerHTML = tomorrowHTML || '<p class="text-zinc-500">No hay reservas para mañana.</p>';
-        },
-
+        renderClassCards() { /* ... sin cambios ... */ },
+        renderDailyBookings() { /* ... sin cambios ... */ },
         login() { /* ... sin cambios ... */ },
         logout() { /* ... sin cambios ... */ },
-        showClassModal(cls = null) { /* ... sin cambios ... */ },
         hideClassModal() { /* ... sin cambios ... */ },
+        
+        showClassModal(cls = null) {
+            const modal = document.getElementById('class-modal');
+            document.getElementById('class-id').value = cls.id;
+            document.getElementById('class-name').value = cls.name;
+            document.getElementById('class-instructor').value = cls.instructor;
+            document.getElementById('class-time').value = cls.time;
+            document.getElementById('class-icon').value = cls.icon;
+            document.getElementById('class-description').value = cls.description;
+            
+            const bookingsContainer = document.getElementById('bookings-list-container');
+            bookingsContainer.classList.remove('hidden');
+            this.loadBookingsForClass(cls.id);
+            modal.classList.remove('hidden');
+        },
+        
         async loadBookingsForClass(classId) { /* ... sin cambios ... */ },
-        async saveClass() { /* ... sin cambios ... */ },
+        
+        async saveClass() {
+            const id = document.getElementById('class-id').value;
+            if (!id) return;
+            const data = {
+                name: document.getElementById('class-name').value,
+                instructor: document.getElementById('class-instructor').value,
+                time: document.getElementById('class-time').value,
+                icon: document.getElementById('class-icon').value,
+                description: document.getElementById('class-description').value,
+                capacity: 15 // Siempre 15
+            };
+            await this.db.collection('classes').doc(id).set(data, { merge: true });
+            this.hideClassModal();
+        },
+        
         async deleteClass() { /* ... sin cambios ... */ },
     };
     
-    // Copia aquí las funciones que no cambiaron para mantener el archivo completo
+    // Copia de funciones sin cambios para mantener el archivo completo
+    admin.renderClassCards = function() { const container = document.getElementById('classes-container'); container.innerHTML = ''; const sortedClasses = [...this.state.classes].sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time)); for (const cls of sortedClasses) { const enrolledCount = this.state.bookings.filter(b => b.classId === cls.id).length; let dayText = 'Futuro'; let dayColor = 'text-gray-400'; if (cls.classDate === this.dateHelper.today) { dayText = 'Hoy'; dayColor = 'text-emerald-400'; } else if (cls.classDate === this.dateHelper.tomorrow) { dayText = 'Mañana'; dayColor = 'text-sky-400'; } const card = document.createElement('div'); card.className = "bg-zinc-800 p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors"; card.onclick = () => this.showClassModal(cls); card.innerHTML = `<div class="flex justify-between items-start"><div><p class="text-xl font-bold">${cls.name}</p><p class="text-sm text-zinc-400">${cls.instructor}</p></div><span class="text-2xl">${cls.icon || '💪'}</span></div><div class="mt-4 flex justify-between items-center text-sm"><span class="font-semibold ${dayColor}">${dayText} a las ${cls.time}</span><span class="font-bold ${enrolledCount >= cls.capacity ? 'text-rose-400' : 'text-white'}">${enrolledCount} / ${cls.capacity}</span></div>`; container.appendChild(card); } };
+    admin.renderDailyBookings = function() { const todayList = document.getElementById('today-bookings-list'); const tomorrowList = document.getElementById('tomorrow-bookings-list'); todayList.innerHTML = ''; tomorrowList.innerHTML = ''; const bookingsByClass = {}; for (const booking of this.state.bookings) { const cls = this.state.classes.find(c => c.id === booking.classId); if (!cls) continue; if (!bookingsByClass[cls.id]) { bookingsByClass[cls.id] = { ...cls, attendees: [] }; } bookingsByClass[cls.id].attendees.push(booking.userName || 'Usuario Anónimo'); } const sortedClassesWithBookings = Object.values(bookingsByClass).sort((a,b) => a.time.localeCompare(b.time)); let todayHTML = ''; let tomorrowHTML = ''; for (const cls of sortedClassesWithBookings) { const attendeesHTML = cls.attendees.map(name => `<li class="text-zinc-400 ml-4">- ${name}</li>`).join(''); const classBlock = `<div class="mb-3"><p class="font-bold text-white">${cls.time} - ${cls.name}</p><ul class="list-none">${attendeesHTML}</ul></div>`; if (cls.classDate === this.dateHelper.today) { todayHTML += classBlock; } else if (cls.classDate === this.dateHelper.tomorrow) { tomorrowHTML += classBlock; } } todayList.innerHTML = todayHTML || '<p class="text-zinc-500">No hay reservas para hoy.</p>'; tomorrowList.innerHTML = tomorrowHTML || '<p class="text-zinc-500">No hay reservas para mañana.</p>'; };
     admin.login = function() { const email = document.getElementById('email-input').value; const pass = document.getElementById('password-input').value; const errorMsg = document.getElementById('error-message'); errorMsg.classList.add('hidden'); this.auth.signInWithEmailAndPassword(email, pass).catch(err => { errorMsg.innerText = "Error: " + err.message; errorMsg.classList.remove('hidden'); }); };
     admin.logout = function() { this.auth.signOut(); };
     admin.hideClassModal = function() { document.getElementById('class-modal').classList.add('hidden'); };
-    admin.showClassModal = function(cls = null) { const modal = document.getElementById('class-modal'); document.getElementById('class-id').value = cls ? cls.id : ''; document.getElementById('modal-title').innerText = cls ? 'Editar Clase' : 'Crear Nueva Clase'; document.getElementById('class-name').value = cls ? cls.name : ''; document.getElementById('class-instructor').value = cls ? cls.instructor : ''; document.getElementById('class-time').value = cls ? cls.time : ''; document.getElementById('class-capacity').value = cls ? cls.capacity : ''; const daySelector = document.getElementById('class-day-selector'); if (cls && cls.classDate === this.dateHelper.tomorrow) { daySelector.value = 'tomorrow'; } else { daySelector.value = 'today'; } document.getElementById('class-icon').value = cls ? cls.icon : ''; document.getElementById('class-description').value = cls ? cls.description : ''; const deleteButton = document.getElementById('delete-button'); const bookingsContainer = document.getElementById('bookings-list-container'); if (cls) { deleteButton.classList.remove('hidden'); bookingsContainer.classList.remove('hidden'); this.loadBookingsForClass(cls.id); } else { deleteButton.classList.add('hidden'); bookingsContainer.classList.add('hidden'); document.getElementById('bookings-list').innerHTML = ''; document.getElementById('bookings-count').innerText = '0'; } modal.classList.remove('hidden'); };
     admin.loadBookingsForClass = async function(classId) { const bookingsList = document.getElementById('bookings-list'); const bookingsCount = document.getElementById('bookings-count'); const snapshot = await this.db.collection('bookings').where('classId', '==', classId).get(); bookingsCount.innerText = snapshot.size; if (snapshot.empty) { bookingsList.innerHTML = 'No hay reservas para esta clase.'; return; } bookingsList.innerHTML = snapshot.docs.map(doc => `<div>- ${doc.data().userName || 'Usuario Anónimo'}</div>`).join(''); };
-    admin.saveClass = async function() { const id = document.getElementById('class-id').value; const name = document.getElementById('class-name').value; if (!name) { alert("El nombre de la clase es obligatorio."); return; } const daySelection = document.getElementById('class-day-selector').value; const classDate = (daySelection === 'today') ? this.dateHelper.today : this.dateHelper.tomorrow; const data = { name: name, instructor: document.getElementById('class-instructor').value, time: document.getElementById('class-time').value, capacity: parseInt(document.getElementById('class-capacity').value) || 10, classDate: classDate, icon: document.getElementById('class-icon').value, description: document.getElementById('class-description').value, image: `https://placehold.co/400x250/1f2937/ffffff?text=${name.split(' ')[0]}` }; if (id) { await this.db.collection('classes').doc(id).set(data, { merge: true }); } else { await this.db.collection('classes').add(data); } this.hideClassModal(); };
     admin.deleteClass = async function() { if (!confirm('¿Estás seguro?')) return; const id = document.getElementById('class-id').value; if (id) { const bookingsSnapshot = await this.db.collection('bookings').where('classId', '==', id).get(); const batch = this.db.batch(); bookingsSnapshot.docs.forEach(doc => batch.delete(doc.ref)); await batch.commit(); await this.db.collection('classes').doc(id).delete(); } this.hideClassModal(); };
 
     admin.init();
