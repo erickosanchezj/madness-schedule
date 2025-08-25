@@ -48,7 +48,7 @@
             <div class="grid grid-cols-2 gap-4">
                 <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="bg-zinc-700 p-2 rounded">
                 <input type="number" id="class-capacity" placeholder="Capacidad" class="bg-zinc-700 p-2 rounded">
-                <select id="class-day" class="w-full bg-zinc-700 p-2 rounded">
+                <select id="class-day-selector" class="w-full bg-zinc-700 p-2 rounded">
                     <option value="today">Hoy</option>
                     <option value="tomorrow">Mañana</option>
                 </select>
@@ -79,6 +79,22 @@
     const admin = {
         db: null,
         auth: null,
+        
+        // --- Helper para manejar fechas ---
+        dateHelper: {
+            getYYYYMMDD(date) {
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            },
+            get today() { return this.getYYYYMMDD(new Date()); },
+            get tomorrow() {
+                const tomorrowDate = new Date();
+                tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+                return this.getYYYYMMDD(tomorrowDate);
+            }
+        },
 
         init() {
             // PEGA AQUÍ TU OBJETO DE CONFIGURACIÓN DE FIREBASE
@@ -101,7 +117,6 @@
             this.auth.onAuthStateChanged(user => {
                 if (user) {
                     user.getIdTokenResult().then(idTokenResult => {
-                        // Verifica si el usuario tiene el claim de 'admin'
                         if (!!idTokenResult.claims.admin) {
                             document.getElementById('login-screen').classList.add('hidden');
                             document.getElementById('admin-panel').classList.remove('hidden');
@@ -136,14 +151,25 @@
         },
 
         listenToClasses() {
-            this.db.collection('classes').orderBy('time').onSnapshot(async (snapshot) => {
+            // Escucha solo clases de hoy en adelante
+            this.db.collection('classes').where('classDate', '>=', this.dateHelper.today).orderBy('classDate').orderBy('time').onSnapshot(async (snapshot) => {
                 const container = document.getElementById('classes-container');
-                container.innerHTML = ''; // Limpia el contenedor antes de renderizar
+                container.innerHTML = ''; // Limpia el contenedor
                 for (const doc of snapshot.docs) {
                     const cls = { id: doc.id, ...doc.data() };
                     const bookingsSnapshot = await this.db.collection('bookings').where('classId', '==', cls.id).get();
                     const enrolledCount = bookingsSnapshot.size;
                     
+                    let dayText = 'Futuro';
+                    let dayColor = 'text-gray-400';
+                    if (cls.classDate === this.dateHelper.today) {
+                        dayText = 'Hoy';
+                        dayColor = 'text-emerald-400';
+                    } else if (cls.classDate === this.dateHelper.tomorrow) {
+                        dayText = 'Mañana';
+                        dayColor = 'text-sky-400';
+                    }
+
                     const card = document.createElement('div');
                     card.className = "bg-zinc-800 p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors";
                     card.onclick = () => this.showClassModal(cls);
@@ -156,7 +182,7 @@
                             <span class="text-2xl">${cls.icon || '💪'}</span>
                         </div>
                         <div class="mt-4 flex justify-between items-center text-sm">
-                            <span class="font-semibold ${cls.day === 'today' ? 'text-emerald-400' : 'text-sky-400'}">${cls.day === 'today' ? 'Hoy' : 'Mañana'} a las ${cls.time}</span>
+                            <span class="font-semibold ${dayColor}">${dayText} a las ${cls.time}</span>
                             <span class="font-bold ${enrolledCount >= cls.capacity ? 'text-rose-400' : 'text-white'}">${enrolledCount} / ${cls.capacity}</span>
                         </div>`;
                     container.appendChild(card);
@@ -172,7 +198,14 @@
             document.getElementById('class-instructor').value = cls ? cls.instructor : '';
             document.getElementById('class-time').value = cls ? cls.time : '';
             document.getElementById('class-capacity').value = cls ? cls.capacity : '';
-            document.getElementById('class-day').value = cls ? cls.day : 'today';
+            
+            const daySelector = document.getElementById('class-day-selector');
+            if (cls && cls.classDate === this.dateHelper.tomorrow) {
+                daySelector.value = 'tomorrow';
+            } else {
+                daySelector.value = 'today';
+            }
+
             document.getElementById('class-icon').value = cls ? cls.icon : '';
             document.getElementById('class-description').value = cls ? cls.description : '';
             
@@ -216,12 +249,16 @@
                 alert("El nombre de la clase es obligatorio.");
                 return;
             }
+
+            const daySelection = document.getElementById('class-day-selector').value;
+            const classDate = (daySelection === 'today') ? this.dateHelper.today : this.dateHelper.tomorrow;
+
             const data = {
                 name: name,
                 instructor: document.getElementById('class-instructor').value,
                 time: document.getElementById('class-time').value,
                 capacity: parseInt(document.getElementById('class-capacity').value) || 10,
-                day: document.getElementById('class-day').value,
+                classDate: classDate, // <-- CAMBIO CLAVE: Usamos la fecha real
                 icon: document.getElementById('class-icon').value,
                 description: document.getElementById('class-description').value,
                 image: `https://placehold.co/400x250/1f2937/ffffff?text=${name.split(' ')[0]}`
@@ -239,15 +276,10 @@
             if (!confirm('¿Estás seguro de que quieres eliminar esta clase? Esta acción no se puede deshacer.')) return;
             const id = document.getElementById('class-id').value;
             if (id) {
-                // Opcional: eliminar también todas las reservas asociadas
                 const bookingsSnapshot = await this.db.collection('bookings').where('classId', '==', id).get();
                 const batch = this.db.batch();
-                bookingsSnapshot.docs.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
+                bookingsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
                 await batch.commit();
-
-                // Eliminar la clase
                 await this.db.collection('classes').doc(id).delete();
             }
             this.hideClassModal();
