@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Reserva de Clases</title>
+    <title>GymApp - Reserva de Clases</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -178,7 +178,19 @@
         function getScheduleScreenHTML() {
             const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
             const filteredClasses = state.classes.filter(cls => cls.classDate === targetDate);
-            return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header><div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg"><button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button><button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button></div><div class="space-y-4">${filteredClasses.length > 0 ? filteredClasses.map(cls => { const availableSpots = cls.capacity - (cls.enrolledCount || 0); const isBooked = state.bookings.includes(cls.id); let spotsHTML = `<span class="text-xs bg-zinc-700 px-2 py-1 rounded-md">${availableSpots} lugares</span>`; if (isBooked) spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`; else if (availableSpots <= 0) spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`; return `<div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div><div class="flex-1 text-right">${spotsHTML}</div></div>`; }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases programadas.</div>`}</div></div>`;
+            return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header><div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg"><button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button><button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button></div><div class="space-y-4">${filteredClasses.length > 0 ? filteredClasses.map(cls => { 
+                const availableSpots = cls.capacity - (cls.enrolledCount || 0); 
+                const isBooked = state.bookings.includes(cls.id); 
+                let spotsHTML;
+                if (isBooked) {
+                    spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+                } else if (availableSpots > 0) {
+                    spotsHTML = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+                } else {
+                    spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
+                }
+                return `<div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div><div class="flex-1 text-right">${spotsHTML}</div></div>`; 
+            }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases programadas.</div>`}</div></div>`;
         }
 
         function getBookingsScreenHTML() {
@@ -198,7 +210,7 @@
             let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
             if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
             else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-            return `<div><div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div><div class="p-6 space-y-4 pb-24"><h1 class="text-3xl font-bold">${cls.name}</h1><p class="text-zinc-400 leading-relaxed">${cls.description}</p><div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center"><span class="font-semibold text-lg">Lugares disponibles</span><span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots}</span></div></div><div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div></div>`;
+            return `<div><div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div><div class="p-6 space-y-4 pb-24"><h1 class="text-3xl font-bold">${cls.name}</h1><p class="text-zinc-400 leading-relaxed">${cls.description}</p><div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center"><span class="font-semibold text-lg">Estado</span><span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span></div></div><div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div></div>`;
         }
 
         const app = {
