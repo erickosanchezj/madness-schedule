@@ -6,6 +6,8 @@
     <title>Panel de Administrador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js para la gráfica de asistencia -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> 
         body { font-family: 'Inter', sans-serif; } 
@@ -65,6 +67,14 @@
             </div>
         </div>
 
+        <!-- Reporte de Asistencia -->
+        <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
+            <h2 class="text-2xl font-bold mb-4">Reporte de Asistencia (Últimos 3 Días)</h2>
+            <div>
+                <canvas id="attendanceChart"></canvas>
+            </div>
+        </div>
+
         <!-- Gestión de Usuarios -->
         <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
             <h2 class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
@@ -84,7 +94,6 @@
             <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
             <input type="hidden" id="class-id">
             
-            <!-- Pestañas -->
             <div class="border-b border-zinc-700">
                 <nav class="flex space-x-4" aria-label="Tabs">
                     <button id="tab-details" class="px-3 py-2 font-medium text-sm rounded-t-md">Detalles</button>
@@ -92,7 +101,6 @@
                 </nav>
             </div>
 
-            <!-- Contenido de la Pestaña de Detalles -->
             <div id="details-content">
                 <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded mt-4">
                 <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded mt-4">
@@ -103,7 +111,6 @@
                 <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24 mt-4"></textarea>
             </div>
 
-            <!-- Contenido de la Pestaña de Asistencia -->
             <div id="attendance-content" class="hidden">
                 <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
                 <div id="attendance-list" class="space-y-2"></div>
@@ -126,7 +133,7 @@
     <script>
     const admin = {
         db: null, auth: null,
-        state: { classes: [], bookings: [], weeklySchedule: {}, currentAttendance: {} },
+        state: { classes: [], bookings: [], weeklySchedule: {}, currentAttendance: {}, attendanceChartInstance: null },
         
         dateHelper: {
             getYYYYMMDD(date) { return date.toISOString().split('T')[0]; },
@@ -234,6 +241,7 @@
         renderAll() {
             this.renderClassCards();
             this.renderDailyBookings();
+            this.renderAttendanceChart();
         },
 
         isClassRunningNow(cls) {
@@ -304,11 +312,66 @@
             tomorrowList.innerHTML = tomorrowHTML || '<p class="text-zinc-500">No hay reservas para mañana.</p>';
         },
         
+        async renderAttendanceChart() {
+            const ctx = document.getElementById('attendanceChart')?.getContext('2d');
+            if (!ctx) return;
+
+            const today = new Date();
+            const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+            const dayBefore = new Date(); dayBefore.setDate(today.getDate() - 2);
+            
+            const dateLabels = [
+                this.dateHelper.getYYYYMMDD(dayBefore),
+                this.dateHelper.getYYYYMMDD(yesterday),
+                this.dateHelper.getYYYYMMDD(today)
+            ];
+
+            const attendanceSnapshot = await this.db.collection('attendance')
+                .where('classDate', '>=', dateLabels[0])
+                .get();
+
+            const reportData = {};
+            dateLabels.forEach(date => reportData[date] = { attended: 0, absent: 0 });
+
+            attendanceSnapshot.forEach(doc => {
+                const record = doc.data();
+                if (reportData[record.classDate]) {
+                    if (record.status === 'attended') reportData[record.classDate].attended++;
+                    if (record.status === 'absent') reportData[record.classDate].absent++;
+                }
+            });
+
+            const attendedData = dateLabels.map(date => reportData[date].attended);
+            const absentData = dateLabels.map(date => reportData[date].absent);
+
+            if (this.state.attendanceChartInstance) {
+                this.state.attendanceChartInstance.destroy();
+            }
+
+            this.state.attendanceChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dateLabels,
+                    datasets: [
+                        { label: 'Asistieron', data: attendedData, backgroundColor: 'rgba(16, 185, 129, 0.6)', borderColor: 'rgba(16, 185, 129, 1)', borderWidth: 1 },
+                        { label: 'Faltaron', data: absentData, backgroundColor: 'rgba(244, 63, 94, 0.6)', borderColor: 'rgba(244, 63, 94, 1)', borderWidth: 1 }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#a1a1aa', stepSize: 1 }, grid: { color: '#3f3f46' } },
+                        x: { ticks: { color: '#a1a1aa' }, grid: { color: '#3f3f46' } }
+                    },
+                    plugins: { legend: { labels: { color: '#d4d4d8' } } }
+                }
+            });
+        },
+
         isClassInProgress(cls) {
             if (cls.classDate !== this.dateHelper.today) return false;
             const now = new Date();
             const startTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const endTime = new Date(startTime.getTime() + 120 * 60000); // 2 hour window to take attendance
+            const endTime = new Date(startTime.getTime() + 120 * 60000); // 2 hour window
             return now >= startTime && now <= endTime;
         },
 
@@ -366,7 +429,6 @@
             
             const attendees = this.state.bookings.filter(b => b.classId === cls.id);
             
-            // Cargar registros de asistencia existentes
             const attendanceSnapshot = await this.db.collection('attendance').where('classId', '==', cls.id).get();
             const existingAttendance = {};
             attendanceSnapshot.forEach(doc => {
@@ -374,7 +436,6 @@
                 existingAttendance[data.userId] = data.status;
             });
 
-            // Pre-poblar el estado de asistencia actual
             this.state.currentAttendance = {};
             attendees.forEach(user => {
                 if (existingAttendance[user.userId]) {
@@ -448,7 +509,7 @@
                     userName: record.userName,
                     status: record.status,
                     recordedAt: new Date()
-                });
+                }, { merge: true });
             }
 
             try {
