@@ -22,7 +22,7 @@
     <div id="app-container" class="max-w-md mx-auto h-screen flex-col overflow-hidden bg-zinc-900 border-x border-zinc-800 hidden">
         <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
         <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
-             <div class="flex justify-around h-20">
+             <div id="nav-bar" class="flex justify-around h-20">
                 <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
                 <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
                 <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
@@ -93,6 +93,7 @@
         const authContainer = document.getElementById('auth-container');
         const appContainer = document.getElementById('app-container');
         const loadingSpinner = document.getElementById('loading-spinner');
+        const navBar = document.getElementById('nav-bar');
 
         auth.onAuthStateChanged(user => {
             loadingSpinner.classList.remove('hidden');
@@ -119,9 +120,11 @@
                         <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                         <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                     </div>
-                    <button onclick="app.handleAuth(${isLogin})" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
-                    <p class="text-center text-zinc-400 mt-6">${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'} <a href="#" onclick="app.toggleAuthScreen(${!isLogin})" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a></p>
+                    <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
+                    <p class="text-center text-zinc-400 mt-6">${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'} <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a></p>
                 </div>`;
+            document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
+            document.getElementById('auth-toggle').onclick = (e) => { e.preventDefault(); renderAuthScreen(!isLogin); };
         }
         
         async function initializeApp() {
@@ -140,9 +143,7 @@
                 });
                 state.classes = await Promise.all(classPromises);
                 if (state.currentUser) render();
-            }, error => {
-                console.error("Error al obtener clases: ", error);
-            });
+            }, error => console.error("Error al obtener clases: ", error));
         }
 
         function listenToBookings() {
@@ -150,9 +151,7 @@
             return db.collection('bookings').where('userId', '==', state.currentUser.uid).onSnapshot(snapshot => {
                 state.bookings = snapshot.docs.map(doc => doc.data().classId);
                 if (state.currentUser) render();
-            }, error => {
-                console.error("Error al obtener reservas: ", error);
-            });
+            }, error => console.error("Error al obtener reservas: ", error));
         }
 
         function render() {
@@ -167,25 +166,11 @@
         }
 
         function getHomeScreenHTML() {
-            const nextBooking = state.bookings
-                .map(id => state.classes.find(c => c.id === id))
-                .filter(Boolean) 
-                .sort((a, b) => (a.classDate + a.time).localeCompare(b.classDate + b.time))[0];
-
-            let nextClassHTML = `
-                <h2 class="text-xl font-semibold mb-4">No tienes clases reservadas</h2>
-                <div class="bg-zinc-800 rounded-2xl p-5 text-center">
-                    <p class="text-zinc-400">¡Anímate a reservar tu próxima sesión!</p>
-                    <button onclick="app.navigateTo('schedule')" class="mt-4 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg">Ver Horario</button>
-                </div>`;
+            const nextBooking = state.bookings.map(id => state.classes.find(c => c.id === id)).filter(Boolean).sort((a, b) => (a.classDate + a.time).localeCompare(b.classDate + b.time))[0];
+            let nextClassHTML = `<h2 class="text-xl font-semibold mb-4">No tienes clases reservadas</h2><div class="bg-zinc-800 rounded-2xl p-5 text-center"><p class="text-zinc-400">¡Anímate a reservar tu próxima sesión!</p><button data-action="navigate" data-screen="schedule" class="mt-4 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg">Ver Horario</button></div>`;
             if (nextBooking) {
                 const dayText = nextBooking.classDate === dateHelper.today ? 'Hoy' : 'Mañana';
-                nextClassHTML = `
-                    <h2 class="text-xl font-semibold mb-4">Tu Próxima Clase</h2>
-                    <div class="bg-zinc-800 rounded-2xl p-5 flex items-center space-x-4">
-                        <div class="bg-indigo-500 p-3 rounded-xl"><i data-lucide="zap" class="w-6 h-6"></i></div>
-                        <div><p class="font-semibold text-lg">${nextBooking.name}</p><p class="text-zinc-400">${dayText} a las ${nextBooking.time}</p></div>
-                    </div>`;
+                nextClassHTML = `<h2 class="text-xl font-semibold mb-4">Tu Próxima Clase</h2><div class="bg-zinc-800 rounded-2xl p-5 flex items-center space-x-4"><div><p class="font-semibold text-lg">${nextBooking.name}</p><p class="text-zinc-400">${dayText} a las ${nextBooking.time}</p></div></div>`;
             }
             return `<div class="p-6 space-y-8"><header><p class="text-zinc-400 text-lg">Hola,</p><h1 class="text-3xl font-bold tracking-tight">${state.currentUser.displayName || state.currentUser.email}</h1></header>${nextClassHTML}</div>`;
         }
@@ -193,61 +178,16 @@
         function getScheduleScreenHTML() {
             const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
             const filteredClasses = state.classes.filter(cls => cls.classDate === targetDate);
-            return `<div class="p-6 space-y-6">
-                <header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header>
-                <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-                    <button onclick="app.setScheduleFilter('today')" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
-                    <button onclick="app.setScheduleFilter('tomorrow')" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
-                </div>
-                <div class="space-y-4">
-                    ${filteredClasses.length > 0 ? filteredClasses.map(cls => {
-                        const availableSpots = cls.capacity - (cls.enrolledCount || 0);
-                        const isBooked = state.bookings.includes(cls.id);
-                        let spotsHTML = `<span class="text-xs bg-zinc-700 px-2 py-1 rounded-md">${availableSpots} lugares</span>`;
-                        if (isBooked) spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-                        else if (availableSpots <= 0) spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
-                        return `<div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700" onclick="app.navigateTo('classDetails', { classId: '${cls.id}' })">
-                            <div class="w-16 h-16 rounded-xl bg-zinc-900 flex items-center justify-center text-3xl">${cls.icon}</div>
-                            <div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div>
-                            <div class="flex-1 text-right">${spotsHTML}</div>
-                        </div>`;
-                    }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases programadas.</div>`}
-                </div>
-            </div>`;
+            return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header><div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg"><button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button><button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button></div><div class="space-y-4">${filteredClasses.length > 0 ? filteredClasses.map(cls => { const availableSpots = cls.capacity - (cls.enrolledCount || 0); const isBooked = state.bookings.includes(cls.id); let spotsHTML = `<span class="text-xs bg-zinc-700 px-2 py-1 rounded-md">${availableSpots} lugares</span>`; if (isBooked) spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`; else if (availableSpots <= 0) spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`; return `<div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div><div class="flex-1 text-right">${spotsHTML}</div></div>`; }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases programadas.</div>`}</div></div>`;
         }
 
         function getBookingsScreenHTML() {
-             const myBookedClasses = state.bookings
-                .map(id => state.classes.find(c => c.id === id))
-                .filter(Boolean)
-                .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
-
-             return `<div class="p-6 space-y-6">
-                <header><h1 class="text-3xl font-bold tracking-tight">Mis Reservas</h1><p class="text-zinc-400">Tus próximas clases agendadas.</p></header>
-                <div class="space-y-4">
-                ${myBookedClasses.length > 0 ? myBookedClasses.map(cls => {
-                    const dayText = cls.classDate === dateHelper.today ? 'Hoy' : 'Mañana';
-                    return `<div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4">
-                        <div class="w-16 h-16 rounded-xl bg-zinc-900 flex items-center justify-center text-3xl">${cls.icon}</div>
-                        <div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p></div>
-                        <div class="flex-1 text-right"><button class="text-xs text-rose-400 hover:text-rose-300" onclick="app.cancelBooking('${cls.id}')">Cancelar</button></div>
-                    </div>`;
-                }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes clases agendadas.</div>`}
-                </div>
-            </div>`;
+             const myBookedClasses = state.bookings.map(id => state.classes.find(c => c.id === id)).filter(Boolean).sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
+             return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Mis Reservas</h1><p class="text-zinc-400">Tus próximas clases agendadas.</p></header><div class="space-y-4">${myBookedClasses.length > 0 ? myBookedClasses.map(cls => { const dayText = cls.classDate === dateHelper.today ? 'Hoy' : 'Mañana'; return `<div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p></div><div class="flex-1 text-right"><button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button></div></div>`; }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes clases agendadas.</div>`}</div></div>`;
         }
 
         function getProfileScreenHTML() {
-            return `<div class="p-6 space-y-6">
-                <header class="text-center space-y-4">
-                    <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
-                    <div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div>
-                </header>
-                <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
-                    <a href="#" onclick="app.editUserName(event)" class="flex items-center justify-between py-3"><span>Editar Nombre</span><i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i></a>
-                    <a href="#" onclick="app.logout()" class="flex items-center justify-between py-3 text-rose-400"><span>Cerrar Sesión</span><i data-lucide="log-out" class="w-5 h-5"></i></a>
-                </div>
-            </div>`;
+            return `<div class="p-6 space-y-6"><header class="text-center space-y-4"><img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700"><div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div></header><div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700"><a href="#" data-action="edit-name" class="flex items-center justify-between py-3"><span>Editar Nombre</span><i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i></a><a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400"><span>Cerrar Sesión</span><i data-lucide="log-out" class="w-5 h-5"></i></a></div></div>`;
         }
         
         function getClassDetailsScreenHTML(classId) {
@@ -255,41 +195,20 @@
             if (!cls) return getScheduleScreenHTML();
             const availableSpots = cls.capacity - (cls.enrolledCount || 0);
             const isBooked = state.bookings.includes(cls.id);
-            let buttonHTML = `<button onclick="app.confirmBooking('${cls.id}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+            let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
             if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
             else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-            return `<div>
-                     <div class="relative">
-                        <img src="${cls.image}" class="w-full h-64 object-cover">
-                        <button onclick="app.navigateTo('schedule')" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
-                     </div>
-                     <div class="p-6 space-y-4 pb-24">
-                        <h1 class="text-3xl font-bold">${cls.name}</h1>
-                         <p class="text-zinc-400 leading-relaxed">${cls.description}</p>
-                        <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                            <span class="font-semibold text-lg">Lugares disponibles</span>
-                            <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots}</span>
-                        </div>
-                     </div>
-                     <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div>
-                </div>`;
+            return `<div><div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div><div class="p-6 space-y-4 pb-24"><h1 class="text-3xl font-bold">${cls.name}</h1><p class="text-zinc-400 leading-relaxed">${cls.description}</p><div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center"><span class="font-semibold text-lg">Lugares disponibles</span><span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots}</span></div></div><div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div></div>`;
         }
 
         const app = {
-            toggleAuthScreen: (isLogin) => renderAuthScreen(isLogin),
             handleAuth: (isLogin) => {
                 const email = document.getElementById('email-input').value;
                 const pass = document.getElementById('password-input').value;
                 if (!email || !pass) { alert("Por favor, ingresa correo y contraseña."); return; }
                 loadingSpinner.classList.remove('hidden');
-                const authPromise = isLogin 
-                    ? auth.signInWithEmailAndPassword(email, pass)
-                    : auth.createUserWithEmailAndPassword(email, pass);
-                
-                authPromise.catch(err => {
-                    alert(err.message);
-                    loadingSpinner.classList.add('hidden');
-                });
+                const authPromise = isLogin ? auth.signInWithEmailAndPassword(email, pass) : auth.createUserWithEmailAndPassword(email, pass);
+                authPromise.catch(err => { alert(err.message); loadingSpinner.classList.add('hidden'); });
             },
             logout: () => auth.signOut(),
             editUserName: (event) => {
@@ -297,15 +216,10 @@
                 const newName = prompt("Ingresa tu nombre y apellido:", state.currentUser.displayName || "");
                 if (newName && newName.trim() !== "") {
                     loadingSpinner.classList.remove('hidden');
-                    state.currentUser.updateProfile({
-                        displayName: newName.trim()
-                    }).then(() => {
+                    state.currentUser.updateProfile({ displayName: newName.trim() }).then(() => {
                         render(); 
                         loadingSpinner.classList.add('hidden');
-                    }).catch(err => {
-                        alert("Error al actualizar el nombre: " + err.message);
-                        loadingSpinner.classList.add('hidden');
-                    });
+                    }).catch(err => { alert("Error: " + err.message); loadingSpinner.classList.add('hidden'); });
                 }
             },
             navigateTo: (screen, data = {}) => {
@@ -318,49 +232,61 @@
                 render();
             },
             confirmBooking: (classId) => {
-                db.collection('bookings').add({
-                    classId,
-                    userId: state.currentUser.uid,
-                    userName: state.currentUser.displayName || state.currentUser.email,
-                    timestamp: new Date()
-                }).then(() => showModal({ success: true, title: '¡Reserva Exitosa!' }))
-                  .catch(err => alert("Error al reservar: " + err.message));
+                db.collection('bookings').add({ classId, userId: state.currentUser.uid, userName: state.currentUser.displayName || state.currentUser.email, timestamp: new Date() })
+                  .then(() => showModal({ success: true, title: '¡Reserva Exitosa!' }))
+                  .catch(err => alert("Error: " + err.message));
             },
             cancelBooking: async (classId) => {
-                const snapshot = await db.collection('bookings')
-                    .where('classId', '==', classId)
-                    .where('userId', '==', state.currentUser.uid)
-                    .limit(1).get();
+                const snapshot = await db.collection('bookings').where('classId', '==', classId).where('userId', '==', state.currentUser.uid).limit(1).get();
                 if (!snapshot.empty) {
                     snapshot.docs[0].ref.delete()
                         .then(() => showModal({ success: false, title: 'Cancelación Exitosa' }))
-                        .catch(err => alert("Error al cancelar: " + err.message));
+                        .catch(err => alert("Error: " + err.message));
                 }
             }
         };
-        window.app = app;
+
+        // --- EVENT DELEGATION ---
+        function handleInteraction(e) {
+            const target = e.target.closest('[data-action]');
+            if (!target) return;
+            
+            const { action, screen, filter, classId } = target.dataset;
+
+            switch (action) {
+                case 'navigate': app.navigateTo(screen); break;
+                case 'navigate-details': app.navigateTo('classDetails', { classId }); break;
+                case 'set-filter': app.setScheduleFilter(filter); break;
+                case 'edit-name': app.editUserName(e); break;
+                case 'logout': app.logout(); break;
+                case 'confirm-booking': app.confirmBooking(classId); break;
+                case 'cancel-booking': app.cancelBooking(classId); break;
+            }
+        }
+        mainContent.addEventListener('click', handleInteraction);
+        navBar.addEventListener('click', e => {
+            const target = e.target.closest('.nav-button');
+            if (target) app.navigateTo(target.dataset.screen);
+        });
 
         const genericModal = document.getElementById('generic-modal');
         const modalContent = document.getElementById('modal-content');
         function showModal({ success, title }) {
-            modalContent.innerHTML = `
-                <div class="w-16 h-16 ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto"><i data-lucide="${success ? 'check' : 'trash-2'}" class="w-10 h-10"></i></div>
-                <h2 class="text-2xl font-bold">${title}</h2>
-                <button onclick="hideModal()" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
-            lucide.createIcons();
+            modalContent.innerHTML = `<div class="w-16 h-16 ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto"><i data-lucide="${success ? 'check' : 'trash-2'}" class="w-10 h-10"></i></div><h2 class="text-2xl font-bold">${title}</h2><button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
             genericModal.classList.remove('hidden');
             setTimeout(() => modalContent.classList.remove('scale-95', 'opacity-0'), 10);
+            document.getElementById('modal-close-btn').onclick = hideModal;
         }
-        window.hideModal = () => {
+        function hideModal() {
             modalContent.classList.add('scale-95', 'opacity-0');
             setTimeout(() => {
                 genericModal.classList.add('hidden');
                 app.navigateTo(state.currentScreen === 'classDetails' ? 'bookings' : state.currentScreen);
             }, 200);
-        };
+        }
 
-        const navButtons = document.querySelectorAll('.nav-button');
         function updateNavButtons() {
+            const navButtons = navBar.querySelectorAll('.nav-button');
             navButtons.forEach(button => {
                 const isActive = button.dataset.screen === state.currentScreen;
                 button.classList.toggle('active-nav', isActive);
@@ -368,7 +294,6 @@
                 button.classList.toggle('text-zinc-400', !isActive);
             });
         }
-        navButtons.forEach(button => button.addEventListener('click', () => app.navigateTo(button.dataset.screen)));
     });
     </script>
 </body>
