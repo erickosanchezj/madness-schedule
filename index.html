@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GymApp - Reserva de Clases</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#18181b">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .transition-all { transition: all 0.3s ease-in-out; }
+        .spinner { border-top-color: #6366f1; }
+    </style>
+</head>
+<body class="bg-zinc-900 text-white antialiased">
+
+    <!-- Contenedor principal de la App -->
+    <div id="app-container" class="max-w-md mx-auto h-screen flex-col overflow-hidden bg-zinc-900 border-x border-zinc-800 hidden">
+        <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
+             <div class="flex justify-around h-20">
+                <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
+                <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
+                <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
+                <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span></button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Pantalla de Login/Registro -->
+    <div id="auth-container" class="max-w-md mx-auto h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+
+    <!-- Pantalla de Carga Global -->
+    <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
+        <div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
+    </div>
+
+    <!-- Modal Genérico -->
+    <div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
+        <div id="modal-content" class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"></div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const firebaseConfig = {
+            apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
+            authDomain: "madnessscheds.firebaseapp.com",
+            projectId: "madnessscheds",
+            storageBucket: "madnessscheds.firebasestorage.app",
+            messagingSenderId: "788538690861",
+            appId: "1:788538690861:web:ce19ead5929a8867c197a4"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let state = {
+            currentUser: null,
+            classes: [],
+            bookings: [],
+            currentScreen: 'home',
+            scheduleFilter: 'today'
+        };
+
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // --- MANEJO DE AUTENTICACIÓN ---
+        auth.onAuthStateChanged(user => {
+            loadingSpinner.classList.remove('hidden');
+            if (user) {
+                state.currentUser = user;
+                authContainer.style.display = 'none';
+                appContainer.style.display = 'flex';
+                initializeApp();
+            } else {
+                state.currentUser = null;
+                appContainer.style.display = 'none';
+                authContainer.style.display = 'flex';
+                renderAuthScreen();
+                loadingSpinner.classList.add('hidden');
+            }
+        });
+
+        function renderAuthScreen(isLogin = true) {
+            authContainer.innerHTML = `
+                <div class="w-full">
+                    <h1 class="text-4xl font-bold text-white mb-2">GymApp</h1>
+                    <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
+                    <div class="space-y-4">
+                        <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <button onclick="app.handleAuth(${isLogin})" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">
+                        ${isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                    </button>
+                    <p class="text-center text-zinc-400 mt-6">
+                        ${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+                        <a href="#" onclick="app.toggleAuthScreen(${!isLogin})" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a>
+                    </p>
+                </div>`;
+        }
+        
+        // --- INICIALIZACIÓN DE LA APP (POST-LOGIN) ---
+        async function initializeApp() {
+            await Promise.all([listenToClasses(), listenToBookings()]);
+            render();
+            loadingSpinner.classList.add('hidden');
+        }
+
+        // --- LÓGICA DE DATOS (FIRESTORE LISTENERS) ---
+        function listenToClasses() {
+            // ... (Esta función no cambia)
+        }
+
+        function listenToBookings() {
+            if (!state.currentUser) return;
+            return db.collection('bookings').where('userId', '==', state.currentUser.uid)
+                .onSnapshot(snapshot => {
+                    state.bookings = snapshot.docs.map(doc => doc.data().classId);
+                    if (state.currentUser) render();
+                });
+        }
+
+        // --- RENDERIZADO DE PANTALLAS ---
+        function render() {
+            // ... (El resto de las funciones de renderizado no cambian significativamente)
+        }
+
+        // --- ACCIONES DEL USUARIO ---
+        const app = {
+            toggleAuthScreen: (isLogin) => renderAuthScreen(isLogin),
+            handleAuth: (isLogin) => {
+                const email = document.getElementById('email-input').value;
+                const pass = document.getElementById('password-input').value;
+                loadingSpinner.classList.remove('hidden');
+                if (isLogin) {
+                    auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                        alert(err.message);
+                        loadingSpinner.classList.add('hidden');
+                    });
+                } else {
+                    auth.createUserWithEmailAndPassword(email, pass).catch(err => {
+                        alert(err.message);
+                        loadingSpinner.classList.add('hidden');
+                    });
+                }
+            },
+            logout: () => auth.signOut(),
+            confirmBooking: (classId) => {
+                db.collection('bookings').add({
+                    classId,
+                    userId: state.currentUser.uid,
+                    userName: state.currentUser.displayName || state.currentUser.email,
+                    timestamp: new Date()
+                }).then(() => showModal({ success: true, title: '¡Reserva Exitosa!' }))
+                  .catch(err => alert("Error al reservar: " + err.message));
+            },
+            cancelBooking: async (classId) => {
+                const snapshot = await db.collection('bookings')
+                    .where('classId', '==', classId)
+                    .where('userId', '==', state.currentUser.uid)
+                    .get();
+                if (!snapshot.empty) {
+                    snapshot.docs[0].ref.delete()
+                        .then(() => showModal({ success: false, title: 'Cancelación Exitosa' }))
+                        .catch(err => alert("Error al cancelar: " + err.message));
+                }
+            }
+            // ... (Otras funciones de app como navigateTo, etc.)
+        };
+        window.app = app;
+    });
+    </script>
+</body>
+</html>

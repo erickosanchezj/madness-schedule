@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administrador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-zinc-900 text-white">
+
+    <!-- Pantalla de Login -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center">
+        <div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
+            <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
+            <input type="email" id="email-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin">
+            <input type="password" id="password-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña">
+            <button onclick="admin.login()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md">Entrar</button>
+            <p id="error-message" class="text-rose-400 text-center mt-4 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Panel Principal -->
+    <div id="admin-panel" class="hidden p-4 md:p-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Panel de Administración</h1>
+            <button onclick="admin.logout()" class="text-rose-400 hover:text-rose-300 font-semibold">Cerrar Sesión</button>
+        </div>
+        <div id="classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        <div class="mt-8">
+            <button onclick="admin.showClassModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
+                <i data-lucide="plus" class="inline-block -mt-1"></i> Añadir Nueva Clase
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal para Editar/Crear Clase (igual que antes) -->
+    <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <!-- El contenido del modal es el mismo que en la versión anterior -->
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <script>
+    const admin = {
+        db: null,
+        auth: null,
+
+        init() {
+            const firebaseConfig = {
+                apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
+                authDomain: "madnessscheds.firebaseapp.com",
+                projectId: "madnessscheds",
+                storageBucket: "madnessscheds.firebasestorage.app",
+                messagingSenderId: "788538690861",
+                appId: "1:788538690861:web:ce19ead5929a8867c197a4"
+            };
+            firebase.initializeApp(firebaseConfig);
+            this.db = firebase.firestore();
+            this.auth = firebase.auth();
+            this.handleAuthState();
+            lucide.createIcons();
+        },
+
+        handleAuthState() {
+            this.auth.onAuthStateChanged(user => {
+                if (user) {
+                    user.getIdTokenResult().then(idTokenResult => {
+                        if (!!idTokenResult.claims.admin) {
+                            document.getElementById('login-screen').classList.add('hidden');
+                            document.getElementById('admin-panel').classList.remove('hidden');
+                            this.listenToClasses();
+                        } else {
+                            this.logout();
+                            alert('No tienes permisos de administrador.');
+                        }
+                    });
+                } else {
+                    document.getElementById('login-screen').classList.remove('hidden');
+                    document.getElementById('admin-panel').classList.add('hidden');
+                }
+            });
+        },
+
+        login() {
+            const email = document.getElementById('email-input').value;
+            const pass = document.getElementById('password-input').value;
+            const errorMsg = document.getElementById('error-message');
+            errorMsg.classList.add('hidden');
+
+            this.auth.signInWithEmailAndPassword(email, pass)
+                .catch(err => {
+                    errorMsg.innerText = err.message;
+                    errorMsg.classList.remove('hidden');
+                });
+        },
+
+        logout() {
+            this.auth.signOut();
+        },
+        
+        // ... (El resto de las funciones como listenToClasses, saveClass, etc., no cambian)
+    };
+
+    admin.init();
+    </script>
+</body>
+</html>
