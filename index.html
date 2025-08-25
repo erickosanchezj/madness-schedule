@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Reserva de Clases</title>
+    <title>GymApp - Reserva de Clases</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -250,11 +250,18 @@
         function getProfileScreenHTML() {
             return `<div class="p-6 space-y-6">
                 <header class="text-center space-y-4">
-                    <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${state.currentUser.email.charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
+                    <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
                     <div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div>
                 </header>
-                <div class="bg-zinc-800 rounded-2xl p-4">
-                    <a href="#" onclick="app.logout()" class="flex items-center justify-between py-3 text-rose-400"><span>Cerrar Sesión</span><i data-lucide="log-out" class="w-5 h-5"></i></a>
+                <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
+                    <a href="#" onclick="app.editUserName(event)" class="flex items-center justify-between py-3">
+                        <span>Editar Nombre</span>
+                        <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
+                    </a>
+                    <a href="#" onclick="app.logout()" class="flex items-center justify-between py-3 text-rose-400">
+                        <span>Cerrar Sesión</span>
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </a>
                 </div>
             </div>`;
         }
@@ -305,6 +312,23 @@
                 });
             },
             logout: () => auth.signOut(),
+            editUserName: (event) => {
+                event.preventDefault();
+                const newName = prompt("Ingresa tu nombre y apellido:", state.currentUser.displayName || "");
+                if (newName && newName.trim() !== "") {
+                    loadingSpinner.classList.remove('hidden');
+                    state.currentUser.updateProfile({
+                        displayName: newName.trim()
+                    }).then(() => {
+                        // El listener onAuthStateChanged actualiza el estado, pero forzamos un render para feedback inmediato
+                        render(); 
+                        loadingSpinner.classList.add('hidden');
+                    }).catch(err => {
+                        alert("Error al actualizar el nombre: " + err.message);
+                        loadingSpinner.classList.add('hidden');
+                    });
+                }
+            },
             navigateTo: (screen, data = {}) => {
                 state.currentScreen = screen;
                 if (data.classId) state.selectedClassId = data.classId;
