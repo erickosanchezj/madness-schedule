@@ -370,9 +370,15 @@
         isClassInProgress(cls) {
             if (cls.classDate !== this.dateHelper.today) return false;
             const now = new Date();
-            const startTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const endTime = new Date(startTime.getTime() + 120 * 60000); // 2 hour window
-            return now >= startTime && now <= endTime;
+            const classStartTime = new Date(`${cls.classDate}T${cls.time}:00`);
+            
+            // La ventana para tomar asistencia empieza 20 minutos ANTES
+            const attendanceStartTime = new Date(classStartTime.getTime() - 20 * 60000);
+            
+            // La ventana para tomar asistencia termina 2 horas DESPUÉS del inicio de la clase
+            const attendanceEndTime = new Date(classStartTime.getTime() + 120 * 60000); 
+            
+            return now >= attendanceStartTime && now <= attendanceEndTime;
         },
 
         showClassModal(cls = null) {
