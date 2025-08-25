@@ -69,9 +69,12 @@
 
         <!-- Reporte de Asistencia -->
         <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4">Reporte de Asistencia (Últimos 3 Días)</h2>
+            <h2 class="text-2xl font-bold mb-4">Reporte de Asistencia y Proyección</h2>
             <div>
                 <canvas id="attendanceChart"></canvas>
+            </div>
+            <div id="attendance-details" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <!-- Los detalles de la asistencia se inyectarán aquí -->
             </div>
         </div>
 
@@ -142,14 +145,7 @@
         },
 
         init() {
-            const firebaseConfig = { 
-                apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
-                authDomain: "madnessscheds.firebaseapp.com",
-                projectId: "madnessscheds",
-                storageBucket: "madnessscheds.firebasestorage.app",
-                messagingSenderId: "788538690861",
-                appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-             };
+            const firebaseConfig = { /* PEGA TU CONFIG AQUÍ */ };
             firebase.initializeApp(firebaseConfig);
             this.db = firebase.firestore();
             this.auth = firebase.auth();
@@ -314,35 +310,53 @@
         
         async renderAttendanceChart() {
             const ctx = document.getElementById('attendanceChart')?.getContext('2d');
-            if (!ctx) return;
+            const detailsContainer = document.getElementById('attendance-details');
+            if (!ctx || !detailsContainer) return;
 
             const today = new Date();
+            const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
             const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
             const dayBefore = new Date(); dayBefore.setDate(today.getDate() - 2);
             
-            const dateLabels = [
-                this.dateHelper.getYYYYMMDD(dayBefore),
-                this.dateHelper.getYYYYMMDD(yesterday),
-                this.dateHelper.getYYYYMMDD(today)
-            ];
+            const dateMap = {
+                dayBefore: { date: this.dateHelper.getYYYYMMDD(dayBefore), label: 'Hace 2 días' },
+                yesterday: { date: this.dateHelper.getYYYYMMDD(yesterday), label: 'Ayer' },
+                today: { date: this.dateHelper.getYYYYMMDD(today), label: 'Hoy' },
+                tomorrow: { date: this.dateHelper.getYYYYMMDD(tomorrow), label: 'Mañana' }
+            };
 
-            const attendanceSnapshot = await this.db.collection('attendance')
-                .where('classDate', '>=', dateLabels[0])
-                .get();
+            const dateLabels = Object.values(dateMap).map(d => d.label);
+            const dateKeys = Object.keys(dateMap);
+
+            const attendanceSnapshot = await this.db.collection('attendance').where('classDate', '>=', dateMap.dayBefore.date).get();
+            const tomorrowBookingsSnapshot = await this.db.collection('bookings').where('classDate', '==', dateMap.tomorrow.date).get();
 
             const reportData = {};
-            dateLabels.forEach(date => reportData[date] = { attended: 0, absent: 0 });
+            Object.values(dateMap).forEach(d => reportData[d.date] = { attended: 0, absent: 0, booked: 0, attendedNames: [], absentNames: [], bookedNames: [] });
 
             attendanceSnapshot.forEach(doc => {
                 const record = doc.data();
                 if (reportData[record.classDate]) {
-                    if (record.status === 'attended') reportData[record.classDate].attended++;
-                    if (record.status === 'absent') reportData[record.classDate].absent++;
+                    if (record.status === 'attended') {
+                        reportData[record.classDate].attended++;
+                        reportData[record.classDate].attendedNames.push(record.userName);
+                    }
+                    if (record.status === 'absent') {
+                        reportData[record.classDate].absent++;
+                        reportData[record.classDate].absentNames.push(record.userName);
+                    }
                 }
             });
 
-            const attendedData = dateLabels.map(date => reportData[date].attended);
-            const absentData = dateLabels.map(date => reportData[date].absent);
+            tomorrowBookingsSnapshot.forEach(doc => {
+                const booking = doc.data();
+                reportData[dateMap.tomorrow.date].booked++;
+                reportData[dateMap.tomorrow.date].bookedNames.push(booking.userName);
+            });
+
+            const attendedData = dateKeys.map(key => reportData[dateMap[key].date].attended);
+            const absentData = dateKeys.map(key => reportData[dateMap[key].date].absent);
+            const bookedData = dateKeys.map(key => reportData[dateMap[key].date].booked);
 
             if (this.state.attendanceChartInstance) {
                 this.state.attendanceChartInstance.destroy();
@@ -353,8 +367,9 @@
                 data: {
                     labels: dateLabels,
                     datasets: [
-                        { label: 'Asistieron', data: attendedData, backgroundColor: 'rgba(16, 185, 129, 0.6)', borderColor: 'rgba(16, 185, 129, 1)', borderWidth: 1 },
-                        { label: 'Faltaron', data: absentData, backgroundColor: 'rgba(244, 63, 94, 0.6)', borderColor: 'rgba(244, 63, 94, 1)', borderWidth: 1 }
+                        { label: 'Asistieron', data: attendedData, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
+                        { label: 'Faltaron', data: absentData, backgroundColor: 'rgba(244, 63, 94, 0.6)' },
+                        { label: 'Reservas Mañana', data: bookedData, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
                     ]
                 },
                 options: {
@@ -365,19 +380,36 @@
                     plugins: { legend: { labels: { color: '#d4d4d8' } } }
                 }
             });
+
+            detailsContainer.innerHTML = dateKeys.map(key => {
+                const data = reportData[dateMap[key].date];
+                let content = '';
+                if (key !== 'tomorrow') {
+                    content = `
+                        <div class="font-semibold text-emerald-400">Asistieron (${data.attended})</div>
+                        <ul class="list-disc list-inside text-zinc-400">${data.attendedNames.map(name => `<li>${name}</li>`).join('') || '<li>Nadie</li>'}</ul>
+                        <div class="font-semibold text-rose-400 mt-2">Faltaron (${data.absent})</div>
+                        <ul class="list-disc list-inside text-zinc-400">${data.absentNames.map(name => `<li>${name}</li>`).join('') || '<li>Nadie</li>'}</ul>
+                    `;
+                } else {
+                    content = `
+                        <div class="font-semibold text-blue-400">Reservaron (${data.booked})</div>
+                        <ul class="list-disc list-inside text-zinc-400">${data.bookedNames.map(name => `<li>${name}</li>`).join('') || '<li>Nadie</li>'}</ul>
+                    `;
+                }
+                return `<div class="bg-zinc-900 p-3 rounded-md">
+                            <h4 class="font-bold text-lg mb-2">${dateMap[key].label}</h4>
+                            ${content}
+                        </div>`;
+            }).join('');
         },
 
         isClassInProgress(cls) {
             if (cls.classDate !== this.dateHelper.today) return false;
             const now = new Date();
             const classStartTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            
-            // La ventana para tomar asistencia empieza 20 minutos ANTES
             const attendanceStartTime = new Date(classStartTime.getTime() - 20 * 60000);
-            
-            // La ventana para tomar asistencia termina 2 horas DESPUÉS del inicio de la clase
-            const attendanceEndTime = new Date(classStartTime.getTime() + 120 * 60000); 
-            
+            const attendanceEndTime = new Date(classStartTime.getTime() + 120 * 60000);
             return now >= attendanceStartTime && now <= attendanceEndTime;
         },
 
