@@ -220,7 +220,7 @@
                             classDate: day.dateStr, 
                             capacity: 15, 
                             description: `Clase de ${classTemplate.name}`, 
-                            icon: '💪🏻', 
+                            icon: '💪', 
                             image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}` 
                         });
                         classesCreated++;
@@ -236,6 +236,15 @@
             this.renderDailyBookings();
         },
 
+        isClassRunningNow(cls) {
+            if (cls.classDate !== this.dateHelper.today) return false;
+            const now = new Date();
+            const startTime = new Date(`${cls.classDate}T${cls.time}:00`);
+            const durationInMinutes = cls.duration || 60;
+            const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+            return now >= startTime && now <= endTime;
+        },
+
         renderClassCards() {
             const todayContainer = document.getElementById('today-classes-container');
             const tomorrowContainer = document.getElementById('tomorrow-classes-container');
@@ -247,7 +256,11 @@
             for (const cls of sortedClasses) {
                 const enrolledCount = this.state.bookings.filter(b => b.classId === cls.id).length;
                 const card = document.createElement('div');
-                card.className = "bg-zinc-800 p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors";
+                
+                const isRunning = this.isClassRunningNow(cls);
+                const cardStyle = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
+
+                card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${cardStyle}`;
                 card.onclick = () => this.showClassModal(cls);
                 card.innerHTML = `<div class="flex justify-between items-start"><div><p class="text-xl font-bold">${cls.name}</p><p class="text-sm text-zinc-400">${cls.instructor}</p></div><span class="text-2xl">${cls.icon || '💪'}</span></div><div class="mt-4 flex justify-between items-center text-sm"><span class="font-semibold">a las ${cls.time}</span><span class="font-bold ${enrolledCount >= cls.capacity ? 'text-rose-400' : 'text-white'}">${enrolledCount} / ${cls.capacity}</span></div>`;
                 
@@ -295,8 +308,7 @@
             if (cls.classDate !== this.dateHelper.today) return false;
             const now = new Date();
             const startTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const durationInMinutes = cls.duration || 60;
-            const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+            const endTime = new Date(startTime.getTime() + 120 * 60000); // 2 hour window to take attendance
             return now >= startTime && now <= endTime;
         },
 
