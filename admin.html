@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administrador</title>
+    <title>Madness - Panel de Administrador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -106,14 +106,14 @@
         },
 
         init() {
-            const firebaseConfig = {
+            const firebaseConfig = { 
                 apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
                 authDomain: "madnessscheds.firebaseapp.com",
                 projectId: "madnessscheds",
                 storageBucket: "madnessscheds.firebasestorage.app",
                 messagingSenderId: "788538690861",
                 appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-            };
+             };
             firebase.initializeApp(firebaseConfig);
             this.db = firebase.firestore();
             this.auth = firebase.auth();
@@ -186,14 +186,15 @@
                 for (const classTemplate of scheduleForDay) {
                     if (!existingTimes.includes(classTemplate.time)) {
                         const newClassRef = this.db.collection('classes').doc();
+                        // CORRECCIÓN: Asegurarse de que el instructor de la plantilla se use correctamente
                         batch.set(newClassRef, { 
                             name: classTemplate.name, 
                             time: classTemplate.time, 
-                            instructor: classTemplate.instructor || 'Por Asignar', // Usa el instructor de la plantilla
+                            instructor: classTemplate.instructor || 'Por Asignar',
                             classDate: day.dateStr, 
                             capacity: 15, 
                             description: `Clase de ${classTemplate.name}`, 
-                            icon: '�', 
+                            icon: '💪', 
                             image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}` 
                         });
                         classesCreated++;
@@ -230,8 +231,8 @@
                     tomorrowContainer.appendChild(card);
                 }
             }
-             if(todayContainer.innerHTML === '') todayContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
-             if(tomorrowContainer.innerHTML === '') tomorrowContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
+             if(todayContainer.innerHTML === '') todayContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy. Clic en "Generar" para crearlas.</p>';
+             if(tomorrowContainer.innerHTML === '') tomorrowContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana. Clic en "Generar" para crearlas.</p>';
         },
 
         renderDailyBookings() {
