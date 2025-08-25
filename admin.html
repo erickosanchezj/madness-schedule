@@ -216,10 +216,11 @@
                             name: classTemplate.name, 
                             time: classTemplate.time, 
                             instructor: classTemplate.instructor || 'Por Asignar',
+                            duration: classTemplate.duration || 60,
                             classDate: day.dateStr, 
                             capacity: 15, 
                             description: `Clase de ${classTemplate.name}`, 
-                            icon: '💪', 
+                            icon: '�', 
                             image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}` 
                         });
                         classesCreated++;
@@ -294,12 +295,13 @@
             if (cls.classDate !== this.dateHelper.today) return false;
             const now = new Date();
             const startTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const endTime = new Date(startTime.getTime() + 90 * 60000); // Duración de 90 min para tomar asistencia
+            const durationInMinutes = cls.duration || 60;
+            const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
             return now >= startTime && now <= endTime;
         },
 
         showClassModal(cls = null) {
-            this.state.currentAttendance = {}; // Limpiar estado de asistencia
+            this.state.currentAttendance = {};
             const modal = document.getElementById('class-modal');
             document.getElementById('class-id').value = cls.id;
             document.getElementById('class-name').value = cls.name;
@@ -311,7 +313,7 @@
             const tabDetails = document.getElementById('tab-details');
             const tabAttendance = document.getElementById('tab-attendance');
 
-            this.switchTab('details'); // Pestaña por defecto
+            this.switchTab('details');
 
             tabDetails.onclick = () => this.switchTab('details');
             tabAttendance.onclick = () => this.switchTab('attendance');
