@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Reserva de Clases</title>
+    <title>GymApp - Reserva de Clases</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -140,16 +140,22 @@
         }
 
         function listenToClasses() {
-            return db.collection('classes').where('classDate', '>=', dateHelper.today).onSnapshot(async (snapshot) => {
-                const classPromises = snapshot.docs.map(async (doc) => {
-                    const classData = { id: doc.id, ...doc.data() };
-                    const bookingsSnapshot = await db.collection('bookings').where('classId', '==', classData.id).get();
-                    classData.enrolledCount = bookingsSnapshot.size;
-                    return classData;
-                });
-                state.classes = await Promise.all(classPromises);
-                if (state.currentUser) render();
-            }, error => console.error("Error al obtener clases: ", error));
+            // CAMBIO CLAVE: Añadido .orderBy() para ordenar por fecha y luego por hora.
+            // Esto puede requerir un nuevo índice en Firestore. Revisa la consola del navegador por un enlace para crearlo.
+            return db.collection('classes')
+                .where('classDate', '>=', dateHelper.today)
+                .orderBy('classDate', 'asc')
+                .orderBy('time', 'asc')
+                .onSnapshot(async (snapshot) => {
+                    const classPromises = snapshot.docs.map(async (doc) => {
+                        const classData = { id: doc.id, ...doc.data() };
+                        const bookingsSnapshot = await db.collection('bookings').where('classId', '==', classData.id).get();
+                        classData.enrolledCount = bookingsSnapshot.size;
+                        return classData;
+                    });
+                    state.classes = await Promise.all(classPromises);
+                    if (state.currentUser) render();
+                }, error => console.error("Error al obtener clases (posiblemente falta un índice en Firestore): ", error));
         }
 
         function listenToBookings() {
