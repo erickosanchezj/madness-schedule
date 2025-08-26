@@ -49,7 +49,21 @@
     </div>
 
   <!-- Auth -->
-  <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+  <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden relative">
+    <!-- Botones sociales en Auth -->
+    <div class="fixed bottom-20 right-4 flex flex-col gap-3 z-40">
+        <!-- WhatsApp -->
+        <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer"
+           class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+            <i data-lucide="message-circle" class="w-6 h-6"></i>
+        </a>
+        <!-- Instagram -->
+        <a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer"
+           class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+            <i data-lucide="camera" class="w-6 h-6"></i>
+        </a>
+    </div>
+</div>
 
   <!-- Loading -->
   <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
