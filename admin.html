@@ -270,31 +270,25 @@
     },
 
     mountBookingsListenersForVisibleClasses(){
-      this.teardownBookingsListeners();
-      const classIds = this.state.classes.map(c=>c.id);
-      // Divide en lotes de 10
-      for (let i=0; i<classIds.length; i+=10){
-        const batch = classIds.slice(i, i+10);
-        const unsub = this.db.collection('bookings')
-          .where('classId','in',batch)
-          .onSnapshot((snap)=>{
-            // Actualiza bookingsMap incrementalmente
-            // Primero limpia los ids del lote
-            batch.forEach(cid=> this.state.bookingsMap.delete(cid));
-            snap.docs.forEach(doc=>{
-              const b = doc.data();
-              const arr = this.state.bookingsMap.get(b.classId) || [];
-              arr.push({ id:doc.id, ...b });
-              this.state.bookingsMap.set(b.classId, arr);
+        this.teardownBookingsListeners();
+        const classIds = this.state.classes.map(c=>c.id);
+        for (let i=0; i<classIds.length; i+=10){
+            const batch = classIds.slice(i, i+10);
+            const unsub = this.db.collection('bookings')
+            .where('classId','in',batch)
+            .onSnapshot((snap)=>{
+                batch.forEach(cid=> this.state.bookingsMap.delete(cid));
+                snap.docs.forEach(doc=>{
+                const b = doc.data();
+                const arr = this.state.bookingsMap.get(b.classId) || [];
+                arr.push({ id:doc.id, ...b });
+                this.state.bookingsMap.set(b.classId, arr);
+                });
+                this.renderAll();
             });
-            this.renderAll(); // refresca listados que muestren nombres
-          }, (err)=>{
-            console.error(err);
-            this.showToast({title:'Error listando reservas', message:err.message, variant:'error'});
-          });
-        this.state.unsubBookings.push(unsub);
-      }
-    },
+            this.state.unsubBookings.push(unsub);
+        }
+    }
 
     // ---- GENERACIÓN (punto 1: enrolledCount=0)
     async generateDailyClasses(){
@@ -402,26 +396,26 @@
     },
 
     renderDailyBookings(){
-      const todayList = document.getElementById('today-bookings-list');
-      const tomList   = document.getElementById('tomorrow-bookings-list');
-      todayList.innerHTML = ''; tomList.innerHTML = '';
+        const todayList = document.getElementById('today-bookings-list');
+        const tomList   = document.getElementById('tomorrow-bookings-list');
+        todayList.innerHTML = ''; tomList.innerHTML = '';
 
-      const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
-      this.state.classes.forEach(c => { if (byDate[c.classDate]) byDate[c.classDate].push(c); });
+        const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
+        this.state.classes.forEach(c => { if (byDate[c.classDate]) byDate[c.classDate].push(c); });
 
-      const buildHTML = (classesArr)=>{
-        const blocks = classesArr.map(cls=>{
-          const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
-          const enrolled = Number(cls.enrolledCount || 0);
-          const cap = Number(cls.capacity || 0);
-          const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
-          return `<div class="mb-3"><p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p><ul class="list-none">${names}</ul></div>`;
-        });
-        return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
-      };
+        const buildHTML = (classesArr)=>{
+            const blocks = classesArr.map(cls=>{
+            const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
+            const enrolled = Number(cls.enrolledCount || 0);
+            const cap = Number(cls.capacity || 0);
+            const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
+            return `<div class="mb-3"><p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p><ul class="list-none">${names}</ul></div>`;
+            });
+            return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
+        };
 
-      todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
-      tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
+        todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
+        tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
     },
 
     async renderAttendanceChart(){
