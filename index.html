@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GymApp - Reserva de Clases</title>
+    <title>Madness - Reserva de Clases</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -225,7 +225,20 @@
             let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
             if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
             else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-            return `<div><div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div><div class="p-6 space-y-4 pb-24"><h1 class="text-3xl font-bold">${cls.name}</h1><p class="text-zinc-400 leading-relaxed">${cls.description}</p><div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center"><span class="font-semibold text-lg">Estado</span><span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span></div></div><div class="p-6 fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div></div>`;
+            
+            // CORRECCIÓN: Se cambia 'fixed bottom-0' por 'fixed bottom-20' y 'pb-24' por 'pb-40'
+            return `<div>
+                        <div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div>
+                        <div class="p-6 space-y-4 pb-40">
+                            <h1 class="text-3xl font-bold">${cls.name}</h1>
+                            <p class="text-zinc-400 leading-relaxed">${cls.description}</p>
+                            <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+                                <span class="font-semibold text-lg">Estado</span>
+                                <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span>
+                            </div>
+                        </div>
+                        <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div>
+                    </div>`;
         }
 
         const app = {
