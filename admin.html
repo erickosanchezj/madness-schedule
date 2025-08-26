@@ -160,6 +160,7 @@
       ymd(date){ const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; },
       today(){ return this.ymd(new Date()); },
       tomorrow(){ const t=new Date(); t.setDate(t.getDate()+1); return this.ymd(t); },
+      yesterday(){ const t=new Date(); t.setDate(t.getDate()-1); return this.ymd(t); }
     },
 
     // ---- TOASTS (punto 8)
@@ -242,23 +243,24 @@
 
     // ---- LISTENERS sin N+1 (punto 1)
     listenClassesTodayTomorrow(){
-      const today = this.dateHelper.today();
-      const tomorrow = this.dateHelper.tomorrow();
-      if (this.state.unsubClasses) this.state.unsubClasses();
+        const yesterday = this.dateHelper.yesterday();
+        const today     = this.dateHelper.today();
+        const tomorrow  = this.dateHelper.tomorrow();
 
-      this.state.unsubClasses = this.db.collection('classes')
-        .where('classDate','in',[today, tomorrow])
-        .orderBy('classDate','asc')
-        .orderBy('time','asc')
-        .onSnapshot((snap)=>{
-          this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-          // Re-suscribe a bookings por lotes 'in' (≤10 ids por lote)
-          this.mountBookingsListenersForVisibleClasses();
-          this.renderAll();
-        }, (err)=>{
-          console.error(err);
-          this.showToast({title:'Error listando clases', message:err.message, variant:'error'});
-        });
+        if (this.state.unsubClasses) this.state.unsubClasses();
+
+        this.state.unsubClasses = this.db.collection('classes')
+            .where('classDate','in',[yesterday, today, tomorrow]) // <-- incluye AYER
+            .orderBy('classDate','asc')
+            .orderBy('time','asc')
+            .onSnapshot((snap)=>{
+            this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+            this.mountBookingsListenersForVisibleClasses();
+            this.renderAll();
+            }, (err)=>{
+            console.error(err);
+            this.showToast({title:'Error listando clases', message:err.message, variant:'error'});
+            });
     },
 
     teardownBookingsListeners(){
@@ -526,14 +528,17 @@
     },
 
     // ---- MODAL
-    isClassInProgressWindow(cls){ // ventana ampliada: desde 24h antes hasta +120min
-      const todayStr = this.dateHelper.today();
-      if (cls.classDate !== todayStr) return false;
-      const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-      const open  = start - (24*60*60000);
-      const close = start + (120*60000);
-      const now = Date.now();
-      return now>=open && now<=close;
+    isClassInProgressWindow(cls){
+        if (!cls || !cls.classDate || !cls.time) return false;
+
+        // Construimos un Date local a partir de classDate + HH:mm
+        const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+
+        const now = Date.now();
+        const lower = now - (15 * 60 * 60 * 1000); // 15 horas atrás
+        const upper = now + (30 * 60 * 1000);      // 30 minutos hacia adelante
+
+        return (start >= lower) && (start <= upper);
     },
 
     showClassModal(cls){
