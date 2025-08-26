@@ -163,6 +163,16 @@
       yesterday(){ const t=new Date(); t.setDate(t.getDate()-1); return this.ymd(t); }
     },
 
+    // ---- COVER IMG
+    coverFor(name=''){
+      const n = String(name).toLowerCase();
+      if (n.includes('trx')) return 'images/trx.png';
+      if (n.includes('yoga')) return 'images/yoga.png';
+      if (n.includes('hiit')) return 'images/HIIT.png';
+      if (n.includes('funcional') || n.includes('functional')) return 'images/functional.png';
+      return `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(name||'Clase')}`;
+    },
+
     // ---- TOASTS (punto 8)
     showToast({title='Hecho', message='', variant='success', timeout=3000}){
       const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';
@@ -336,7 +346,6 @@
           if (!existingTimes.has(c.time)){
             const ref = this.db.collection('classes').doc();
 
-            // Build start/end datetimes from classDate + HH:mm
             const duration = Number(c.duration || 60);
             const start = new Date(`${d.dateStr}T${c.time}:00`);
             const end   = new Date(start.getTime() + duration*60000);
@@ -345,15 +354,15 @@
               name: c.name,
               time: c.time,
               instructor: c.instructor || 'Por Asignar',
-              duration,                        // keep duration
-              classDate: d.dateStr,            // still store ymd for easy filters
+              duration,
+              classDate: d.dateStr, // útil para filtros rápidos
               startAt: firebase.firestore.Timestamp.fromDate(start),
               endAt:   firebase.firestore.Timestamp.fromDate(end),
               capacity: Number(c.capacity || 15),
               enrolledCount: 0,
               description: `Clase de ${c.name}`,
               icon: '💪',
-              image: `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
+              image: this.coverFor(c.name)  // ← usa portada por nombre
             });
             created++;
           }
@@ -376,11 +385,11 @@
     },
 
     isClassRunningNow(cls){
-      if (!cls || !cls.classDate) return false;
-      const todayStr = this.dateHelper.today();
-      if (cls.classDate !== todayStr) return false;
-      const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-      const end = start + (Number(cls.duration||60) * 60000);
+      if (!cls) return false;
+      const start = cls.startAt?.toDate ? cls.startAt.toDate().getTime()
+                                        : new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+      const end   = cls.endAt?.toDate ? cls.endAt.toDate().getTime()
+                                      : start + (Number(cls.duration||60)*60000);
       const now = Date.now();
       return now>=start && now<=end;
     },
@@ -411,7 +420,10 @@
             <span class="text-2xl">${cls.icon || '💪'}</span>
           </div>
           <div class="mt-4 flex justify-between items-center text-sm">
-            <span class="font-semibold">a las ${cls.time}</span>
+            <span class="font-semibold">
+              ${cls.startAt?.toDate ? new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(cls.startAt.toDate()) : cls.time}
+              ${cls.endAt?.toDate ? '–' + new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(cls.endAt.toDate()) : ''}
+            </span>
             <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
           </div>`;
         if (cls.classDate === this.dateHelper.today()) todayC.appendChild(card);
@@ -590,16 +602,13 @@
 
     // ---- MODAL
     isClassInProgressWindow(cls){
-        if (!cls || !cls.classDate || !cls.time) return false;
-
-        // Construimos un Date local a partir de classDate + HH:mm
-        const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-
-        const now = Date.now();
-        const lower = now - (15 * 60 * 60 * 1000); // 15 horas atrás
-        const upper = now + (30 * 60 * 1000);      // 30 minutos hacia adelante
-
-        return (start >= lower) && (start <= upper);
+      if (!cls) return false;
+      const start = cls.startAt?.toDate ? cls.startAt.toDate().getTime()
+                                        : new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+      const now   = Date.now();
+      const lower = now - (15 * 60 * 60 * 1000); // 15h atrás
+      const upper = now + (30 * 60 * 1000);      // 30m adelante
+      return (start >= lower) && (start <= upper);
     },
 
     showClassModal(cls){
@@ -787,18 +796,15 @@
       };
 
       try{
-        // read current classDate and duration to rebuild timestamps
-        const doc = await this.db.collection('classes').doc(id).get();
-        if (doc.exists){
-          const cur = doc.data();
-          const classDate = cur.classDate;                 // e.g. '2025-03-02'
+        const snap = await this.db.collection('classes').doc(id).get();
+        if (snap.exists){
+          const cur = snap.data();
+          const classDate = cur.classDate;
           const duration  = Number(cur.duration || 60);
           const start     = new Date(`${classDate}T${(newTime || cur.time)}:00`);
           const end       = new Date(start.getTime() + duration*60000);
-
           data.startAt = firebase.firestore.Timestamp.fromDate(start);
           data.endAt   = firebase.firestore.Timestamp.fromDate(end);
-          // keep duration as-is; if someday you add a duration input, recompute with that value
         }
 
         await this.db.collection('classes').doc(id).set(data, { merge:true });
