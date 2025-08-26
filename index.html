@@ -32,11 +32,11 @@
   <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
     <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
 
-    <!-- NavBar -->
+    <!-- NavBar (z por debajo de los FABs) -->
     <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
       <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
-        <button data-screen="classes" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
-          <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Clases</span>
+        <button data-screen="agenda" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
+          <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Agenda</span>
         </button>
         <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400">
           <i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span>
@@ -81,7 +81,7 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    // Config Firebase
+    // Config Firebase (mismo proyecto que admin.html)
     const firebaseConfig = {
       apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
       authDomain: "madnessscheds.firebaseapp.com",
@@ -102,45 +102,29 @@
         return `${y}-${m}-${d}`;
       },
       get today() { return this.getYYYYMMDD(new Date()); },
-      get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); }
-    };
-
-    function formatStartsIn(cls) {
-      if (!cls || !cls.classDate || !cls.time) return '';
-      const start = new Date(`${cls.classDate}T${cls.time}:00`);
-      const duration = Number(cls.duration || 60);
-      const end = new Date(start.getTime() + duration*60000);
-      const now = new Date();
-      const isToday = cls.classDate === dateHelper.today;
-
-      if (isToday && now < start) {
-        const diffMin = Math.max(0, Math.round((start - now)/60000));
-        if (diffMin === 0) return 'En breve';
-        const h = Math.floor(diffMin/60), m = diffMin % 60;
-        return h > 0 ? `Empieza en ${h}h ${m}m` : `Empieza en ${m} min`;
+      get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); },
+      human(ymd) {
+        const [y,m,d] = ymd.split('-').map(n => parseInt(n,10));
+        const dt = new Date(y, m-1, d);
+        return dt.toLocaleDateString('es-MX', { weekday:'long', day:'2-digit', month:'short' });
       }
-      if (isToday && now >= start && now <= end) return 'En curso';
-      if (isToday && now > end) return 'Finalizada';
-      return '';
-    }
+    };
 
     let state = {
       currentUser: null,
       classes: [],
-      myBookings: [],
-      myWaitlist: [],             // clases donde estoy en lista de espera
-      currentScreen: 'classes',   // 'classes' | 'profile' | 'classDetails'
-      classesTab: 'schedule',     // 'schedule' | 'bookings' dentro de 'classes'
-      scheduleFilter: 'today',    // 'today' | 'tomorrow'
+      myBookings: [],   // array de classId
+      currentScreen: 'agenda',
+      scheduleFilter: 'today',
       selectedClassId: null
     };
 
-    // Soporte para shortcuts del manifest (?screen=..., ?tab=...)
+    // Shortcuts (?screen=agenda|profile)
     const _params = new URLSearchParams(location.search);
     const _screen = _params.get('screen');
-    if (_screen && ['classes','profile'].includes(_screen)) state.currentScreen = _screen;
-    const _tab = _params.get('tab');
-    if (_tab && ['schedule','bookings'].includes(_tab)) state.classesTab = _tab;
+    if (_screen && ['agenda','profile','classDetails'].includes(_screen)) {
+      state.currentScreen = _screen;
+    }
 
     const mainContent   = document.getElementById('main-content');
     const authContainer = document.getElementById('auth-container');
@@ -151,7 +135,6 @@
 
     let unsubClasses = null;
     let unsubMyBookings = null;
-    let unsubMyWaitlist = null;
 
     auth.onAuthStateChanged(async user => {
       loadingSpinner.classList.remove('hidden');
@@ -173,7 +156,6 @@
     function cleanupListeners(){
       if (unsubClasses)   { try{unsubClasses();}catch{};   unsubClasses=null; }
       if (unsubMyBookings){ try{unsubMyBookings();}catch{};unsubMyBookings=null; }
-      if (unsubMyWaitlist){ try{unsubMyWaitlist();}catch{};unsubMyWaitlist=null; }
     }
 
     function renderAuthScreen(isLogin = true) {
@@ -194,6 +176,7 @@
     }
 
     async function initializeApp() {
+      // Clases desde hoy en adelante (cubre todas las futuras)
       unsubClasses = db.collection('classes')
         .where('classDate', '>=', dateHelper.today)
         .orderBy('classDate', 'asc')
@@ -203,6 +186,7 @@
           render();
         }, (err)=> console.error('Error clases:', err));
 
+      // Mis bookings (cualquier fecha); se cruzan con las clases cargadas
       unsubMyBookings = db.collection('bookings')
         .where('userId', '==', state.currentUser.uid)
         .onSnapshot((snapshot) => {
@@ -210,80 +194,72 @@
           render();
         }, (err)=> console.error('Error mis reservas:', err));
 
-      unsubMyWaitlist = db.collection('waitlist')
-        .where('userId', '==', state.currentUser.uid)
-        .onSnapshot((snapshot) => {
-          state.myWaitlist = snapshot.docs.map(doc => (doc.data().classId));
-          render();
-        }, (err)=> console.error('Error waitlist:', err));
-
       render();
       loadingSpinner.classList.add('hidden');
     }
 
     function render() {
+      const screen = state.currentScreen;
       let content = '';
-      if (state.currentScreen === 'classes') {
-        content = getClassesScreenHTML();
-      } else if (state.currentScreen === 'profile') {
-        content = getProfileScreenHTML();
-      } else if (state.currentScreen === 'classDetails') {
-        content = getClassDetailsScreenHTML(state.selectedClassId);
-      }
+      if (screen === 'agenda') content = getAgendaScreenHTML();
+      else if (screen === 'profile') content = getProfileScreenHTML();
+      else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
+
       mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
       updateNavButtons();
       lucide.createIcons();
     }
 
-    function getClassesScreenHTML() {
-      return `
-        <div class="p-6 space-y-6">
-          <header>
-            <h1 class="text-3xl font-bold tracking-tight">Clases</h1>
-            <p class="text-zinc-400">Reserva, cancela o únete a lista de espera.</p>
-          </header>
+    // -------- AGENDA (Reservas futuras + Horario) --------
+    function getAgendaScreenHTML() {
+      // RESERVAS: todas las futuras (o que no hayan pasado aún hoy con 5 min de tolerancia)
+      const now = new Date();
+      const upcoming = state.myBookings
+        .map(id => state.classes.find(c => c.id === id))
+        .filter(Boolean)
+        .filter(cls => {
+          const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+          const cutoff = start + 5*60*1000;
+          return Date.now() <= cutoff; // elimina pasadas de hoy que ya terminaron
+        })
+        .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
 
-          <!-- Tabs internas -->
-          <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-            <button data-action="set-tab" data-tab="schedule" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.classesTab === 'schedule' ? 'bg-indigo-600 text-white' : ''}">Horario</button>
-            <button data-action="set-tab" data-tab="bookings" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.classesTab === 'bookings' ? 'bg-indigo-600 text-white' : ''}">Mis reservas</button>
-          </div>
+      const reservasHTML = upcoming.length
+        ? upcoming.map(cls => {
+            const dayText =
+              cls.classDate === dateHelper.today ? 'Hoy' :
+              cls.classDate === dateHelper.tomorrow ? 'Mañana' :
+              dateHelper.human(cls.classDate);
+            return `
+              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <p class="font-bold text-lg">${cls.name}</p>
+                  <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
+                </div>
+                <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+              </div>`;
+          }).join('')
+        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
 
-          ${state.classesTab === 'schedule' ? getScheduleInnerHTML() : getBookingsInnerHTML()}
-        </div>`;
-    }
-
-    function getScheduleInnerHTML() {
+      // HORARIO: hoy/mañana con toggle
       const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
       let filtered = state.classes.filter(cls => cls.classDate === targetDate);
-
       if (state.scheduleFilter === 'today') {
         const now = new Date();
         filtered = filtered.filter(cls => {
-          const classStartTime = new Date(`${dateHelper.today}T${cls.time}:00`);
-          const cutoffTime = new Date(classStartTime.getTime() + 5 * 60000);
-          return now <= cutoffTime;
+          const start = new Date(`${dateHelper.today}T${cls.time}:00`).getTime();
+          const cutoff = start + 5*60*1000;
+          return Date.now() <= cutoff;
         });
       }
-
-      const cards = filtered.length
+      const horarioHTML = filtered.length
         ? filtered.map(cls => {
             const enrolled = Number(cls.enrolledCount || 0);
-            const availableSpots = Number(cls.capacity || 0) - enrolled;
+            const available = Number(cls.capacity || 0) - enrolled;
             const isBooked = state.myBookings.includes(cls.id);
-            const isWaitlisted = state.myWaitlist.includes(cls.id);
-
-            let badgeHTML = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
-            if (isBooked) {
-              badgeHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-            } else if (availableSpots <= 0) {
-              badgeHTML = isWaitlisted
-                ? `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">En lista</span>`
-                : `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
-            }
-
-            const si = formatStartsIn(cls);
-            const siHTML = si ? `<p class="text-xs mt-1 ${si==='En curso'?'text-amber-300': (si==='Finalizada'?'text-zinc-400':'text-amber-300')}">${si}</p>` : '';
+            let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+            if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+            else if (available <= 0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
 
             return `
               <div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700">
@@ -291,80 +267,38 @@
                   <p class="font-bold text-lg">${cls.name}</p>
                   <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
                   <p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p>
-                  ${siHTML}
                 </div>
-                <div class="flex-1 text-right">${badgeHTML}</div>
+                <div class="flex-1 text-right">${badge}</div>
               </div>`;
           }).join('')
         : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter === 'today' ? 'hoy' : 'mañana'}.</div>`;
 
       return `
-        <div class="space-y-4">
-          <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-            <button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
-            <button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
-          </div>
-          ${cards}
-        </div>`;
-    }
+        <div class="p-6 space-y-8">
+          <header>
+            <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
+            <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
+          </header>
 
-    function getBookingsInnerHTML() {
-      // Próximas reservas (todas las futuras que existan en state.classes)
-      const myBooked = state.myBookings
-        .map(id => state.classes.find(c => c.id === id))
-        .filter(Boolean)
-        .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
+          <section aria-labelledby="mis-reservas">
+            <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
+            <div class="space-y-3">
+              ${reservasHTML}
+            </div>
+          </section>
 
-      // Tus listas de espera
-      const myWaitClasses = state.myWaitlist
-        .map(id => state.classes.find(c => c.id === id))
-        .filter(Boolean)
-        .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
-
-      const bookedHTML = myBooked.length
-        ? myBooked.map(cls => {
-            const si = formatStartsIn(cls);
-            const siHTML = si ? `<p class="text-xs mt-1 ${si==='En curso'?'text-amber-300': (si==='Finalizada'?'text-zinc-400':'text-amber-300')}">${si}</p>` : '';
-            return `
-              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4">
-                <div>
-                  <p class="font-bold text-lg">${cls.name}</p>
-                  <p class="text-zinc-400 text-sm">${cls.classDate} a las ${cls.time}</p>
-                  ${siHTML}
-                </div>
-                <div class="flex-1 text-right">
-                  <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
-                </div>
-              </div>`;
-          }).join('')
-        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes clases reservadas.</div>`;
-
-      const waitHTML = myWaitClasses.length
-        ? myWaitClasses.map(cls => {
-            const si = formatStartsIn(cls);
-            const siHTML = si ? `<p class="text-xs mt-1 ${si==='En curso'?'text-amber-300': (si==='Finalizada'?'text-zinc-400':'text-amber-300')}">${si}</p>` : '';
-            return `
-              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
-                <div>
-                  <p class="font-bold text-lg">${cls.name}</p>
-                  <p class="text-zinc-400 text-sm">${cls.classDate} a las ${cls.time}</p>
-                  ${siHTML}
-                </div>
-                <button data-action="leave-waitlist" data-class-id="${cls.id}" class="text-xs text-amber-300 hover:text-amber-200">Salir</button>
-              </div>`;
-          }).join('')
-        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No estás en lista de espera.</div>`;
-
-      return `
-        <div class="space-y-6">
-          <div>
-            <h2 class="text-xl font-semibold mb-3">Tus reservas</h2>
-            ${bookedHTML}
-          </div>
-          <div class="pt-2 border-t border-zinc-700">
-            <h2 class="text-xl font-semibold mb-3">Tus listas de espera</h2>
-            ${waitHTML}
-          </div>
+          <section aria-labelledby="horario">
+            <div class="flex items-center justify-between mb-3">
+              <h2 id="horario" class="text-xl font-semibold">Horario</h2>
+              <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
+                <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
+                <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
+              </div>
+            </div>
+            <div class="space-y-3">
+              ${horarioHTML}
+            </div>
+          </section>
         </div>`;
     }
 
@@ -372,7 +306,7 @@
       return `
         <div class="p-6 space-y-6">
           <header class="text-center space-y-4">
-            <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700" alt="avatar">
+            <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
             <div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div>
           </header>
           <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
@@ -384,37 +318,24 @@
 
     function getClassDetailsScreenHTML(classId) {
       const cls = state.classes.find(c => c.id === classId);
-      if (!cls) return getClassesScreenHTML();
-
+      if (!cls) return getAgendaScreenHTML();
       const enrolled = Number(cls.enrolledCount || 0);
       const availableSpots = Number(cls.capacity || 0) - enrolled;
       const isBooked = state.myBookings.includes(cls.id);
-      const isWaitlisted = state.myWaitlist.includes(cls.id);
 
-      let buttonHTML = '';
-      if (isBooked) {
-        buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-      } else if (availableSpots > 0) {
-        buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-      } else {
-        buttonHTML = isWaitlisted
-          ? `<button data-action="leave-waitlist" data-class-id="${cls.id}" class="w-full bg-amber-900 hover:bg-amber-800 text-amber-200 font-bold py-4 rounded-xl">Salir de la lista de espera</button>`
-          : `<button data-action="join-waitlist" data-class-id="${cls.id}" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 rounded-xl">Unirme a la lista de espera</button>`;
-      }
-
-      const si = formatStartsIn(cls);
-      const siHTML = si ? `<div class="text-sm ${si==='En curso'?'text-amber-300': (si==='Finalizada'?'text-zinc-400':'text-amber-300')}">${si}</div>` : '';
+      let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+      if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+      else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
 
       return `
         <div>
           <div class="relative">
-            <img src="${cls.image}" class="w-full h-64 object-cover" alt="${cls.name}">
-            <button data-action="navigate" data-screen="classes" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+            <img src="${cls.image}" class="w-full h-64 object-cover">
+            <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
           </div>
           <div class="p-6 space-y-4 pb-40">
             <h1 class="text-3xl font-bold">${cls.name}</h1>
-            <div class="text-zinc-400 leading-relaxed">${cls.description || ''}</div>
-            ${siHTML}
+            <p class="text-zinc-400 leading-relaxed">${cls.description}</p>
             <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
               <span class="font-semibold text-lg">Estado</span>
               <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span>
@@ -450,10 +371,6 @@
         if (data.classId) state.selectedClassId = data.classId;
         render();
       },
-      setClassesTab: (tab) => {
-        state.classesTab = tab;
-        render();
-      },
       setScheduleFilter: (filter) => {
         state.scheduleFilter = filter;
         render();
@@ -464,8 +381,6 @@
         const uid = state.currentUser.uid;
         const classRef   = db.collection('classes').doc(classId);
         const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
-        const waitRef    = db.collection('waitlist').doc(`${classId}_${uid}`);
-
         try {
           await db.runTransaction(async (tx) => {
             const [classSnap, bookingSnap] = await Promise.all([ tx.get(classRef), tx.get(bookingRef) ]);
@@ -486,9 +401,6 @@
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
-
-            // si estaba en waitlist, quitarlo
-            tx.delete(waitRef);
           });
           showModal({ success: true, title: '¡Reserva Exitosa!' });
         } catch (err) {
@@ -501,7 +413,6 @@
         const uid = state.currentUser.uid;
         const classRef   = db.collection('classes').doc(classId);
         const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
-
         try {
           await db.runTransaction(async (tx) => {
             const [bookingSnap, classSnap] = await Promise.all([ tx.get(bookingRef), tx.get(classRef) ]);
@@ -509,79 +420,32 @@
             tx.delete(bookingRef);
             if (classSnap.exists) {
               const enrolled = Number(classSnap.data().enrolledCount || 0);
-              if (enrolled > 0) {
-                tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(-1) });
-              }
+              if (enrolled > 0) tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(-1) });
             }
           });
           showModal({ success: false, title: 'Cancelación Exitosa' });
         } catch (err) {
           alert(`No se pudo cancelar\n\n${err.message}`);
         }
-      },
-
-      // Waitlist
-      joinWaitlist: async (classId) => {
-        const uid = state.currentUser.uid;
-        const waitRef = db.collection('waitlist').doc(`${classId}_${uid}`);
-        const classRef = db.collection('classes').doc(classId);
-
-        try {
-          await db.runTransaction(async (tx) => {
-            const [wSnap, cSnap] = await Promise.all([ tx.get(waitRef), tx.get(classRef) ]);
-            if (!cSnap.exists) throw new Error('La clase ya no existe.');
-            if (wSnap.exists)  throw new Error('Ya estás en la lista de espera.');
-            const cls = cSnap.data();
-            tx.set(waitRef, {
-              classId,
-              userId: uid,
-              userName: state.currentUser.displayName || state.currentUser.email,
-              classDate: cls.classDate,
-              time: cls.time,
-              className: cls.name,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          });
-          showModal({ success:true, title:'Te uniste a la lista de espera' });
-        } catch (err) {
-          alert(`No se pudo unir a la lista\n\n${err.message}`);
-        }
-      },
-
-      leaveWaitlist: async (classId) => {
-        const uid = state.currentUser.uid;
-        try {
-          await db.collection('waitlist').doc(`${classId}_${uid}`).delete();
-          showModal({ success:false, title:'Saliste de la lista de espera' });
-        } catch (err) {
-          alert(`No se pudo salir de la lista\n\n${err.message}`);
-        }
-      },
+      }
     };
 
     // Delegación de eventos
     function handleInteraction(e) {
       const target = e.target.closest('[data-action]');
       if (!target) return;
-      const { action, screen, tab, filter, classId } = target.dataset;
+      const { action, screen, filter, classId } = target.dataset;
 
       switch (action) {
         case 'navigate': app.navigateTo(screen); break;
         case 'navigate-details': app.navigateTo('classDetails', { classId }); break;
-        case 'set-tab': app.setClassesTab(tab); break;
         case 'set-filter': app.setScheduleFilter(filter); break;
         case 'edit-name': app.editUserName(e); break;
         case 'logout': app.logout(); break;
-
         case 'confirm-booking':
           target.disabled = true; app.confirmBooking(classId).finally(()=> target.disabled = false); break;
         case 'cancel-booking':
           target.disabled = true; app.cancelBooking(classId).finally(()=> target.disabled = false); break;
-
-        case 'join-waitlist':
-          target.disabled = true; app.joinWaitlist(classId).finally(()=> target.disabled = false); break;
-        case 'leave-waitlist':
-          target.disabled = true; app.leaveWaitlist(classId).finally(()=> target.disabled = false); break;
       }
     }
     mainContent.addEventListener('click', handleInteraction);
@@ -611,8 +475,8 @@
       setTimeout(() => {
         genericModal.classList.add('hidden');
         if (fabs) fabs.classList.remove('opacity-0','pointer-events-none');
-        // tras reservar/cancelar, vuelve a Clases
-        app.navigateTo(state.currentScreen === 'classDetails' ? 'classes' : state.currentScreen);
+        // Si estabas en detalles, regresa a la Agenda
+        app.navigateTo(state.currentScreen === 'classDetails' ? 'agenda' : state.currentScreen);
       }, 200);
     }
 
@@ -631,7 +495,7 @@
   });
   </script>
 
-  <!-- Service Worker (sin offline, no-op ok) -->
+  <!-- Service Worker (sin offline) -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
