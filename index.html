@@ -94,6 +94,7 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
+    // ---- Helpers de fecha y humanización
     const dateHelper = {
       getYYYYMMDD(date) {
         const y = date.getFullYear();
@@ -110,26 +111,43 @@
       }
     };
 
-    // ---- "Empieza en..." helper ----
-    function timeUntilLabel(classDate, timeHHMM) {
-      const start = new Date(`${classDate}T${timeHHMM}:00`);
-      const now = new Date();
+    // ---- "Empieza en …"
+    function timeUntilLabel(ymd, hhmm) {
+      if (!ymd || !hhmm) return '';
+      const start = new Date(`${ymd}T${hhmm}:00`).getTime();
+      const now = Date.now();
+      const diff = start - now;
+      const min = Math.round(diff / 60000);
 
-      const todayStr = dateHelper.today;
-      const tomStr   = dateHelper.tomorrow;
+      if (min <= -120) return 'finalizada';
+      if (min < 0)     return 'en curso';
+      if (min === 0)   return 'empieza ahora';
+      if (min < 60)    return `empieza en ${min} min`;
 
-      const diffMs  = Math.max(0, start.getTime() - now.getTime());
-      const diffMin = Math.round(diffMs / 60000);
-      const diffHr  = Math.round(diffMs / 3600000);
-
-      if (classDate === todayStr) {
-        if (diffMin < 60) return `Empieza en ${Math.max(1, diffMin)} min`;
-        return `Empieza en ${diffHr} h`;
-      }
-      if (classDate === tomStr) return `Mañana ${timeHHMM}`;
-      return `${dateHelper.human(classDate)} ${timeHHMM}`;
+      const horas = Math.floor(min/60);
+      const resto = min % 60;
+      if (resto === 0) return `empieza en ${horas} h`;
+      return `empieza en ${horas} h ${resto} min`;
     }
 
+    // ---- Covers por clase
+    const coverHelper = {
+      byName(name = '') {
+        const n = name.toLowerCase();
+        if (n.includes('trx')) return 'images/trx.png';
+        if (n.includes('yoga')) return 'images/yoga.png';
+        if (n.includes('hiit')) return 'images/HIIT.png';
+        if (n.includes('funcional') || n.includes('functional')) return 'images/functional.png';
+        return null;
+      },
+      forClass(cls) {
+        return this.byName(cls.name)
+          || cls.image
+          || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
+      }
+    };
+
+    // ---- Estado
     let state = {
       currentUser: null,
       classes: [],
@@ -139,7 +157,7 @@
       selectedClassId: null
     };
 
-    // Shortcuts (?screen=agenda|profile)
+    // Shortcuts (?screen=agenda|profile|classDetails)
     const _params = new URLSearchParams(location.search);
     const _screen = _params.get('screen');
     if (_screen && ['agenda','profile','classDetails'].includes(_screen)) {
@@ -206,7 +224,7 @@
           render();
         }, (err)=> console.error('Error clases:', err));
 
-      // Mis bookings (cualquier fecha); se cruzan con las clases cargadas
+      // Mis bookings (cualquier fecha)
       unsubMyBookings = db.collection('bookings')
         .where('userId', '==', state.currentUser.uid)
         .onSnapshot((snapshot) => {
@@ -232,14 +250,14 @@
 
     // -------- AGENDA (Reservas futuras + Horario) --------
     function getAgendaScreenHTML() {
-      // RESERVAS: todas las futuras (o que no hayan pasado aún hoy con 5 min de tolerancia)
+      // RESERVAS: todas las futuras (con 5 min de tolerancia si está por empezar)
       const upcoming = state.myBookings
         .map(id => state.classes.find(c => c.id === id))
         .filter(Boolean)
         .filter(cls => {
           const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
           const cutoff = start + 5*60*1000;
-          return Date.now() <= cutoff; // elimina pasadas de hoy que ya terminaron
+          return Date.now() <= cutoff;
         })
         .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
 
@@ -249,12 +267,17 @@
               cls.classDate === dateHelper.today ? 'Hoy' :
               cls.classDate === dateHelper.tomorrow ? 'Mañana' :
               dateHelper.human(cls.classDate);
+
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
-                <div>
-                  <p class="font-bold text-lg">${cls.name}</p>
-                  <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
-                  <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(cls.classDate, cls.time)}</p>
+                <div class="flex items-center gap-4">
+                  <img src="${coverHelper.forClass(cls)}" alt="${cls.name}"
+                       class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                  <div>
+                    <p class="font-bold text-lg">${cls.name}</p>
+                    <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(cls.classDate, cls.time)}</p>
+                  </div>
                 </div>
                 <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
               </div>`;
@@ -281,14 +304,17 @@
             else if (available <= 0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
 
             return `
-              <div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700">
-                <div>
+              <div data-action="navigate-details" data-class-id="${cls.id}"
+                   class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
+                <img src="${coverHelper.forClass(cls)}" alt="${cls.name}"
+                     class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                <div class="flex-1">
                   <p class="font-bold text-lg">${cls.name}</p>
                   <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
                   <p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p>
                   <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(cls.classDate, cls.time)}</p>
                 </div>
-                <div class="flex-1 text-right">${badge}</div>
+                <div class="text-right">${badge}</div>
               </div>`;
           }).join('')
         : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter === 'today' ? 'hoy' : 'mañana'}.</div>`;
@@ -343,6 +369,8 @@
       const availableSpots = Number(cls.capacity || 0) - enrolled;
       const isBooked = state.myBookings.includes(cls.id);
 
+      const hero = coverHelper.forClass(cls);
+
       let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
       if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
       else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
@@ -350,12 +378,12 @@
       return `
         <div>
           <div class="relative">
-            <img src="${cls.image}" class="w-full h-64 object-cover">
+            <img src="${hero}" alt="${cls.name}" class="w-full h-64 object-cover" loading="lazy" decoding="async">
             <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
           </div>
           <div class="p-6 space-y-4 pb-40">
             <h1 class="text-3xl font-bold">${cls.name}</h1>
-            <p class="text-zinc-400 leading-relaxed">${cls.description}</p>
+            <p class="text-zinc-400 leading-relaxed">${cls.description || ''}</p>
             <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
               <span class="font-semibold text-lg">Estado</span>
               <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span>
