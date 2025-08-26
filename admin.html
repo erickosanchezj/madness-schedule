@@ -419,7 +419,7 @@
             if (cls.classDate !== this.dateHelper.today) return false;
             const now = new Date();
             const classStartTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const attendanceStartTime = new Date(classStartTime.getTime() - 20 * 60000);
+            const attendanceStartTime = new Date(classStartTime.getTime() - 1440 * 60000);
             const attendanceEndTime = new Date(classStartTime.getTime() + 120 * 60000);
             return now >= attendanceStartTime && now <= attendanceEndTime;
         },

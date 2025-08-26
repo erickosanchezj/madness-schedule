@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Reserva de Clases</title>
+    <title>GymApp - Reserva de Clases</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,10 +19,10 @@
 <body class="bg-zinc-900 text-white antialiased">
 
     <!-- Contenedor principal de la App -->
-    <div id="app-container" class="max-w-md mx-auto h-screen flex-col overflow-hidden bg-zinc-900 border-x border-zinc-800 hidden">
+    <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
         <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
-             <div id="nav-bar" class="flex justify-around h-20">
+        <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
+             <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
                 <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
                 <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
                 <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
@@ -32,7 +32,7 @@
     </div>
 
     <!-- Pantalla de Login/Registro -->
-    <div id="auth-container" class="max-w-md mx-auto h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+    <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
 
     <!-- Pantalla de Carga Global -->
     <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
@@ -113,7 +113,7 @@
 
         function renderAuthScreen(isLogin = true) {
             authContainer.innerHTML = `
-                <div class="w-full">
+                <div class="w-full max-w-md mx-auto">
                     <h1 class="text-4xl font-bold text-white mb-2">GymApp</h1>
                     <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
                     <div class="space-y-4">
@@ -160,11 +160,14 @@
 
         function render() {
             const screen = state.currentScreen;
-            if (screen === 'home') mainContent.innerHTML = getHomeScreenHTML();
-            else if (screen === 'schedule') mainContent.innerHTML = getScheduleScreenHTML();
-            else if (screen === 'bookings') mainContent.innerHTML = getBookingsScreenHTML();
-            else if (screen === 'profile') mainContent.innerHTML = getProfileScreenHTML();
-            else if (screen === 'classDetails') mainContent.innerHTML = getClassDetailsScreenHTML(state.selectedClassId);
+            let content = '';
+            if (screen === 'home') content = getHomeScreenHTML();
+            else if (screen === 'schedule') content = getScheduleScreenHTML();
+            else if (screen === 'bookings') content = getBookingsScreenHTML();
+            else if (screen === 'profile') content = getProfileScreenHTML();
+            else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
+            
+            mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
             updateNavButtons();
             lucide.createIcons();
         }
@@ -222,7 +225,7 @@
             let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
             if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
             else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-            return `<div><div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div><div class="p-6 space-y-4 pb-24"><h1 class="text-3xl font-bold">${cls.name}</h1><p class="text-zinc-400 leading-relaxed">${cls.description}</p><div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center"><span class="font-semibold text-lg">Estado</span><span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span></div></div><div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div></div>`;
+            return `<div><div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div><div class="p-6 space-y-4 pb-24"><h1 class="text-3xl font-bold">${cls.name}</h1><p class="text-zinc-400 leading-relaxed">${cls.description}</p><div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center"><span class="font-semibold text-lg">Estado</span><span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span></div></div><div class="p-6 fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div></div>`;
         }
 
         const app = {
