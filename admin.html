@@ -76,7 +76,19 @@
 
     <!-- ASISTENCIA / PROYECCIÓN -->
     <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="asistencia-title">
-      <h2 id="asistencia-title" class="text-2xl font-bold mb-4">Reporte de Asistencia y Proyección</h2>
+      <h2 id="asistencia-title" class="text-2xl font-bold mb-2">Reporte de Asistencia y Proyección</h2>
+
+      <!-- Nueva leyenda de refresco -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 mb-3 gap-2">
+        <div class="flex items-center gap-4">
+          <span id="att-last">Última actualización: —</span>
+          <span id="att-next">Próxima actualización en: —</span>
+        </div>
+        <button id="att-refresh" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
+          <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
+        </button>
+      </div>
+
       <div class="relative">
         <canvas id="attendanceChart"></canvas>
       </div>
@@ -143,16 +155,22 @@
   const AdminPanel = {
     db:null, auth:null,
     state:{
-      classes:[],                  // próximas (hoy/mañana)
+      classes:[],                  // visibles (ayer / hoy / mañana)
       bookingsMap:new Map(),       // classId -> [{...booking}]
       weeklySchedule:{},
       currentAttendance:{},
       attendanceChartInstance:null,
       unsubClasses:null,
-      unsubBookings:[],            // lista de unsubs por lote
+      unsubBookings:[],            // lista unsubs por batch
+      // ---- Polling asistencia
+      attendanceData:null,         // cache (anteayer/ayer/hoy) + mañana calculado con bookings
+      attendanceNextAt:0,          // timestamp ms próxima actualización
+      attendanceLastAt:0,          // timestamp ms última actualización
+      attendancePollTimer:null,    // setInterval (15 min)
+      attendanceTickTimer:null     // setInterval (1 s)
     },
 
-    // ---- FORMATTERS (punto 5)
+    // ---- FORMATTERS
     timeFmt: new Intl.DateTimeFormat('es-MX', { hour:'2-digit', minute:'2-digit' }),
     dayFmt:  new Intl.DateTimeFormat('es-MX', { weekday:'long', day:'2-digit', month:'short' }),
 
@@ -163,17 +181,7 @@
       yesterday(){ const t=new Date(); t.setDate(t.getDate()-1); return this.ymd(t); }
     },
 
-    // ---- COVER IMG
-    coverFor(name=''){
-      const n = String(name).toLowerCase();
-      if (n.includes('trx')) return 'images/trx.png';
-      if (n.includes('yoga')) return 'images/yoga.png';
-      if (n.includes('hiit')) return 'images/HIIT.png';
-      if (n.includes('funcional') || n.includes('functional')) return 'images/functional.png';
-      return `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(name||'Clase')}`;
-    },
-
-    // ---- TOASTS (punto 8)
+    // ---- TOASTS
     showToast({title='Hecho', message='', variant='success', timeout=3000}){
       const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';
       const wrap = document.getElementById('toast-container');
@@ -195,7 +203,7 @@
       if (timeout) setTimeout(close, timeout);
     },
 
-    // ---- INIT / AUTH (punto 3)
+    // ---- INIT / AUTH
     init(){
       const firebaseConfig = {
         apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
@@ -217,48 +225,34 @@
       document.getElementById('delete-button').onclick = ()=> this.deleteClass();
       document.getElementById('cancel-button').onclick = ()=> this.hideClassModal();
       document.getElementById('save-button').onclick = ()=> this.saveClass();
+      document.getElementById('att-refresh').onclick = ()=> this.fetchAttendanceData(true);
 
-    this.auth.onAuthStateChanged(async (user)=>{
-    if (user){
-        try {
-        // Fuerza refresco del token para traer los últimos claims
-        await user.getIdToken(true);
-        const token = await user.getIdTokenResult();
-        const isAdmin = !!(token.claims && token.claims.admin);
-
-        if (isAdmin){
+      this.auth.onAuthStateChanged(async (user)=>{
+        if (user){
+          const token = await user.getIdTokenResult();
+          if (token.claims && token.claims.admin){
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
             try{
-            await this.loadWeeklyScheduleTemplate();
-            this.listenClassesTodayTomorrow();
-            this.showToast({title:'Conectado', message:`UID: ${user.uid}`});
+              await this.loadWeeklyScheduleTemplate();
+              this.listenClassesTodayTomorrow();
+              // polling asistencia (cada 15 min) + countdown
+              this.startAttendancePolling();
             }catch(e){
-            this.showToast({title:'Error al iniciar', message:e.message, variant:'error'});
+              this.showToast({title:'Error al iniciar', message:e.message, variant:'error'});
             }
+          } else {
+            this.logout();
+            this.showToast({title:'Acceso denegado', message:'Tu cuenta no tiene rol de admin', variant:'error'});
+          }
         } else {
-            // Si no es admin, muestra un mensaje útil con su UID para asignar el claim
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('admin-panel').classList.add('hidden');
-            this.showToast({
-            title:'Acceso denegado',
-            message:`El usuario ${user.email || user.uid} no tiene el claim admin. UID: ${user.uid}`,
-            variant:'error'
-            });
+          document.getElementById('login-screen').classList.remove('hidden');
+          document.getElementById('admin-panel').classList.add('hidden');
+          this.teardownBookingsListeners();
+          if (this.state.unsubClasses) this.state.unsubClasses();
+          this.stopAttendancePolling();
         }
-        } catch (e){
-        console.error(e);
-        this.showToast({title:'Error verificando sesión', message:e.message, variant:'error'});
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('admin-panel').classList.add('hidden');
-        }
-    } else {
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('admin-panel').classList.add('hidden');
-        this.teardownBookingsListeners();
-        if (this.state.unsubClasses) this.state.unsubClasses();
-    }
-    });
+      });
 
       lucide.createIcons();
     },
@@ -269,26 +263,28 @@
       snap.forEach(doc => { this.state.weeklySchedule[doc.id] = doc.data().classes || []; });
     },
 
-    // ---- LISTENERS sin N+1 (punto 1)
+    // ---- LISTENERS (ayer/hoy/mañana)
     listenClassesTodayTomorrow(){
-        const yesterday = this.dateHelper.yesterday();
-        const today     = this.dateHelper.today();
-        const tomorrow  = this.dateHelper.tomorrow();
+      const yesterday = this.dateHelper.yesterday();
+      const today     = this.dateHelper.today();
+      const tomorrow  = this.dateHelper.tomorrow();
 
-        if (this.state.unsubClasses) this.state.unsubClasses();
+      if (this.state.unsubClasses) this.state.unsubClasses();
 
-        this.state.unsubClasses = this.db.collection('classes')
-            .where('classDate','in',[yesterday, today, tomorrow]) // <-- incluye AYER
-            .orderBy('classDate','asc')
-            .orderBy('time','asc')
-            .onSnapshot((snap)=>{
-            this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-            this.mountBookingsListenersForVisibleClasses();
-            this.renderAll();
-            }, (err)=>{
-            console.error(err);
-            this.showToast({title:'Error listando clases', message:err.message, variant:'error'});
-            });
+      this.state.unsubClasses = this.db.collection('classes')
+        .where('classDate','in',[yesterday, today, tomorrow])
+        .orderBy('classDate','asc')
+        .orderBy('time','asc')
+        .onSnapshot((snap)=>{
+          this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+          this.mountBookingsListenersForVisibleClasses();
+          this.renderAll();
+          // Re-pinta el chart desde cache para actualizar "Reservas Mañana"
+          this.renderAttendanceChartFromCache();
+        }, (err)=>{
+          console.error(err);
+          this.showToast({title:'Error listando clases', message:err.message, variant:'error'});
+        });
     },
 
     teardownBookingsListeners(){
@@ -298,27 +294,39 @@
     },
 
     mountBookingsListenersForVisibleClasses(){
-        this.teardownBookingsListeners();
-        const classIds = this.state.classes.map(c=>c.id);
-        for (let i=0; i<classIds.length; i+=10){
-            const batch = classIds.slice(i, i+10);
-            const unsub = this.db.collection('bookings')
-            .where('classId','in',batch)
-            .onSnapshot((snap)=>{
-                batch.forEach(cid=> this.state.bookingsMap.delete(cid));
-                snap.docs.forEach(doc=>{
-                const b = doc.data();
-                const arr = this.state.bookingsMap.get(b.classId) || [];
-                arr.push({ id:doc.id, ...b });
-                this.state.bookingsMap.set(b.classId, arr);
-                });
-                this.renderAll();
+      this.teardownBookingsListeners();
+      const classIds = this.state.classes.map(c=>c.id);
+      for (let i=0; i<classIds.length; i+=10){
+        const batch = classIds.slice(i, i+10);
+        const unsub = this.db.collection('bookings')
+          .where('classId','in',batch)
+          .onSnapshot((snap)=>{
+            // limpia cache para este batch
+            batch.forEach(cid=> this.state.bookingsMap.delete(cid));
+            snap.docs.forEach(doc=>{
+              const b = doc.data();
+              const arr = this.state.bookingsMap.get(b.classId) || [];
+              arr.push({ id:doc.id, ...b });
+              this.state.bookingsMap.set(b.classId, arr);
             });
-            this.state.unsubBookings.push(unsub);
-        }
+            this.renderAll();
+            // Re-pinta chart (sin lecturas) para mañana
+            this.renderAttendanceChartFromCache();
+          });
+        this.state.unsubBookings.push(unsub);
+      }
     },
 
-    // ---- GENERACIÓN (punto 1: enrolledCount=0)
+    // ---- GENERACIÓN (crea startAt/endAt también)
+    _buildStartEnd(dateStr, timeStr, duration=60){
+      const start = new Date(`${dateStr}T${timeStr}:00`);
+      const end   = new Date(start.getTime() + (Number(duration||60) * 60000));
+      return {
+        startAt: firebase.firestore.Timestamp.fromDate(start),
+        endAt:   firebase.firestore.Timestamp.fromDate(end)
+      };
+    },
+
     async generateDailyClasses(){
       if (!Object.keys(this.state.weeklySchedule).length){
         this.showToast({title:'Plantilla no cargada', variant:'warn'});
@@ -338,31 +346,25 @@
         const tpl = this.state.weeklySchedule[String(d.dow)] || [];
         if (!tpl.length) continue;
 
-        const existingSnap = await this.db.collection('classes')
-          .where('classDate','==', d.dateStr).get();
+        const existingSnap = await this.db.collection('classes').where('classDate','==', d.dateStr).get();
         const existingTimes = new Set(existingSnap.docs.map(x => x.data().time));
 
         for (const c of tpl){
           if (!existingTimes.has(c.time)){
             const ref = this.db.collection('classes').doc();
-
-            const duration = Number(c.duration || 60);
-            const start = new Date(`${d.dateStr}T${c.time}:00`);
-            const end   = new Date(start.getTime() + duration*60000);
-
+            const { startAt, endAt } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
             batch.set(ref, {
               name: c.name,
               time: c.time,
               instructor: c.instructor || 'Por Asignar',
-              duration,
-              classDate: d.dateStr, // útil para filtros rápidos
-              startAt: firebase.firestore.Timestamp.fromDate(start),
-              endAt:   firebase.firestore.Timestamp.fromDate(end),
-              capacity: Number(c.capacity || 15),
+              duration: c.duration || 60,
+              classDate: d.dateStr,
+              capacity: 15,
               enrolledCount: 0,
+              startAt, endAt,
               description: `Clase de ${c.name}`,
               icon: '💪',
-              image: this.coverFor(c.name)  // ← usa portada por nombre
+              image: `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
             });
             created++;
           }
@@ -381,15 +383,16 @@
     renderAll(){
       this.renderClassCards();
       this.renderDailyBookings();
-      this.renderAttendanceChart();
+      // El chart ahora solo se pinta desde cache (sin lecturas)
+      // this.renderAttendanceChartFromCache(); // ya se llama en listeners también
     },
 
     isClassRunningNow(cls){
-      if (!cls) return false;
-      const start = cls.startAt?.toDate ? cls.startAt.toDate().getTime()
-                                        : new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-      const end   = cls.endAt?.toDate ? cls.endAt.toDate().getTime()
-                                      : start + (Number(cls.duration||60)*60000);
+      if (!cls || !cls.classDate) return false;
+      const todayStr = this.dateHelper.today();
+      if (cls.classDate !== todayStr) return false;
+      const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+      const end = start + (Number(cls.duration||60) * 60000);
       const now = Date.now();
       return now>=start && now<=end;
     },
@@ -420,10 +423,7 @@
             <span class="text-2xl">${cls.icon || '💪'}</span>
           </div>
           <div class="mt-4 flex justify-between items-center text-sm">
-            <span class="font-semibold">
-              ${cls.startAt?.toDate ? new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(cls.startAt.toDate()) : cls.time}
-              ${cls.endAt?.toDate ? '–' + new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(cls.endAt.toDate()) : ''}
-            </span>
+            <span class="font-semibold">a las ${cls.time}</span>
             <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
           </div>`;
         if (cls.classDate === this.dateHelper.today()) todayC.appendChild(card);
@@ -435,179 +435,219 @@
     },
 
     renderDailyBookings(){
-        const todayList = document.getElementById('today-bookings-list');
-        const tomList   = document.getElementById('tomorrow-bookings-list');
-        todayList.innerHTML = ''; tomList.innerHTML = '';
+      const todayList = document.getElementById('today-bookings-list');
+      const tomList   = document.getElementById('tomorrow-bookings-list');
+      todayList.innerHTML = ''; tomList.innerHTML = '';
 
-        const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
-        this.state.classes.forEach(c => { if (byDate[c.classDate]) byDate[c.classDate].push(c); });
+      const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
+      this.state.classes.forEach(c => { if (byDate[c.classDate]) byDate[c.classDate].push(c); });
 
-        const buildHTML = (classesArr)=>{
-            const blocks = classesArr.map(cls=>{
-            const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
-            const enrolled = Number(cls.enrolledCount || 0);
-            const cap = Number(cls.capacity || 0);
-            const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
-            return `<div class="mb-3"><p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p><ul class="list-none">${names}</ul></div>`;
-            });
-            return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
-        };
+      const buildHTML = (classesArr)=>{
+        const blocks = classesArr.map(cls=>{
+          const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
+          const enrolled = Number(cls.enrolledCount || 0);
+          const cap = Number(cls.capacity || 0);
+          const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
+          return `<div class="mb-3"><p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p><ul class="list-none">${names}</ul></div>`;
+        });
+        return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
+      };
 
-        todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
-        tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
+      todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
+      tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
     },
 
-    async renderAttendanceChart(){
-      const ctx = document.getElementById('attendanceChart')?.getContext('2d');
-      const details = document.getElementById('attendance-details');
-      if (!ctx || !details) return;
+    // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
 
+    getAttendanceDateMap(){
       const today = new Date();
       const d1 = new Date(); d1.setDate(today.getDate()-2);
       const d2 = new Date(); d2.setDate(today.getDate()-1);
       const d3 = today;
       const d4 = new Date(); d4.setDate(today.getDate()+1);
 
-      const dates = {
-        dayBefore: { date:this.dateHelper.ymd(d1), label:'Hace 2 días' },
-        yesterday: { date:this.dateHelper.ymd(d2), label:'Ayer' },
-        today:     { date:this.dateHelper.ymd(d3), label:'Hoy' },
-        tomorrow:  { date:this.dateHelper.ymd(d4), label:'Mañana' }
+      const ymd = (dt)=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      return {
+        dayBefore: { date: ymd(d1), label:'Hace 2 días' },
+        yesterday: { date: ymd(d2), label:'Ayer' },
+        today:     { date: ymd(d3), label:'Hoy' },
+        tomorrow:  { date: ymd(d4), label:'Mañana' }
       };
-      const labels = Object.values(dates).map(d=>d.label);
-      const keys   = Object.keys(dates);
-
-      // Asistencia (anteayer, ayer, hoy)
-      const attSnap = await this.db.collection('attendance')
-        .where('classDate','>=', dates.dayBefore.date)
-        .where('classDate','<=', dates.today.date)
-        .get();
-
-      const report = {};
-      Object.values(dates).forEach(d => { report[d.date] = { attended:0, absent:0, booked:0, details:{ attended:{}, absent:{}, booked:{} } }; });
-
-      attSnap.forEach(doc=>{
-        const r = doc.data();
-        if (!report[r.classDate]) return;
-        const cat = r.status==='attended' ? 'attended' : 'absent';
-        report[r.classDate][cat]++;
-        const key = `${r.className}`;
-        if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key]=[];
-        report[r.classDate].details[cat][key].push(r.userName);
-      });
-
-      // —— Utilidad para construir reservas por fecha (incluye TODAS las clases del día)
-        const buildBookedFor = (dateStr) => {
-        const classesDay = this.state.classes.filter(c => c.classDate === dateStr);
-        let booked = 0;
-        const details = {};
-        classesDay.forEach(c => {
-            const arr = this.state.bookingsMap.get(c.id) || [];
-            booked += arr.length;
-            const label = `${c.time} - ${c.name}`;
-            // Guardamos aunque esté vacío para que aparezca la clase con ":" aunque no haya nombres
-            details[label] = arr.map(x => x.userName || 'Anónimo');
-        });
-        return { booked, details };
-        };
-
-        // Reservas HOY
-        {
-        const { booked, details } = buildBookedFor(dates.today.date);
-        report[dates.today.date].booked = booked;
-        report[dates.today.date].details.booked = details;
-        }
-
-        // Reservas MAÑANA
-        {
-        const { booked, details } = buildBookedFor(dates.tomorrow.date);
-        report[dates.tomorrow.date].booked = booked;
-        report[dates.tomorrow.date].details.booked = details;
-        }
-
-      const attendedData = keys.map(k => report[dates[k].date].attended);
-        const absentData   = keys.map(k => report[dates[k].date].absent);
-
-        // Serie "Reservas Hoy": valores solo en HOY, 0 en otros días
-        const bookedTodayData = keys.map(k => (k === 'today' ? report[dates.today.date].booked : 0));
-        // Serie "Reservas Mañana": valores solo en MAÑANA, 0 en otros días
-        const bookedTomorrowData = keys.map(k => (k === 'tomorrow' ? report[dates.tomorrow.date].booked : 0));
-
-        if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
-        this.state.attendanceChartInstance = new Chart(ctx, {
-        type:'bar',
-        data:{
-            labels,
-            datasets:[
-            { label:'Asistieron',       data:attendedData,      backgroundColor:'rgba(16,185,129,.6)'  },
-            { label:'Faltaron',         data:absentData,        backgroundColor:'rgba(244,63,94,.6)'  },
-            { label:'Reservas Hoy',     data:bookedTodayData,   backgroundColor:'rgba(99,102,241,.6)' }, // indigo
-            { label:'Reservas Mañana',  data:bookedTomorrowData,backgroundColor:'rgba(59,130,246,.6)'  }  // blue
-            ]
-        },
-        options:{
-            scales:{
-            y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' } },
-            x:{ ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
-            },
-            plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
-        }
-        });
-
-
-      // Detalles
-      const renderAttendanceList = (obj)=>{
-        const names = Object.keys(obj).sort();
-        if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
-        return names.map(n => `
-            <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
-            <ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>
-        `).join('');
-        };
-
-        // Para "Reservaron": imprime TODAS las clases del día y si una clase no tiene nombres, muestra "Nadie"
-        const renderBookedDetails = (obj)=>{
-        const classNames = Object.keys(obj).sort();
-        if (!classNames.length) return '<div class="text-zinc-400">No hay clases programadas.</div>';
-        return classNames.map(label => {
-            const people = obj[label] || [];
-            const list = people.length ? people.map(p=>`<li>${p}</li>`).join('') : '<li>Nadie</li>';
-            return `
-            <div class="font-semibold text-zinc-300 mt-1">${label}:</div>
-            <ul class="list-disc list-inside text-zinc-400">${list}</ul>
-            `;
-        }).join('');
-        };
-
-
-      details.innerHTML = keys.map(k=>{
-  const d = report[dates[k].date];
-  let content = '';
-
-  if (k === 'today' || k === 'tomorrow'){
-    content += `<div class="font-semibold text-blue-400">Reservaron (${d.booked})</div>${renderBookedDetails(d.details.booked)}`;
-  }
-  if (k !== 'tomorrow'){ // dayBefore, yesterday, today -> muestran asistencia histórica
-    content += `
-      <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended})</div>${renderAttendanceList(d.details.attended)}
-      <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent})</div>${renderAttendanceList(d.details.absent)}
-    `;
-  }
-
-  return `<div class="bg-zinc-900 p-3 rounded-md"><h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>${content}</div>`;
-}).join('');
-
-
     },
 
-    // ---- MODAL
+    startAttendancePolling(){
+      // fetch inmediato
+      this.fetchAttendanceData(true);
+      // limpia timers previos
+      this.stopAttendancePolling();
+      // cada 15 min
+      this.state.attendancePollTimer = setInterval(()=> {
+        this.fetchAttendanceData(true);
+      }, 15*60*1000);
+      // countdown 1s
+      this.state.attendanceTickTimer = setInterval(()=> {
+        this.updateAttendanceLegend();
+      }, 1000);
+    },
+
+    stopAttendancePolling(){
+      if (this.state.attendancePollTimer){ clearInterval(this.state.attendancePollTimer); this.state.attendancePollTimer=null; }
+      if (this.state.attendanceTickTimer){ clearInterval(this.state.attendanceTickTimer); this.state.attendanceTickTimer=null; }
+    },
+
+    async fetchAttendanceData(force=false){
+      const now = Date.now();
+      if (!force && this.state.attendanceNextAt && now < this.state.attendanceNextAt) return;
+
+      const dates = this.getAttendanceDateMap();
+      const daysToRead = [dates.dayBefore.date, dates.yesterday.date, dates.today.date];
+
+      try{
+        const snap = await this.db.collection('attendance')
+          .where('classDate','in', daysToRead)
+          .get();
+
+        const report = {};
+        Object.values(dates).forEach(d => {
+          report[d.date] = { attended:0, absent:0, booked:0, details:{ attended:{}, absent:{}, booked:{} } };
+        });
+
+        snap.forEach(doc=>{
+          const r = doc.data();
+          if (!report[r.classDate]) return;
+          const cat = r.status==='attended' ? 'attended' : 'absent';
+          report[r.classDate][cat]++;
+          const key = `${r.className}`;
+          if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key]=[];
+          report[r.classDate].details[cat][key].push(r.userName);
+        });
+
+        this.state.attendanceData = { report, dates };
+        this.state.attendanceLastAt = now;
+        this.state.attendanceNextAt = now + 15*60*1000;
+
+        this.updateAttendanceLegend();
+        this.renderAttendanceChartFromCache();
+      }catch(e){
+        console.error('Error leyendo asistencia:', e);
+      }
+    },
+
+    updateAttendanceLegend(){
+      const lastEl = document.getElementById('att-last');
+      const nextEl = document.getElementById('att-next');
+      if (!lastEl || !nextEl) return;
+
+      if (this.state.attendanceLastAt){
+        const fmt = new Intl.DateTimeFormat('es-MX', { hour:'2-digit', minute:'2-digit' });
+        lastEl.textContent = `Última actualización: ${fmt.format(new Date(this.state.attendanceLastAt))}`;
+      } else {
+        lastEl.textContent = 'Última actualización: —';
+      }
+
+      if (this.state.attendanceNextAt){
+        const ms = Math.max(0, this.state.attendanceNextAt - Date.now());
+        const mm = Math.floor(ms/60000);
+        const ss = Math.floor((ms%60000)/1000);
+        nextEl.textContent = `Próxima actualización en: ${mm}m ${String(ss).padStart(2,'0')}s`;
+      } else {
+        nextEl.textContent = 'Próxima actualización en: —';
+      }
+    },
+
+    renderAttendanceChartFromCache(){
+      const ctx = document.getElementById('attendanceChart')?.getContext('2d');
+      const details = document.getElementById('attendance-details');
+      if (!ctx || !details) return;
+
+      const dataCache = this.state.attendanceData;
+      if (!dataCache){
+        details.innerHTML = `
+          <div class="bg-zinc-900 p-3 rounded-md text-zinc-400">
+            Cargando reporte… se actualizará automáticamente.
+          </div>`;
+        return;
+      }
+
+      const { report, dates } = dataCache;
+      const keys   = ['dayBefore','yesterday','today','tomorrow'];
+      const labels = keys.map(k => dates[k].label);
+
+      // Calcula “Reservas Mañana” desde la memoria de bookingsMap
+      const classesTomorrow = this.state.classes.filter(c => c.classDate === dates.tomorrow.date);
+      let bookedTomorrow = 0;
+      const bookedDetails = {};
+
+      classesTomorrow.forEach(c => {
+        const arr = this.state.bookingsMap.get(c.id) || [];
+        if (arr.length){
+          bookedTomorrow += arr.length;
+          const label = `${c.time} - ${c.name}`;
+          bookedDetails[label] = arr.map(x => x.userName || 'Anónimo');
+        }
+      });
+
+      report[dates.tomorrow.date].booked = bookedTomorrow;
+      report[dates.tomorrow.date].details.booked = bookedDetails;
+
+      const attendedData = keys.map(k => report[dates[k].date].attended || 0);
+      const absentData   = keys.map(k => report[dates[k].date].absent   || 0);
+      const bookedData   = keys.map(k => report[dates[k].date].booked   || 0);
+
+      if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
+      this.state.attendanceChartInstance = new Chart(ctx, {
+        type:'bar',
+        data:{
+          labels,
+          datasets:[
+            { label:'Asistieron',       data:attendedData, backgroundColor:'rgba(16,185,129,.6)'  },
+            { label:'Faltaron',         data:absentData,   backgroundColor:'rgba(244,63,94,.6)'  },
+            { label:'Reservas Mañana',  data:bookedData,   backgroundColor:'rgba(59,130,246,.6)' }
+          ]
+        },
+        options:{
+          scales:{
+            y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' } },
+            x:{ ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
+          },
+          plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
+        }
+      });
+
+      const renderList = (obj)=>{
+        const names = Object.keys(obj || {}).sort();
+        if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
+        return names.map(n => `
+          <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
+          <ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>
+        `).join('');
+      };
+
+      details.innerHTML = keys.map(k=>{
+        const d = report[dates[k].date];
+        if (k !== 'tomorrow'){
+          return `
+            <div class="bg-zinc-900 p-3 rounded-md">
+              <h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
+              <div class="font-semibold text-emerald-400">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
+              <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
+            </div>`;
+        }
+        return `
+          <div class="bg-zinc-900 p-3 rounded-md">
+            <h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
+            <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
+          </div>`;
+      }).join('');
+    },
+
+    // ---- MODAL / Asistencia
     isClassInProgressWindow(cls){
-      if (!cls) return false;
-      const start = cls.startAt?.toDate ? cls.startAt.toDate().getTime()
-                                        : new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-      const now   = Date.now();
-      const lower = now - (15 * 60 * 60 * 1000); // 15h atrás
-      const upper = now + (30 * 60 * 1000);      // 30m adelante
+      if (!cls || !cls.classDate || !cls.time) return false;
+      const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+      const now = Date.now();
+      const lower = now - (15 * 60 * 60 * 1000); // 15 horas atrás
+      const upper = now + (30 * 60 * 1000);      // 30 minutos hacia adelante
       return (start >= lower) && (start <= upper);
     },
 
@@ -636,7 +676,6 @@
 
       const modal = document.getElementById('class-modal');
       modal.classList.remove('hidden');
-      // foco accesible
       document.getElementById('save-button').focus();
     },
 
@@ -740,6 +779,8 @@
       try{
         await batch.commit();
         this.showToast({title:'Asistencia guardada'});
+        // Refresca cache de asistencia en la próxima pintura (o fuerza ahora si quieres)
+        this.fetchAttendanceData(true);
         this.hideClassModal();
       }catch(e){
         this.showToast({title:'Error al guardar', message:e.message, variant:'error'});
@@ -762,51 +803,38 @@
 
     // ---- AUTH
     login(){
-        const email = document.getElementById('email-input').value.trim();
-        const pass  = document.getElementById('password-input').value;
-        const errEl = document.getElementById('error-message');
-        errEl.classList.add('hidden');
-        this.auth.signInWithEmailAndPassword(email, pass).catch(err=>{
-            // Mensajes comunes
-            const hint = err.code === 'auth/operation-not-allowed'
-            ? 'Activa Email/Password en Firebase Console → Authentication → Sign-in method.'
-            : err.code === 'auth/user-not-found'
-            ? 'El usuario no existe o el email está mal escrito.'
-            : err.code === 'auth/wrong-password'
-            ? 'Contraseña incorrecta.'
-            : '';
-            errEl.textContent = 'Error: ' + err.message + (hint ? ' — ' + hint : '');
-            errEl.classList.remove('hidden');
-        });
+      const email = document.getElementById('email-input').value.trim();
+      const pass  = document.getElementById('password-input').value;
+      const errEl = document.getElementById('error-message');
+      errEl.classList.add('hidden');
+      this.auth.signInWithEmailAndPassword(email, pass).catch(err=>{
+        errEl.textContent = 'Error: ' + err.message;
+        errEl.classList.remove('hidden');
+      });
+    },
+    logout(){
+      this.auth.signOut();
+      this.showToast({title:'Sesión cerrada'});
     },
 
-
-    // ---- CRUD Clase (sin tocar enrolledCount manualmente)
+    // ---- CRUD Clase
     async saveClass(){
       const id = document.getElementById('class-id').value;
       if (!id) return;
-
-      const newTime = document.getElementById('class-time').value;
       const data = {
         name: document.getElementById('class-name').value,
         instructor: document.getElementById('class-instructor').value,
-        time: newTime,
+        time: document.getElementById('class-time').value,
         icon: document.getElementById('class-icon').value,
         description: document.getElementById('class-description').value,
       };
-
       try{
-        const snap = await this.db.collection('classes').doc(id).get();
-        if (snap.exists){
-          const cur = snap.data();
-          const classDate = cur.classDate;
-          const duration  = Number(cur.duration || 60);
-          const start     = new Date(`${classDate}T${(newTime || cur.time)}:00`);
-          const end       = new Date(start.getTime() + duration*60000);
-          data.startAt = firebase.firestore.Timestamp.fromDate(start);
-          data.endAt   = firebase.firestore.Timestamp.fromDate(end);
+        // recalcula start/end si cambia la hora
+        const cls = this.state.classes.find(c => c.id === id);
+        if (cls && data.time && data.time !== cls.time){
+          const { startAt, endAt } = this._buildStartEnd(cls.classDate, data.time, cls.duration||60);
+          data.startAt = startAt; data.endAt = endAt;
         }
-
         await this.db.collection('classes').doc(id).set(data, { merge:true });
         this.showToast({title:'Clase actualizada'});
         this.hideClassModal();
@@ -818,10 +846,7 @@
     async deleteClass(){
       const id = document.getElementById('class-id').value;
       if (!id) return;
-      // Modal sencillo de confirmación con toast
       try{
-        // Borra reservas relacionadas y luego la clase
-        //updating for actions
         const snap = await this.db.collection('bookings').where('classId','==', id).get();
         const batch = this.db.batch();
         snap.forEach(doc => batch.delete(doc.ref));
