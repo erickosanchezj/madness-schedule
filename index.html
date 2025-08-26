@@ -120,32 +120,26 @@
           const fmt   = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
           return `${fmt.format(start)}–${fmt.format(end)}`;
         } catch {
-          // fallback si algo raro viene en los datos
           const [h, m] = String(startHHmm || '00:00').split(':');
-          const endH = String((Number(h)*60 + Number(m) + Number(durationMin || 60)) / 60 | 0).padStart(2,'0');
-          const endM = String((Number(m) + Number(durationMin || 60)) % 60).padStart(2,'0');
+          const mins = Number(h)*60 + Number(m) + Number(durationMin || 60);
+          const endH = String(Math.floor(mins/60)).padStart(2,'0');
+          const endM = String(mins % 60).padStart(2,'0');
           return `${h}:${m}–${endH}:${endM}`;
         }
       }
     };
-    
-    // ---- "Empieza en …"
-    function timeUntilLabel(ymd, hhmm) {
-      if (!ymd || !hhmm) return '';
+
+    // ---- VENTANA "Empieza en ..." (solo próximas 4 horas)
+    const STARTS_SOON_WINDOW_MIN = 240; // 4h
+
+    function minutesUntilStart(ymd, hhmm){
       const start = new Date(`${ymd}T${hhmm}:00`).getTime();
-      const now = Date.now();
-      const diff = start - now;
-      const min = Math.round(diff / 60000);
-
-      if (min <= -120) return 'finalizada';
-      if (min < 0)     return 'en curso';
-      if (min === 0)   return 'empieza ahora';
-      if (min < 60)    return `empieza en ${min} min`;
-
-      const horas = Math.floor(min/60);
-      const resto = min % 60;
-      if (resto === 0) return `empieza en ${horas} h`;
-      return `empieza en ${horas} h ${resto} min`;
+      return Math.round((start - Date.now()) / 60000);
+    }
+    function formatMinutes(mins){
+      if (mins < 60) return `${mins} min`;
+      const h = Math.floor(mins / 60), m = mins % 60;
+      return m ? `${h} h ${m} min` : `${h} h`;
     }
 
     // ---- Covers por clase
@@ -286,6 +280,12 @@
               cls.classDate === dateHelper.tomorrow ? 'Mañana' :
               dateHelper.human(cls.classDate);
 
+            // SOLO mostrar "Empieza en" si está dentro de 4 horas
+            const m = minutesUntilStart(cls.classDate, cls.time);
+            const soonLine = (m >= 0 && m <= STARTS_SOON_WINDOW_MIN)
+              ? `<p class="text-amber-300 text-xs mt-0.5">Empieza en ${formatMinutes(m)}</p>`
+              : '';
+
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
@@ -294,7 +294,7 @@
                   <div>
                     <p class="font-bold text-lg">${cls.name}</p>
                     <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(cls.classDate, cls.time)}</p>
+                    ${soonLine}
                   </div>
                 </div>
                 <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
@@ -321,6 +321,12 @@
             if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
             else if (available <= 0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
 
+            // SOLO mostrar "Empieza en" si está dentro de 4 horas
+            const m = minutesUntilStart(cls.classDate, cls.time);
+            const soonLine = (m >= 0 && m <= STARTS_SOON_WINDOW_MIN)
+              ? `<p class="text-amber-300 text-xs mt-0.5">Empieza en ${formatMinutes(m)}</p>`
+              : '';
+
             return `
               <div data-action="navigate-details" data-class-id="${cls.id}"
                    class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
@@ -330,7 +336,7 @@
                   <p class="font-bold text-lg">${cls.name}</p>
                   <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
                   <p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p>
-                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(cls.classDate, cls.time)}</p>
+                  ${soonLine}
                 </div>
                 <div class="text-right">${badge}</div>
               </div>`;
