@@ -475,68 +475,108 @@
         report[r.classDate].details[cat][key].push(r.userName);
       });
 
-      // Reservas de mañana: suma bookings de clases mañana (usando cache de lotes)
-      const classesTomorrow = this.state.classes.filter(c => c.classDate === dates.tomorrow.date);
-      let bookedTomorrow = 0;
-      const bookedDetails = {};
-      classesTomorrow.forEach(c=>{
-        const arr = this.state.bookingsMap.get(c.id) || [];
-        bookedTomorrow += arr.length;
-        const label = `${c.time} - ${c.name}`;
-        bookedDetails[label] = arr.map(x => x.userName || 'Anónimo');
-      });
-      report[dates.tomorrow.date].booked = bookedTomorrow;
-      report[dates.tomorrow.date].details.booked = bookedDetails;
+      // —— Utilidad para construir reservas por fecha (incluye TODAS las clases del día)
+        const buildBookedFor = (dateStr) => {
+        const classesDay = this.state.classes.filter(c => c.classDate === dateStr);
+        let booked = 0;
+        const details = {};
+        classesDay.forEach(c => {
+            const arr = this.state.bookingsMap.get(c.id) || [];
+            booked += arr.length;
+            const label = `${c.time} - ${c.name}`;
+            // Guardamos aunque esté vacío para que aparezca la clase con ":" aunque no haya nombres
+            details[label] = arr.map(x => x.userName || 'Anónimo');
+        });
+        return { booked, details };
+        };
+
+        // Reservas HOY
+        {
+        const { booked, details } = buildBookedFor(dates.today.date);
+        report[dates.today.date].booked = booked;
+        report[dates.today.date].details.booked = details;
+        }
+
+        // Reservas MAÑANA
+        {
+        const { booked, details } = buildBookedFor(dates.tomorrow.date);
+        report[dates.tomorrow.date].booked = booked;
+        report[dates.tomorrow.date].details.booked = details;
+        }
 
       const attendedData = keys.map(k => report[dates[k].date].attended);
-      const absentData   = keys.map(k => report[dates[k].date].absent);
-      const bookedData   = keys.map(k => report[dates[k].date].booked);
+        const absentData   = keys.map(k => report[dates[k].date].absent);
 
-      if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
-      this.state.attendanceChartInstance = new Chart(ctx, {
+        // Serie "Reservas Hoy": valores solo en HOY, 0 en otros días
+        const bookedTodayData = keys.map(k => (k === 'today' ? report[dates.today.date].booked : 0));
+        // Serie "Reservas Mañana": valores solo en MAÑANA, 0 en otros días
+        const bookedTomorrowData = keys.map(k => (k === 'tomorrow' ? report[dates.tomorrow.date].booked : 0));
+
+        if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
+        this.state.attendanceChartInstance = new Chart(ctx, {
         type:'bar',
         data:{
-          labels,
-          datasets:[
-            { label:'Asistieron',       data:attendedData, backgroundColor:'rgba(16,185,129,.6)'  },
-            { label:'Faltaron',         data:absentData,   backgroundColor:'rgba(244,63,94,.6)'  },
-            { label:'Reservas Mañana',  data:bookedData,   backgroundColor:'rgba(59,130,246,.6)' }
-          ]
+            labels,
+            datasets:[
+            { label:'Asistieron',       data:attendedData,      backgroundColor:'rgba(16,185,129,.6)'  },
+            { label:'Faltaron',         data:absentData,        backgroundColor:'rgba(244,63,94,.6)'  },
+            { label:'Reservas Hoy',     data:bookedTodayData,   backgroundColor:'rgba(99,102,241,.6)' }, // indigo
+            { label:'Reservas Mañana',  data:bookedTomorrowData,backgroundColor:'rgba(59,130,246,.6)'  }  // blue
+            ]
         },
         options:{
-          scales:{
+            scales:{
             y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' } },
             x:{ ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
-          },
-          plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
+            },
+            plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
         }
-      });
+        });
+
 
       // Detalles
-      const renderList = (obj)=>{
+      const renderAttendanceList = (obj)=>{
         const names = Object.keys(obj).sort();
         if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
         return names.map(n => `
-          <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
-          <ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>
+            <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
+            <ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>
         `).join('');
-      };
+        };
+
+        // Para "Reservaron": imprime TODAS las clases del día y si una clase no tiene nombres, muestra "Nadie"
+        const renderBookedDetails = (obj)=>{
+        const classNames = Object.keys(obj).sort();
+        if (!classNames.length) return '<div class="text-zinc-400">No hay clases programadas.</div>';
+        return classNames.map(label => {
+            const people = obj[label] || [];
+            const list = people.length ? people.map(p=>`<li>${p}</li>`).join('') : '<li>Nadie</li>';
+            return `
+            <div class="font-semibold text-zinc-300 mt-1">${label}:</div>
+            <ul class="list-disc list-inside text-zinc-400">${list}</ul>
+            `;
+        }).join('');
+        };
+
 
       details.innerHTML = keys.map(k=>{
-        const d = report[dates[k].date];
-        let content = '';
-        if (k !== 'tomorrow'){
-          content = `
-            <div class="font-semibold text-emerald-400">Asistieron (${d.attended})</div>${renderList(d.details.attended)}
-            <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent})</div>${renderList(d.details.absent)}
-          `;
-        } else {
-          content = `
-            <div class="font-semibold text-blue-400">Reservaron (${d.booked})</div>${renderList(d.details.booked)}
-          `;
-        }
-        return `<div class="bg-zinc-900 p-3 rounded-md"><h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>${content}</div>`;
-      }).join('');
+  const d = report[dates[k].date];
+  let content = '';
+
+  if (k === 'today' || k === 'tomorrow'){
+    content += `<div class="font-semibold text-blue-400">Reservaron (${d.booked})</div>${renderBookedDetails(d.details.booked)}`;
+  }
+  if (k !== 'tomorrow'){ // dayBefore, yesterday, today -> muestran asistencia histórica
+    content += `
+      <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended})</div>${renderAttendanceList(d.details.attended)}
+      <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent})</div>${renderAttendanceList(d.details.absent)}
+    `;
+  }
+
+  return `<div class="bg-zinc-900 p-3 rounded-md"><h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>${content}</div>`;
+}).join('');
+
+
     },
 
     // ---- MODAL
