@@ -8,6 +8,9 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="images/icon-192x192.png">
   <meta name="theme-color" content="#18181b">
   <style>
     body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -115,6 +118,12 @@
       scheduleFilter: 'today',
       selectedClassId: null
     };
+
+    const _params = new URLSearchParams(location.search);
+    const _screen = _params.get('screen');
+    if (_screen && ['home','schedule','bookings','profile'].includes(_screen)) {
+    state.currentScreen = _screen;
+    }
 
     const mainContent = document.getElementById('main-content');
     const authContainer = document.getElementById('auth-container');
@@ -526,6 +535,16 @@
       });
     }
   });
+  </script>
+  <script>
+  // Registro del Service Worker (asegúrate de servir /service-worker.js desde la raíz o ajusta la ruta)
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker
+            .register('/service-worker.js', { scope: '/' })
+            .catch(err => console.error('Fallo al registrar el Service Worker:', err));
+        });
+    }
   </script>
 </body>
 </html>
