@@ -328,20 +328,29 @@
         const tpl = this.state.weeklySchedule[String(d.dow)] || [];
         if (!tpl.length) continue;
 
-        const existingSnap = await this.db.collection('classes').where('classDate','==', d.dateStr).get();
+        const existingSnap = await this.db.collection('classes')
+          .where('classDate','==', d.dateStr).get();
         const existingTimes = new Set(existingSnap.docs.map(x => x.data().time));
 
         for (const c of tpl){
           if (!existingTimes.has(c.time)){
             const ref = this.db.collection('classes').doc();
+
+            // Build start/end datetimes from classDate + HH:mm
+            const duration = Number(c.duration || 60);
+            const start = new Date(`${d.dateStr}T${c.time}:00`);
+            const end   = new Date(start.getTime() + duration*60000);
+
             batch.set(ref, {
               name: c.name,
               time: c.time,
               instructor: c.instructor || 'Por Asignar',
-              duration: c.duration || 60,
-              classDate: d.dateStr,
-              capacity: 15,
-              enrolledCount: 0,                // <- importante
+              duration,                        // keep duration
+              classDate: d.dateStr,            // still store ymd for easy filters
+              startAt: firebase.firestore.Timestamp.fromDate(start),
+              endAt:   firebase.firestore.Timestamp.fromDate(end),
+              capacity: Number(c.capacity || 15),
+              enrolledCount: 0,
               description: `Clase de ${c.name}`,
               icon: '💪',
               image: `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
@@ -357,7 +366,7 @@
       } else {
         this.showToast({title:'Horario al día', message:'No hay clases nuevas por crear', variant:'warn'});
       }
-    },
+    }
 
     // ---- RENDER
     renderAll(){
@@ -767,14 +776,31 @@
     async saveClass(){
       const id = document.getElementById('class-id').value;
       if (!id) return;
+
+      const newTime = document.getElementById('class-time').value;
       const data = {
         name: document.getElementById('class-name').value,
         instructor: document.getElementById('class-instructor').value,
-        time: document.getElementById('class-time').value,
+        time: newTime,
         icon: document.getElementById('class-icon').value,
         description: document.getElementById('class-description').value,
       };
+
       try{
+        // read current classDate and duration to rebuild timestamps
+        const doc = await this.db.collection('classes').doc(id).get();
+        if (doc.exists){
+          const cur = doc.data();
+          const classDate = cur.classDate;                 // e.g. '2025-03-02'
+          const duration  = Number(cur.duration || 60);
+          const start     = new Date(`${classDate}T${(newTime || cur.time)}:00`);
+          const end       = new Date(start.getTime() + duration*60000);
+
+          data.startAt = firebase.firestore.Timestamp.fromDate(start);
+          data.endAt   = firebase.firestore.Timestamp.fromDate(end);
+          // keep duration as-is; if someday you add a duration input, recompute with that value
+        }
+
         await this.db.collection('classes').doc(id).set(data, { merge:true });
         this.showToast({title:'Clase actualizada'});
         this.hideClassModal();

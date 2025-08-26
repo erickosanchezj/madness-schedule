@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
   <title>Madness - Reserva de Clases</title>
 
   <!-- Tailwind + Lucide + Fuente -->
@@ -62,26 +61,24 @@
   <div id="social-fabs"
        class="fixed right-4 flex flex-col gap-3 z-[70] pointer-events-auto"
        style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);">
-    <!-- WhatsApp -->
     <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer"
        class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
       <i data-lucide="message-circle" class="w-6 h-6"></i>
     </a>
-    <!-- Instagram -->
     <a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer"
        class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
       <i data-lucide="camera" class="w-6 h-6"></i>
     </a>
   </div>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Config Firebase (mismo proyecto que admin.html)
+  document.addEventListener('DOMContentLoaded', async () => {
+    // ---- Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
       authDomain: "madnessscheds.firebaseapp.com",
@@ -91,19 +88,26 @@
       appId: "1:788538690861:web:ce19ead5929a8867c197a4"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+
+    // ---- Enable client cache (multi-tab safe)
+    try {
+      await firebase.firestore().enablePersistence({ synchronizeTabs: true });
+    } catch (e) {
+      // Iguala si ya está activo o si el navegador no soporta
+      console.warn('Persistence not enabled:', e && e.code);
+    }
+
+    const db   = firebase.firestore();
     const auth = firebase.auth();
 
     // ---- Helpers de fecha y humanización
     const dateHelper = {
+      pad(n){ return String(n).padStart(2,'0'); },
       getYYYYMMDD(date) {
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+        return `${date.getFullYear()}-${this.pad(date.getMonth()+1)}-${this.pad(date.getDate())}`;
       },
-      get today() { return this.getYYYYMMDD(new Date()); },
-      get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); },
+      get today()    { return this.getYYYYMMDD(new Date()); },
+      get tomorrow() { const d = new Date(); d.setDate(d.getDate()+1); return this.getYYYYMMDD(d); },
       human(ymd) {
         const [y,m,d] = ymd.split('-').map(n => parseInt(n,10));
         const dt = new Date(y, m-1, d);
@@ -114,32 +118,28 @@
     // ---- time helper: "HH:mm–HH:mm"
     const timeHelper = {
       range(ymd, startHHmm, durationMin = 60) {
-        try {
-          const start = new Date(`${ymd}T${startHHmm}:00`);
-          const end   = new Date(start.getTime() + (Number(durationMin || 60) * 60000));
-          const fmt   = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-          return `${fmt.format(start)}–${fmt.format(end)}`;
-        } catch {
-          const [h, m] = String(startHHmm || '00:00').split(':');
-          const mins = Number(h)*60 + Number(m) + Number(durationMin || 60);
-          const endH = String(Math.floor(mins/60)).padStart(2,'0');
-          const endM = String(mins % 60).padStart(2,'0');
-          return `${h}:${m}–${endH}:${endM}`;
-        }
+        const start = new Date(`${ymd}T${startHHmm}:00`);
+        const end   = new Date(start.getTime() + (Number(durationMin || 60) * 60000));
+        const fmt   = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+        return `${fmt.format(start)}–${fmt.format(end)}`;
       }
     };
 
-    // ---- VENTANA "Empieza en ..." (solo próximas 4 horas)
-    const STARTS_SOON_WINDOW_MIN = 240; // 4h
-
-    function minutesUntilStart(ymd, hhmm){
+    // ---- "Empieza en …" (solo si faltan <= 4 horas)
+    function timeUntilLabel(ymd, hhmm) {
+      if (!ymd || !hhmm) return '';
       const start = new Date(`${ymd}T${hhmm}:00`).getTime();
-      return Math.round((start - Date.now()) / 60000);
-    }
-    function formatMinutes(mins){
-      if (mins < 60) return `${mins} min`;
-      const h = Math.floor(mins / 60), m = mins % 60;
-      return m ? `${h} h ${m} min` : `${h} h`;
+      const now   = Date.now();
+      const diff  = start - now;
+      if (diff > 4*60*60*1000) return ''; // >4h: no mostramos
+      const min = Math.round(diff / 60000);
+
+      if (min <= -120) return 'finalizada';
+      if (min < 0)     return 'en curso';
+      if (min === 0)   return 'empieza ahora';
+      if (min < 60)    return `empieza en ${min} min`;
+      const h = Math.floor(min/60), r = min % 60;
+      return r === 0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
     }
 
     // ---- Covers por clase
@@ -152,22 +152,31 @@
         if (n.includes('funcional') || n.includes('functional')) return 'images/functional.png';
         return null;
       },
-      forClass(cls) {
-        return this.byName(cls.name)
-          || cls.image
-          || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
+      forClassName(name, fallbackText){
+        return this.byName(name) || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(fallbackText||name||'Clase')}`;
+      },
+      forClass(cls){
+        return this.byName(cls.name) || cls.image || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
       }
     };
 
     // ---- Estado
     let state = {
       currentUser: null,
-      classes: [],
-      myBookings: [],   // array de classId
+      classes: [],         // Docs de clases futuras (usando startAt)
+      myBookings: [],      // Docs de bookings del usuario (sin cross-join)
       currentScreen: 'agenda',
       scheduleFilter: 'today',
       selectedClassId: null
     };
+
+    // ---- Render queue (coalesce)
+    let renderQueued = false;
+    function scheduleRender(){
+      if (renderQueued) return;
+      renderQueued = true;
+      requestAnimationFrame(() => { renderQueued = false; render(); });
+    }
 
     // Shortcuts (?screen=agenda|profile|classDetails)
     const _params = new URLSearchParams(location.search);
@@ -176,6 +185,7 @@
       state.currentScreen = _screen;
     }
 
+    // DOM refs
     const mainContent   = document.getElementById('main-content');
     const authContainer = document.getElementById('auth-container');
     const appContainer  = document.getElementById('app-container');
@@ -183,30 +193,61 @@
     const navBar        = document.getElementById('nav-bar');
     const fabs          = document.getElementById('social-fabs');
 
+    // Listeners control
     let unsubClasses = null;
     let unsubMyBookings = null;
+    let listenersAttached = false;
 
+    function detachListeners(){
+      if (unsubClasses)   { try{unsubClasses();}catch{};   unsubClasses=null; }
+      if (unsubMyBookings){ try{unsubMyBookings();}catch{};unsubMyBookings=null; }
+      listenersAttached = false;
+    }
+
+    function attachAgendaListeners(){
+      if (listenersAttached || !state.currentUser) return;
+      const nowMinus5 = new Date(Date.now() - 5*60*1000); // tolerancia
+      // Clases: usar startAt (Requiere backfill)
+      unsubClasses = db.collection('classes')
+        .where('startAt','>=', nowMinus5)
+        .orderBy('startAt','asc')
+        .limit(100)
+        .onSnapshot(snap => {
+          state.classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          scheduleRender();
+        }, err => console.error('Error clases:', err));
+
+      // Mis bookings (solo futuras por fecha de clase)
+      unsubMyBookings = db.collection('bookings')
+        .where('userId','==', state.currentUser.uid)
+        .where('classDate','>=', dateHelper.today)
+        .orderBy('classDate','asc')
+        .onSnapshot(snap => {
+          state.myBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          scheduleRender();
+        }, err => console.error('Error mis reservas:', err));
+
+      listenersAttached = true;
+    }
+
+    // ---- Auth gate
     auth.onAuthStateChanged(async user => {
       loadingSpinner.classList.remove('hidden');
       if (user) {
         state.currentUser = user;
         authContainer.style.display = 'none';
         appContainer.style.display = 'flex';
-        await initializeApp();
+        if (state.currentScreen === 'agenda') attachAgendaListeners();
+        scheduleRender();
       } else {
         state.currentUser = null;
-        cleanupListeners();
+        detachListeners();
         appContainer.style.display = 'none';
         authContainer.style.display = 'flex';
         renderAuthScreen();
-        loadingSpinner.classList.add('hidden');
       }
+      loadingSpinner.classList.add('hidden');
     });
-
-    function cleanupListeners(){
-      if (unsubClasses)   { try{unsubClasses();}catch{};   unsubClasses=null; }
-      if (unsubMyBookings){ try{unsubMyBookings();}catch{};unsubMyBookings=null; }
-    }
 
     function renderAuthScreen(isLogin = true) {
       authContainer.innerHTML = `
@@ -225,29 +266,7 @@
       lucide.createIcons();
     }
 
-    async function initializeApp() {
-      // Clases desde hoy en adelante (cubre todas las futuras)
-      unsubClasses = db.collection('classes')
-        .where('classDate', '>=', dateHelper.today)
-        .orderBy('classDate', 'asc')
-        .orderBy('time', 'asc')
-        .onSnapshot((snapshot) => {
-          state.classes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          render();
-        }, (err)=> console.error('Error clases:', err));
-
-      // Mis bookings (cualquier fecha)
-      unsubMyBookings = db.collection('bookings')
-        .where('userId', '==', state.currentUser.uid)
-        .onSnapshot((snapshot) => {
-          state.myBookings = snapshot.docs.map(doc => (doc.data().classId));
-          render();
-        }, (err)=> console.error('Error mis reservas:', err));
-
-      render();
-      loadingSpinner.classList.add('hidden');
-    }
-
+    // ---- Rendering
     function render() {
       const screen = state.currentScreen;
       let content = '';
@@ -262,70 +281,59 @@
 
     // -------- AGENDA (Reservas futuras + Horario) --------
     function getAgendaScreenHTML() {
-      // RESERVAS: todas las futuras (con 5 min de tolerancia si está por empezar)
+      // RESERVAS (render desde booking docs; sin cross-join)
       const upcoming = state.myBookings
-        .map(id => state.classes.find(c => c.id === id))
         .filter(Boolean)
-        .filter(cls => {
-          const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-          const cutoff = start + 5*60*1000;
-          return Date.now() <= cutoff;
+        .filter(b => {
+          const start = new Date(`${b.classDate}T${b.time}:00`).getTime();
+          return Date.now() <= start + 5*60*1000; // tolerancia
         })
         .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
 
       const reservasHTML = upcoming.length
-        ? upcoming.map(cls => {
+        ? upcoming.map(b => {
             const dayText =
-              cls.classDate === dateHelper.today ? 'Hoy' :
-              cls.classDate === dateHelper.tomorrow ? 'Mañana' :
-              dateHelper.human(cls.classDate);
-
-            // SOLO mostrar "Empieza en" si está dentro de 4 horas
-            const m = minutesUntilStart(cls.classDate, cls.time);
-            const soonLine = (m >= 0 && m <= STARTS_SOON_WINDOW_MIN)
-              ? `<p class="text-amber-300 text-xs mt-0.5">Empieza en ${formatMinutes(m)}</p>`
-              : '';
-
+              b.classDate === dateHelper.today ? 'Hoy' :
+              b.classDate === dateHelper.tomorrow ? 'Mañana' :
+              dateHelper.human(b.classDate);
+            const cover = coverHelper.forClassName(b.className, b.className);
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                  <img src="${coverHelper.forClass(cls)}" alt="${cls.name}"
-                       class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                  <img src="${cover}" alt="${b.className}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                   <div>
-                    <p class="font-bold text-lg">${cls.name}</p>
-                    <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
-                    ${soonLine}
+                    <p class="font-bold text-lg">${b.className}</p>
+                    <p class="text-zinc-400 text-sm">${dayText} • ${b.time}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(b.classDate, b.time)}</p>
                   </div>
                 </div>
-                <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+                <button data-action="cancel-booking" data-class-id="${b.classId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
               </div>`;
           }).join('')
         : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
 
-      // HORARIO: hoy/mañana con toggle
-      const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
-      let filtered = state.classes.filter(cls => cls.classDate === targetDate);
-      if (state.scheduleFilter === 'today') {
-        filtered = filtered.filter(cls => {
-          const start = new Date(`${dateHelper.today}T${cls.time}:00`).getTime();
-          const cutoff = start + 5*60*1000;
-          return Date.now() <= cutoff;
-        });
-      }
+      // HORARIO (clases futuras desde startAt)
+      const targetYMD = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
+      const filtered = state.classes.filter(cls => {
+        const ymd = dateHelper.getYYYYMMDD(cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt));
+        return ymd === targetYMD;
+      }).filter(cls => {
+        if (state.scheduleFilter !== 'today') return true;
+        const start = (cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt)).getTime();
+        return Date.now() <= start + 5*60*1000;
+      });
+
       const horarioHTML = filtered.length
         ? filtered.map(cls => {
             const enrolled = Number(cls.enrolledCount || 0);
             const available = Number(cls.capacity || 0) - enrolled;
-            const isBooked = state.myBookings.includes(cls.id);
+            const isBooked = state.myBookings.some(b => b.classId === cls.id);
             let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
             if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
             else if (available <= 0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
 
-            // SOLO mostrar "Empieza en" si está dentro de 4 horas
-            const m = minutesUntilStart(cls.classDate, cls.time);
-            const soonLine = (m >= 0 && m <= STARTS_SOON_WINDOW_MIN)
-              ? `<p class="text-amber-300 text-xs mt-0.5">Empieza en ${formatMinutes(m)}</p>`
-              : '';
+            const ymd = cls.classDate || targetYMD; // fallback label
+            const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
 
             return `
               <div data-action="navigate-details" data-class-id="${cls.id}"
@@ -335,8 +343,8 @@
                 <div class="flex-1">
                   <p class="font-bold text-lg">${cls.name}</p>
                   <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
-                  <p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p>
-                  ${soonLine}
+                  <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
+                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
                 </div>
                 <div class="text-right">${badge}</div>
               </div>`;
@@ -392,9 +400,11 @@
 
       const enrolled       = Number(cls.enrolledCount || 0);
       const availableSpots = Number(cls.capacity || 0) - enrolled;
-      const isBooked       = state.myBookings.includes(cls.id);
+      const isBooked       = state.myBookings.some(b => b.classId === cls.id);
       const durationMin    = Number(cls.duration || 60);
-      const timeRange      = timeHelper.range(cls.classDate, cls.time, durationMin);
+      const ymd            = cls.classDate || dateHelper.getYYYYMMDD(cls.startAt.toDate());
+      const hhmm           = cls.time      || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
+      const timeRange      = timeHelper.range(ymd, hhmm, durationMin);
 
       let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
       if (isBooked)        buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
@@ -403,7 +413,7 @@
       return `
         <div>
           <div class="relative">
-            <img src="${cls.image}" class="w-full h-64 object-cover">
+            <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover">
             <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
               <i data-lucide="arrow-left" class="w-6 h-6"></i>
             </button>
@@ -431,6 +441,7 @@
         </div>`;
     }
 
+    // ---- App actions
     const app = {
       handleAuth: (isLogin) => {
         const email = document.getElementById('email-input').value;
@@ -447,12 +458,16 @@
         if (newName && newName.trim() !== "") {
           loadingSpinner.classList.remove('hidden');
           state.currentUser.updateProfile({ displayName: newName.trim() }).then(() => {
-            render();
+            scheduleRender();
             loadingSpinner.classList.add('hidden');
           }).catch(err => { alert("Error: " + err.message); loadingSpinner.classList.add('hidden'); });
         }
       },
       navigateTo: (screen, data = {}) => {
+        // Attach/detach listeners depending on screen
+        if (screen === 'agenda') attachAgendaListeners();
+        else detachListeners();
+
         state.currentScreen = screen;
         if (data.classId) state.selectedClassId = data.classId;
         render();
@@ -481,7 +496,7 @@
               classId,
               userId: uid,
               userName: state.currentUser.displayName || state.currentUser.email,
-              classDate: cls.classDate,
+              classDate: cls.classDate,   // seguimos guardando estos campos
               time: cls.time,
               className: cls.name,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -561,7 +576,6 @@
       setTimeout(() => {
         genericModal.classList.add('hidden');
         if (fabs) fabs.classList.remove('opacity-0','pointer-events-none');
-        // Si estabas en detalles, regresa a la Agenda
         app.navigateTo(state.currentScreen === 'classDetails' ? 'agenda' : state.currentScreen);
       }, 200);
     }
