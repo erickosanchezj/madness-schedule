@@ -353,13 +353,17 @@
           if (!existingTimes.has(c.time)){
             const ref = this.db.collection('classes').doc();
             const { startAt, endAt } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
+
+            const isTRX = /trx/i.test(c.name || "");
+            const capacity = (typeof c.capacity === "number") ? c.capacity : (isTRX ? 13 : 15);
+
             batch.set(ref, {
               name: c.name,
               time: c.time,
               instructor: c.instructor || 'Por Asignar',
               duration: c.duration || 60,
               classDate: d.dateStr,
-              capacity: 15,
+              capacity,
               enrolledCount: 0,
               startAt, endAt,
               description: `Clase de ${c.name}`,
