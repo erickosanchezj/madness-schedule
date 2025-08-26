@@ -1,648 +1,746 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Panel de Administrador</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Chart.js para la gráfica de asistencia -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style> 
-        body { font-family: 'Inter', sans-serif; } 
-        .attendance-btn.selected-attended { background-color: #10b981; color: white; }
-        .attendance-btn.selected-absent { background-color: #f43f5e; color: white; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Madness - Panel de Administrador</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    :focus-visible { outline:2px solid #818cf8; outline-offset:2px; border-radius:.5rem; }
+    .attendance-btn.selected-attended { background-color:#10b981; color:white; }
+    .attendance-btn.selected-absent   { background-color:#f43f5e; color:white; }
+    #toast-container { pointer-events:none; }
+    .toast { pointer-events:auto; }
+  </style>
 </head>
 <body class="bg-zinc-900 text-white">
 
-    <!-- Pantalla de Login -->
-    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
-        <div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
-            <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
-            <input type="email" id="email-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin">
-            <input type="password" id="password-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña">
-            <button onclick="admin.login()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md">Entrar</button>
-            <p id="error-message" class="text-rose-400 text-center mt-4 hidden"></p>
-        </div>
+  <!-- TOASTS -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- LOGIN -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
+      <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
+      <input type="email" id="email-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin" autocomplete="email">
+      <input type="password" id="password-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña" autocomplete="current-password">
+      <button id="login-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md">Entrar</button>
+      <p id="error-message" class="text-rose-400 text-center mt-4 hidden"></p>
+    </div>
+  </div>
+
+  <!-- PANEL -->
+  <div id="admin-panel" class="hidden p-4 md:p-8">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold">Panel de Administración</h1>
+      <button id="logout-btn" class="text-rose-400 hover:text-rose-300 font-semibold">Cerrar Sesión</button>
     </div>
 
-    <!-- Panel Principal -->
-    <div id="admin-panel" class="hidden p-4 md:p-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold">Panel de Administración</h1>
-            <button onclick="admin.logout()" class="text-rose-400 hover:text-rose-300 font-semibold">Cerrar Sesión</button>
-        </div>
-        <div class="mb-6">
-            <button onclick="admin.generateDailyClasses()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
-                <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Generar/Verificar Clases del Día
-            </button>
-        </div>
-        
-        <!-- Secciones de Clases Separadas -->
-        <div class="space-y-8">
-            <div>
-                <h2 class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de Hoy</h2>
-                <div id="today-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
-            </div>
-            <div>
-                <h2 class="text-2xl font-bold mb-4 text-sky-400 border-b border-zinc-700 pb-2">Clases de Mañana</h2>
-                <div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
-            </div>
-        </div>
-
-        <!-- Reservas del Día -->
-        <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4">Reservas del Día</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                    <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Hoy</h3>
-                    <div id="today-bookings-list" class="space-y-4 text-sm"></div>
-                </div>
-                <div>
-                    <h3 class="text-lg font-semibold text-sky-400 mb-3 border-b border-zinc-700 pb-2">Mañana</h3>
-                    <div id="tomorrow-bookings-list" class="space-y-4 text-sm"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Reporte de Asistencia -->
-        <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4">Reporte de Asistencia y Proyección</h2>
-            <div>
-                <canvas id="attendanceChart"></canvas>
-            </div>
-            <div id="attendance-details" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                <!-- Los detalles de la asistencia se inyectarán aquí -->
-            </div>
-        </div>
-
-        <!-- Gestión de Usuarios -->
-        <div class="mt-8 p-6 bg-zinc-800 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
-            <div>
-                <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Reinicio de Contraseña</label>
-                <div class="flex space-x-2">
-                    <input type="email" id="user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="Correo del usuario">
-                    <button onclick="admin.sendPasswordReset()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
-                </div>
-            </div>
-        </div>
+    <div class="mb-6 flex flex-wrap gap-3">
+      <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
+        <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Generar/Verificar Clases (Hoy/Mañana)
+      </button>
+      <span id="panel-hint" class="text-zinc-400 self-center text-sm">Las clases nuevas se crean con <code>enrolledCount: 0</code>.</span>
     </div>
 
-    <!-- Modal para Editar Clase y Tomar Asistencia -->
-    <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto">
-            <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
-            <input type="hidden" id="class-id">
-            
-            <div class="border-b border-zinc-700">
-                <nav class="flex space-x-4" aria-label="Tabs">
-                    <button id="tab-details" class="px-3 py-2 font-medium text-sm rounded-t-md">Detalles</button>
-                    <button id="tab-attendance" class="px-3 py-2 font-medium text-sm rounded-t-md">Asistencia</button>
-                </nav>
-            </div>
-
-            <div id="details-content">
-                <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded mt-4">
-                <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded mt-4">
-                <div class="grid grid-cols-2 gap-4 mt-4">
-                    <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
-                    <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
-                </div>
-                <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24 mt-4"></textarea>
-            </div>
-
-            <div id="attendance-content" class="hidden">
-                <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
-                <div id="attendance-list" class="space-y-2"></div>
-                <button id="save-attendance-btn" onclick="admin.saveAttendance()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 hidden">Guardar Asistencia</button>
-            </div>
-
-            <div class="flex justify-end space-x-4 pt-4">
-                <button id="delete-button" onclick="admin.deleteClass()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">Eliminar</button>
-                <button onclick="admin.hideClassModal()" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded">Cancelar</button>
-                <button onclick="admin.saveClass()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar Cambios</button>
-            </div>
-        </div>
+    <!-- HOY / MAÑANA -->
+    <div class="space-y-8">
+      <section aria-labelledby="hoy-title">
+        <h2 id="hoy-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de Hoy</h2>
+        <div id="today-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
+      </section>
+      <section aria-labelledby="maniana-title">
+        <h2 id="maniana-title" class="text-2xl font-bold mb-4 text-sky-400 border-b border-zinc-700 pb-2">Clases de Mañana</h2>
+        <div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
+      </section>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <!-- RESERVAS -->
+    <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="reservas-title">
+      <h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas del Día</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Hoy</h3>
+          <div id="today-bookings-list" class="space-y-4 text-sm"></div>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-sky-400 mb-3 border-b border-zinc-700 pb-2">Mañana</h3>
+          <div id="tomorrow-bookings-list" class="space-y-4 text-sm"></div>
+        </div>
+      </div>
+    </section>
 
-    <script>
-    const admin = {
-        db: null, auth: null,
-        state: { classes: [], bookings: [], weeklySchedule: {}, currentAttendance: {}, attendanceChartInstance: null },
-        
-        dateHelper: {
-            getYYYYMMDD(date) {
-                const year = date.getFullYear();
-                const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                const day = date.getDate().toString().padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            },
-            get today() { return this.getYYYYMMDD(new Date()); },
-            get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); }
-        },
+    <!-- ASISTENCIA / PROYECCIÓN -->
+    <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="asistencia-title">
+      <h2 id="asistencia-title" class="text-2xl font-bold mb-4">Reporte de Asistencia y Proyección</h2>
+      <div class="relative">
+        <canvas id="attendanceChart"></canvas>
+      </div>
+      <div id="attendance-details" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
+    </section>
 
-        init() {
-            const firebaseConfig = { apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
-                authDomain: "madnessscheds.firebaseapp.com",
-                projectId: "madnessscheds",
-                storageBucket: "madnessscheds.firebasestorage.app",
-                messagingSenderId: "788538690861",
-                appId: "1:788538690861:web:ce19ead5929a8867c197a4" };
-            firebase.initializeApp(firebaseConfig);
-            this.db = firebase.firestore();
-            this.auth = firebase.auth();
-            this.handleAuthState();
-            lucide.createIcons();
-        },
+    <!-- USUARIOS -->
+    <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
+      <h2 id="usuarios-title" class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
+      <div>
+        <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Reinicio de Contraseña</label>
+        <div class="flex gap-2">
+          <input type="email" id="user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="Correo del usuario">
+          <button id="send-reset-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
-        handleAuthState() {
-            this.auth.onAuthStateChanged(user => {
-                if (user) {
-                    user.getIdTokenResult().then(idTokenResult => {
-                        if (!!idTokenResult.claims.admin) {
-                            document.getElementById('login-screen').classList.add('hidden');
-                            document.getElementById('admin-panel').classList.remove('hidden');
-                            this.loadWeeklyScheduleTemplate().then(() => this.listenToData());
-                        } else { this.logout(); alert('Acceso denegado.'); }
-                    });
-                } else {
-                    document.getElementById('login-screen').classList.remove('hidden');
-                    document.getElementById('admin-panel').classList.add('hidden');
-                }
-            });
-        },
+  <!-- MODAL CLASE -->
+  <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto"
+         role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
+      <input type="hidden" id="class-id">
+      
+      <div class="border-b border-zinc-700">
+        <nav class="flex space-x-4" aria-label="Tabs">
+          <button id="tab-details" class="px-3 py-2 font-medium text-sm rounded-t-md" aria-selected="true">Detalles</button>
+          <button id="tab-attendance" class="px-3 py-2 font-medium text-sm rounded-t-md hidden" aria-selected="false">Asistencia</button>
+        </nav>
+      </div>
 
-        async loadWeeklyScheduleTemplate() {
-            const snapshot = await this.db.collection('schedule_template').get();
-            if (snapshot.empty) {
-                alert("Error: No se encontró la plantilla de horario en la base de datos.");
-                return;
+      <div id="details-content">
+        <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded mt-4">
+        <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded mt-4">
+        <div class="grid grid-cols-2 gap-4 mt-4">
+          <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
+          <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
+        </div>
+        <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24 mt-4"></textarea>
+      </div>
+
+      <div id="attendance-content" class="hidden">
+        <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
+        <div id="attendance-list" class="space-y-2"></div>
+        <button id="save-attendance-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 hidden">Guardar Asistencia</button>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button id="delete-button" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">Eliminar</button>
+        <button id="cancel-button" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded">Cancelar</button>
+        <button id="save-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <script>
+  const AdminPanel = {
+    db:null, auth:null,
+    state:{
+      classes:[],                  // próximas (hoy/mañana)
+      bookingsMap:new Map(),       // classId -> [{...booking}]
+      weeklySchedule:{},
+      currentAttendance:{},
+      attendanceChartInstance:null,
+      unsubClasses:null,
+      unsubBookings:[],            // lista de unsubs por lote
+    },
+
+    // ---- FORMATTERS (punto 5)
+    timeFmt: new Intl.DateTimeFormat('es-MX', { hour:'2-digit', minute:'2-digit' }),
+    dayFmt:  new Intl.DateTimeFormat('es-MX', { weekday:'long', day:'2-digit', month:'short' }),
+
+    dateHelper:{
+      ymd(date){ const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; },
+      today(){ return this.ymd(new Date()); },
+      tomorrow(){ const t=new Date(); t.setDate(t.getDate()+1); return this.ymd(t); },
+    },
+
+    // ---- TOASTS (punto 8)
+    showToast({title='Hecho', message='', variant='success', timeout=3000}){
+      const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';
+      const wrap = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'toast max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-xl p-4 shadow-lg flex items-start gap-3';
+      el.innerHTML = `
+        <div class="w-10 h-10 rounded-lg bg-${color}-500/20 text-${color}-300 flex items-center justify-center shrink-0">
+          <i data-lucide="${variant==='error'?'alert-triangle':variant==='warn'?'alert-circle':'check'}" class="w-6 h-6"></i>
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold">${title}</p>
+          ${message?`<p class="text-sm text-zinc-400 mt-0.5">${message}</p>`:''}
+        </div>
+        <button class="shrink-0 text-zinc-400 hover:text-zinc-200" aria-label="Cerrar notificación"><i data-lucide="x" class="w-5 h-5"></i></button>`;
+      wrap.appendChild(el);
+      lucide.createIcons({ attrs:{ 'aria-hidden':'true' }});
+      const close = ()=> el.remove();
+      el.querySelector('button').addEventListener('click', close);
+      if (timeout) setTimeout(close, timeout);
+    },
+
+    // ---- INIT / AUTH (punto 3)
+    init(){
+      const firebaseConfig = {
+        apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
+        authDomain: "madnessscheds.firebaseapp.com",
+        projectId: "madnessscheds",
+        storageBucket: "madnessscheds.firebasestorage.app",
+        messagingSenderId: "788538690861",
+        appId: "1:788538690861:web:ce19ead5929a8867c197a4"
+      };
+      firebase.initializeApp(firebaseConfig);
+      this.db = firebase.firestore();
+      this.auth = firebase.auth();
+
+      document.getElementById('login-btn').onclick = ()=> this.login();
+      document.getElementById('logout-btn').onclick = ()=> this.logout();
+      document.getElementById('gen-classes-btn').onclick = ()=> this.generateDailyClasses();
+      document.getElementById('send-reset-btn').onclick = ()=> this.sendPasswordReset();
+
+      document.getElementById('delete-button').onclick = ()=> this.deleteClass();
+      document.getElementById('cancel-button').onclick = ()=> this.hideClassModal();
+      document.getElementById('save-button').onclick = ()=> this.saveClass();
+
+      this.auth.onAuthStateChanged(async (user)=>{
+        if (user){
+          const token = await user.getIdTokenResult();
+          if (token.claims && token.claims.admin){
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            try{
+              await this.loadWeeklyScheduleTemplate();
+              this.listenClassesTodayTomorrow(); // monta listeners (puntos 1 y 8)
+            }catch(e){
+              this.showToast({title:'Error al iniciar', message:e.message, variant:'error'});
             }
-            snapshot.forEach(doc => {
-                this.state.weeklySchedule[doc.id] = doc.data().classes || [];
-            });
-        },
-        
-        listenToData() {
-            this.db.collection('classes').where('classDate', '>=', this.dateHelper.today).onSnapshot(snap => {
-                this.state.classes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.renderAll();
-            });
-            this.db.collection('bookings').onSnapshot(snap => {
-                this.state.bookings = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.renderAll();
-            });
-        },
-
-        async generateDailyClasses() {
-            if (Object.keys(this.state.weeklySchedule).length === 0) {
-                alert("La plantilla de horario no se ha cargado.");
-                return;
-            }
-            alert('Verificando y generando clases...');
-            const today = new Date();
-            const tomorrow = new Date();
-            tomorrow.setDate(today.getDate() + 1);
-            const daysToGenerate = [
-                { dateStr: this.dateHelper.today, dayOfWeek: today.getDay() },
-                { dateStr: this.dateHelper.tomorrow, dayOfWeek: tomorrow.getDay() }
-            ];
-            const batch = this.db.batch();
-            let classesCreated = 0;
-            for (const day of daysToGenerate) {
-                const scheduleForDay = this.state.weeklySchedule[day.dayOfWeek] || [];
-                if (scheduleForDay.length === 0) continue;
-                const existingClassesSnap = await this.db.collection('classes').where('classDate', '==', day.dateStr).get();
-                const existingTimes = existingClassesSnap.docs.map(doc => doc.data().time);
-                for (const classTemplate of scheduleForDay) {
-                    if (!existingTimes.includes(classTemplate.time)) {
-                        const newClassRef = this.db.collection('classes').doc();
-                        batch.set(newClassRef, { 
-                            name: classTemplate.name, 
-                            time: classTemplate.time, 
-                            instructor: classTemplate.instructor || 'Por Asignar',
-                            duration: classTemplate.duration || 60,
-                            classDate: day.dateStr, 
-                            capacity: 15, 
-                            description: `Clase de ${classTemplate.name}`, 
-                            icon: '💪', 
-                            image: `https://placehold.co/400x250/1f2937/ffffff?text=${classTemplate.name}` 
-                        });
-                        classesCreated++;
-                    }
-                }
-            }
-            if (classesCreated > 0) { await batch.commit(); alert(`${classesCreated} nuevas clases generadas.`); }
-            else { alert('El horario ya está completo.'); }
-        },
-
-        renderAll() {
-            this.renderClassCards();
-            this.renderDailyBookings();
-            this.renderAttendanceChart();
-        },
-
-        isClassRunningNow(cls) {
-            if (cls.classDate !== this.dateHelper.today) return false;
-            const now = new Date();
-            const startTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const durationInMinutes = cls.duration || 60;
-            const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-            return now >= startTime && now <= endTime;
-        },
-
-        renderClassCards() {
-            const todayContainer = document.getElementById('today-classes-container');
-            const tomorrowContainer = document.getElementById('tomorrow-classes-container');
-            todayContainer.innerHTML = '';
-            tomorrowContainer.innerHTML = '';
-            
-            const sortedClasses = [...this.state.classes].sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
-
-            for (const cls of sortedClasses) {
-                const enrolledCount = this.state.bookings.filter(b => b.classId === cls.id).length;
-                const card = document.createElement('div');
-                
-                const isRunning = this.isClassRunningNow(cls);
-                const cardStyle = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
-
-                card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${cardStyle}`;
-                card.onclick = () => this.showClassModal(cls);
-                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="text-xl font-bold">${cls.name}</p><p class="text-sm text-zinc-400">${cls.instructor}</p></div><span class="text-2xl">${cls.icon || '💪'}</span></div><div class="mt-4 flex justify-between items-center text-sm"><span class="font-semibold">a las ${cls.time}</span><span class="font-bold ${enrolledCount >= cls.capacity ? 'text-rose-400' : 'text-white'}">${enrolledCount} / ${cls.capacity}</span></div>`;
-                
-                if (cls.classDate === this.dateHelper.today) {
-                    todayContainer.appendChild(card);
-                } else if (cls.classDate === this.dateHelper.tomorrow) {
-                    tomorrowContainer.appendChild(card);
-                }
-            }
-             if(todayContainer.innerHTML === '') todayContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
-             if(tomorrowContainer.innerHTML === '') tomorrowContainer.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
-        },
-
-        renderDailyBookings() {
-            const todayList = document.getElementById('today-bookings-list');
-            const tomorrowList = document.getElementById('tomorrow-bookings-list');
-            todayList.innerHTML = '';
-            tomorrowList.innerHTML = '';
-            const bookingsByClass = {};
-            for (const booking of this.state.bookings) {
-                const cls = this.state.classes.find(c => c.id === booking.classId);
-                if (!cls) continue;
-                if (!bookingsByClass[cls.id]) {
-                    bookingsByClass[cls.id] = { ...cls, attendees: [] };
-                }
-                bookingsByClass[cls.id].attendees.push(booking.userName || 'Usuario Anónimo');
-            }
-            const sortedClassesWithBookings = Object.values(bookingsByClass).sort((a,b) => a.time.localeCompare(b.time));
-            let todayHTML = '';
-            let tomorrowHTML = '';
-            for (const cls of sortedClassesWithBookings) {
-                const attendeesHTML = cls.attendees.map(name => `<li class="text-zinc-400 ml-4">- ${name}</li>`).join('');
-                const classBlock = `<div class="mb-3"><p class="font-bold text-white">${cls.time} - ${cls.name} (${cls.attendees.length} de ${cls.capacity})</p><ul class="list-none">${attendeesHTML}</ul></div>`;
-                if (cls.classDate === this.dateHelper.today) {
-                    todayHTML += classBlock;
-                } else if (cls.classDate === this.dateHelper.tomorrow) {
-                    tomorrowHTML += classBlock;
-                }
-            }
-            todayList.innerHTML = todayHTML || '<p class="text-zinc-500">No hay reservas para hoy.</p>';
-            tomorrowList.innerHTML = tomorrowHTML || '<p class="text-zinc-500">No hay reservas para mañana.</p>';
-        },
-        
-        async renderAttendanceChart() {
-            const ctx = document.getElementById('attendanceChart')?.getContext('2d');
-            const detailsContainer = document.getElementById('attendance-details');
-            if (!ctx || !detailsContainer) return;
-
-            const today = new Date();
-            const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
-            const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
-            const dayBefore = new Date(); dayBefore.setDate(today.getDate() - 2);
-            
-            const dateMap = {
-                dayBefore: { date: this.dateHelper.getYYYYMMDD(dayBefore), label: 'Hace 2 días' },
-                yesterday: { date: this.dateHelper.getYYYYMMDD(yesterday), label: 'Ayer' },
-                today: { date: this.dateHelper.getYYYYMMDD(today), label: 'Hoy' },
-                tomorrow: { date: this.dateHelper.getYYYYMMDD(tomorrow), label: 'Mañana' }
-            };
-
-            const dateLabels = Object.values(dateMap).map(d => d.label);
-            const dateKeys = Object.keys(dateMap);
-
-            const attendanceSnapshot = await this.db.collection('attendance').where('classDate', '>=', dateMap.dayBefore.date).get();
-            const tomorrowBookingsSnapshot = await this.db.collection('bookings').where('classDate', '==', dateMap.tomorrow.date).get();
-
-            const reportData = {};
-            Object.values(dateMap).forEach(d => reportData[d.date] = { attended: 0, absent: 0, booked: 0, details: { attended: {}, absent: {}, booked: {} } });
-
-            attendanceSnapshot.forEach(doc => {
-                const record = doc.data();
-                if (reportData[record.classDate]) {
-                    const category = record.status === 'attended' ? 'attended' : 'absent';
-                    reportData[record.classDate][category]++;
-                    if (!reportData[record.classDate].details[category][record.className]) {
-                        reportData[record.classDate].details[category][record.className] = [];
-                    }
-                    reportData[record.classDate].details[category][record.className].push(record.userName);
-                }
-            });
-
-            tomorrowBookingsSnapshot.forEach(doc => {
-                const booking = doc.data();
-                const cls = this.state.classes.find(c => c.id === booking.classId);
-                const className = cls ? `${cls.time} - ${cls.name}` : 'Clase Desconocida';
-                reportData[dateMap.tomorrow.date].booked++;
-                if (!reportData[dateMap.tomorrow.date].details.booked[className]) {
-                    reportData[dateMap.tomorrow.date].details.booked[className] = [];
-                }
-                reportData[dateMap.tomorrow.date].details.booked[className].push(booking.userName);
-            });
-
-            const attendedData = dateKeys.map(key => reportData[dateMap[key].date].attended);
-            const absentData = dateKeys.map(key => reportData[dateMap[key].date].absent);
-            const bookedData = dateKeys.map(key => reportData[dateMap[key].date].booked);
-
-            if (this.state.attendanceChartInstance) {
-                this.state.attendanceChartInstance.destroy();
-            }
-
-            this.state.attendanceChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: dateLabels,
-                    datasets: [
-                        { label: 'Asistieron', data: attendedData, backgroundColor: 'rgba(16, 185, 129, 0.6)' },
-                        { label: 'Faltaron', data: absentData, backgroundColor: 'rgba(244, 63, 94, 0.6)' },
-                        { label: 'Reservas Mañana', data: bookedData, backgroundColor: 'rgba(59, 130, 246, 0.6)' }
-                    ]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: '#a1a1aa', stepSize: 1 }, grid: { color: '#3f3f46' } },
-                        x: { ticks: { color: '#a1a1aa' }, grid: { color: '#3f3f46' } }
-                    },
-                    plugins: { legend: { labels: { color: '#d4d4d8' } } }
-                }
-            });
-
-            detailsContainer.innerHTML = dateKeys.map(key => {
-                const data = reportData[dateMap[key].date];
-                let content = '';
-                const renderDetails = (detailsObj) => {
-                    let html = '';
-                    const sortedClassNames = Object.keys(detailsObj).sort();
-                    for (const className of sortedClassNames) {
-                        html += `<div class="font-semibold text-zinc-300 mt-1">${className}:</div><ul class="list-disc list-inside text-zinc-400">${detailsObj[className].map(name => `<li>${name}</li>`).join('')}</ul>`;
-                    }
-                    return html || '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
-                };
-
-                if (key !== 'tomorrow') {
-                    content = `<div class="font-semibold text-emerald-400">Asistieron (${data.attended})</div>${renderDetails(data.details.attended)}<div class="font-semibold text-rose-400 mt-2">Faltaron (${data.absent})</div>${renderDetails(data.details.absent)}`;
-                } else {
-                    content = `<div class="font-semibold text-blue-400">Reservaron (${data.booked})</div>${renderDetails(data.details.booked)}`;
-                }
-                return `<div class="bg-zinc-900 p-3 rounded-md"><h4 class="font-bold text-lg mb-2">${dateMap[key].label}</h4>${content}</div>`;
-            }).join('');
-        },
-
-        isClassInProgress(cls) {
-            if (cls.classDate !== this.dateHelper.today) return false;
-            const now = new Date();
-            const classStartTime = new Date(`${cls.classDate}T${cls.time}:00`);
-            const attendanceStartTime = new Date(classStartTime.getTime() - 1440 * 60000);
-            const attendanceEndTime = new Date(classStartTime.getTime() + 120 * 60000);
-            return now >= attendanceStartTime && now <= attendanceEndTime;
-        },
-
-        showClassModal(cls = null) {
-            this.state.currentAttendance = {};
-            const modal = document.getElementById('class-modal');
-            document.getElementById('class-id').value = cls.id;
-            document.getElementById('class-name').value = cls.name;
-            document.getElementById('class-instructor').value = cls.instructor;
-            document.getElementById('class-time').value = cls.time;
-            document.getElementById('class-icon').value = cls.icon;
-            document.getElementById('class-description').value = cls.description;
-            
-            const tabDetails = document.getElementById('tab-details');
-            const tabAttendance = document.getElementById('tab-attendance');
-
-            this.switchTab('details');
-
-            tabDetails.onclick = () => this.switchTab('details');
-            tabAttendance.onclick = () => this.switchTab('attendance');
-
-            if (this.isClassInProgress(cls)) {
-                tabAttendance.classList.remove('hidden');
-                this.loadAttendeesForAttendance(cls);
-            } else {
-                tabAttendance.classList.add('hidden');
-            }
-            
-            modal.classList.remove('hidden');
-        },
-
-        switchTab(tabName) {
-            const tabDetails = document.getElementById('tab-details');
-            const tabAttendance = document.getElementById('tab-attendance');
-            const detailsContent = document.getElementById('details-content');
-            const attendanceContent = document.getElementById('attendance-content');
-
-            if (tabName === 'details') {
-                tabDetails.classList.add('border-b-2', 'border-indigo-500', 'text-indigo-400');
-                tabAttendance.classList.remove('border-b-2', 'border-indigo-500', 'text-indigo-400');
-                detailsContent.classList.remove('hidden');
-                attendanceContent.classList.add('hidden');
-            } else {
-                tabAttendance.classList.add('border-b-2', 'border-indigo-500', 'text-indigo-400');
-                tabDetails.classList.remove('border-b-2', 'border-indigo-500', 'text-indigo-400');
-                attendanceContent.classList.remove('hidden');
-                detailsContent.classList.add('hidden');
-            }
-        },
-
-        async loadAttendeesForAttendance(cls) {
-            const attendanceList = document.getElementById('attendance-list');
-            const statusMessage = document.getElementById('attendance-status-message');
-            const saveBtn = document.getElementById('save-attendance-btn');
-            
-            const attendees = this.state.bookings.filter(b => b.classId === cls.id);
-            
-            const attendanceSnapshot = await this.db.collection('attendance').where('classId', '==', cls.id).get();
-            const existingAttendance = {};
-            attendanceSnapshot.forEach(doc => {
-                const data = doc.data();
-                existingAttendance[data.userId] = data.status;
-            });
-
-            this.state.currentAttendance = {};
-            attendees.forEach(user => {
-                if (existingAttendance[user.userId]) {
-                    this.state.currentAttendance[user.userId] = {
-                        status: existingAttendance[user.userId],
-                        userName: user.userName
-                    };
-                }
-            });
-
-            if (attendees.length === 0) {
-                statusMessage.textContent = 'No hay usuarios inscritos en esta clase.';
-                attendanceList.innerHTML = '';
-                saveBtn.classList.add('hidden');
-                return;
-            }
-            
-            statusMessage.textContent = `${attendees.length} usuarios inscritos.`;
-            attendanceList.innerHTML = attendees.map(user => {
-                const savedStatus = existingAttendance[user.userId];
-                const attendedSelected = savedStatus === 'attended' ? 'selected-attended' : '';
-                const absentSelected = savedStatus === 'absent' ? 'selected-absent' : '';
-
-                return `
-                <div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
-                    <span class="text-zinc-300">${user.userName}</span>
-                    <div class="space-x-2" data-user-id="${user.userId}" data-user-name="${user.userName}">
-                        <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${attendedSelected}" data-status="attended">Asistió</button>
-                        <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${absentSelected}" data-status="absent">Faltó</button>
-                    </div>
-                </div>`;
-            }).join('');
-            saveBtn.classList.remove('hidden');
-
-            attendanceList.onclick = (e) => {
-                const button = e.target.closest('.attendance-btn');
-                if (!button) return;
-
-                const parent = button.parentElement;
-                const { userId, userName } = parent.dataset;
-                const { status } = button.dataset;
-
-                this.state.currentAttendance[userId] = { status, userName };
-
-                parent.querySelectorAll('.attendance-btn').forEach(btn => btn.classList.remove('selected-attended', 'selected-absent'));
-                button.classList.add(status === 'attended' ? 'selected-attended' : 'selected-absent');
-            };
-        },
-
-        async saveAttendance() {
-            const classId = document.getElementById('class-id').value;
-            const cls = this.state.classes.find(c => c.id === classId);
-            const attendanceData = this.state.currentAttendance;
-
-            if (Object.keys(attendanceData).length === 0) {
-                alert("No se ha marcado ninguna asistencia.");
-                return;
-            }
-
-            if (!confirm("¿Estás seguro de que quieres guardar la asistencia?")) return;
-
-            const batch = this.db.batch();
-            for (const userId in attendanceData) {
-                const record = attendanceData[userId];
-                const attendanceRef = this.db.collection('attendance').doc(`${cls.classDate}_${classId}_${userId}`);
-                batch.set(attendanceRef, {
-                    classId: classId,
-                    className: cls.name,
-                    classDate: cls.classDate,
-                    userId: userId,
-                    userName: record.userName,
-                    status: record.status,
-                    recordedAt: new Date()
-                }, { merge: true });
-            }
-
-            try {
-                await batch.commit();
-                alert("¡Asistencia guardada con éxito!");
-                this.hideClassModal();
-            } catch (error) {
-                alert("Error al guardar la asistencia: " + error.message);
-            }
-        },
-
-        sendPasswordReset() {
-            const emailInput = document.getElementById('user-email-input');
-            const email = emailInput.value;
-            if (!email) {
-                alert("Por favor, ingresa el correo del usuario.");
-                return;
-            }
-            this.auth.sendPasswordResetEmail(email)
-                .then(() => {
-                    alert(`Se ha enviado un correo para reiniciar la contraseña a ${email}.`);
-                    emailInput.value = '';
-                })
-                .catch((error) => {
-                    alert("Error al enviar el correo: " + error.message);
-                });
-        },
-        
-        login() {
-            const email = document.getElementById('email-input').value;
-            const pass = document.getElementById('password-input').value;
-            const errorMsg = document.getElementById('error-message');
-            errorMsg.classList.add('hidden');
-            this.auth.signInWithEmailAndPassword(email, pass).catch(err => {
-                errorMsg.innerText = "Error: " + err.message;
-                errorMsg.classList.remove('hidden');
-            });
-        },
-        logout() {
-            this.auth.signOut();
-        },
-        hideClassModal() {
-            document.getElementById('class-modal').classList.add('hidden');
-        },
-        async loadBookingsForClass(classId) {
-            const bookingsList = document.getElementById('bookings-list');
-            const bookingsCount = document.getElementById('bookings-count');
-            const snapshot = await this.db.collection('bookings').where('classId', '==', classId).get();
-            bookingsCount.innerText = snapshot.size;
-            if (snapshot.empty) {
-                bookingsList.innerHTML = 'No hay reservas.';
-                return;
-            }
-            bookingsList.innerHTML = snapshot.docs.map(doc => `<div>- ${doc.data().userName || 'Anónimo'}</div>`).join('');
-        },
-        async saveClass() {
-            const id = document.getElementById('class-id').value;
-            if (!id) return;
-            const data = {
-                name: document.getElementById('class-name').value,
-                instructor: document.getElementById('class-instructor').value,
-                time: document.getElementById('class-time').value,
-                icon: document.getElementById('class-icon').value,
-                description: document.getElementById('class-description').value,
-                capacity: 15
-            };
-            await this.db.collection('classes').doc(id).set(data, { merge: true });
-            this.hideClassModal();
-        },
-        async deleteClass() {
-            if (!confirm('¿Estás seguro?')) return;
-            const id = document.getElementById('class-id').value;
-            if (id) {
-                const bookingsSnapshot = await this.db.collection('bookings').where('classId', '==', id).get();
-                const batch = this.db.batch();
-                bookingsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                await this.db.collection('classes').doc(id).delete();
-            }
-            this.hideClassModal();
+          } else {
+            this.logout();
+            this.showToast({title:'Acceso denegado', message:'Tu cuenta no tiene rol de admin', variant:'error'});
+          }
+        } else {
+          document.getElementById('login-screen').classList.remove('hidden');
+          document.getElementById('admin-panel').classList.add('hidden');
+          this.teardownBookingsListeners();
+          if (this.state.unsubClasses) this.state.unsubClasses();
         }
-    };
+      });
 
-    admin.init();
-    </script>
+      lucide.createIcons();
+    },
+
+    async loadWeeklyScheduleTemplate(){
+      const snap = await this.db.collection('schedule_template').get();
+      if (snap.empty) throw new Error('No existe la plantilla de horario.');
+      snap.forEach(doc => { this.state.weeklySchedule[doc.id] = doc.data().classes || []; });
+    },
+
+    // ---- LISTENERS sin N+1 (punto 1)
+    listenClassesTodayTomorrow(){
+      const today = this.dateHelper.today();
+      const tomorrow = this.dateHelper.tomorrow();
+      if (this.state.unsubClasses) this.state.unsubClasses();
+
+      this.state.unsubClasses = this.db.collection('classes')
+        .where('classDate','in',[today, tomorrow])
+        .orderBy('classDate','asc')
+        .orderBy('time','asc')
+        .onSnapshot((snap)=>{
+          this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+          // Re-suscribe a bookings por lotes 'in' (≤10 ids por lote)
+          this.mountBookingsListenersForVisibleClasses();
+          this.renderAll();
+        }, (err)=>{
+          console.error(err);
+          this.showToast({title:'Error listando clases', message:err.message, variant:'error'});
+        });
+    },
+
+    teardownBookingsListeners(){
+      this.state.unsubBookings.forEach(fn=>{ try{fn&&fn();}catch{} });
+      this.state.unsubBookings = [];
+      this.state.bookingsMap.clear();
+    },
+
+    mountBookingsListenersForVisibleClasses(){
+      this.teardownBookingsListeners();
+      const classIds = this.state.classes.map(c=>c.id);
+      // Divide en lotes de 10
+      for (let i=0; i<classIds.length; i+=10){
+        const batch = classIds.slice(i, i+10);
+        const unsub = this.db.collection('bookings')
+          .where('classId','in',batch)
+          .onSnapshot((snap)=>{
+            // Actualiza bookingsMap incrementalmente
+            // Primero limpia los ids del lote
+            batch.forEach(cid=> this.state.bookingsMap.delete(cid));
+            snap.docs.forEach(doc=>{
+              const b = doc.data();
+              const arr = this.state.bookingsMap.get(b.classId) || [];
+              arr.push({ id:doc.id, ...b });
+              this.state.bookingsMap.set(b.classId, arr);
+            });
+            this.renderAll(); // refresca listados que muestren nombres
+          }, (err)=>{
+            console.error(err);
+            this.showToast({title:'Error listando reservas', message:err.message, variant:'error'});
+          });
+        this.state.unsubBookings.push(unsub);
+      }
+    },
+
+    // ---- GENERACIÓN (punto 1: enrolledCount=0)
+    async generateDailyClasses(){
+      if (!Object.keys(this.state.weeklySchedule).length){
+        this.showToast({title:'Plantilla no cargada', variant:'warn'});
+        return;
+      }
+      const today = new Date();
+      const tomorrow = new Date(); tomorrow.setDate(today.getDate()+1);
+      const days = [
+        { dateStr:this.dateHelper.ymd(today),    dow: today.getDay() },
+        { dateStr:this.dateHelper.ymd(tomorrow), dow: tomorrow.getDay() }
+      ];
+
+      const batch = this.db.batch();
+      let created = 0;
+
+      for (const d of days){
+        const tpl = this.state.weeklySchedule[String(d.dow)] || [];
+        if (!tpl.length) continue;
+
+        const existingSnap = await this.db.collection('classes').where('classDate','==', d.dateStr).get();
+        const existingTimes = new Set(existingSnap.docs.map(x => x.data().time));
+
+        for (const c of tpl){
+          if (!existingTimes.has(c.time)){
+            const ref = this.db.collection('classes').doc();
+            batch.set(ref, {
+              name: c.name,
+              time: c.time,
+              instructor: c.instructor || 'Por Asignar',
+              duration: c.duration || 60,
+              classDate: d.dateStr,
+              capacity: 15,
+              enrolledCount: 0,                // <- importante
+              description: `Clase de ${c.name}`,
+              icon: '💪',
+              image: `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
+            });
+            created++;
+          }
+        }
+      }
+
+      if (created>0){
+        await batch.commit();
+        this.showToast({title:'Clases generadas', message:`Se crearon ${created} clases`});
+      } else {
+        this.showToast({title:'Horario al día', message:'No hay clases nuevas por crear', variant:'warn'});
+      }
+    },
+
+    // ---- RENDER
+    renderAll(){
+      this.renderClassCards();
+      this.renderDailyBookings();
+      this.renderAttendanceChart();
+    },
+
+    isClassRunningNow(cls){
+      if (!cls || !cls.classDate) return false;
+      const todayStr = this.dateHelper.today();
+      if (cls.classDate !== todayStr) return false;
+      const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+      const end = start + (Number(cls.duration||60) * 60000);
+      const now = Date.now();
+      return now>=start && now<=end;
+    },
+
+    renderClassCards(){
+      const todayC = document.getElementById('today-classes-container');
+      const tomorrowC = document.getElementById('tomorrow-classes-container');
+      todayC.innerHTML = ''; tomorrowC.innerHTML = '';
+      const sorted = [...this.state.classes].sort((a,b)=>(a.classDate+a.time).localeCompare(b.classDate+b.time));
+
+      for (const cls of sorted){
+        const isRunning = this.isClassRunningNow(cls);
+        const style = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
+        const enrolled = Number(cls.enrolledCount || 0);
+        const capacity = Number(cls.capacity || 0);
+
+        const card = document.createElement('div');
+        card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${style}`;
+        card.setAttribute('role','button');
+        card.setAttribute('aria-label', `Editar ${cls.name} a las ${cls.time}`);
+        card.onclick = ()=> this.showClassModal(cls);
+        card.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <p class="text-xl font-bold">${cls.name}</p>
+              <p class="text-sm text-zinc-400">${cls.instructor}</p>
+            </div>
+            <span class="text-2xl">${cls.icon || '💪'}</span>
+          </div>
+          <div class="mt-4 flex justify-between items-center text-sm">
+            <span class="font-semibold">a las ${cls.time}</span>
+            <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
+          </div>`;
+        if (cls.classDate === this.dateHelper.today()) todayC.appendChild(card);
+        else if (cls.classDate === this.dateHelper.tomorrow()) tomorrowC.appendChild(card);
+      }
+
+      if (!todayC.children.length) todayC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
+      if (!tomorrowC.children.length) tomorrowC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
+    },
+
+    renderDailyBookings(){
+      const todayList = document.getElementById('today-bookings-list');
+      const tomList   = document.getElementById('tomorrow-bookings-list');
+      todayList.innerHTML = ''; tomList.innerHTML = '';
+
+      const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
+      this.state.classes.forEach(c => { if (byDate[c.classDate]) byDate[c.classDate].push(c); });
+
+      const buildHTML = (classesArr)=>{
+        const blocks = classesArr.map(cls=>{
+          const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
+          const enrolled = Number(cls.enrolledCount || 0);
+          const cap = Number(cls.capacity || 0);
+          const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
+          return `<div class="mb-3"><p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p><ul class="list-none">${names}</ul></div>`;
+        });
+        return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
+      };
+
+      todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
+      tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
+    },
+
+    async renderAttendanceChart(){
+      const ctx = document.getElementById('attendanceChart')?.getContext('2d');
+      const details = document.getElementById('attendance-details');
+      if (!ctx || !details) return;
+
+      const today = new Date();
+      const d1 = new Date(); d1.setDate(today.getDate()-2);
+      const d2 = new Date(); d2.setDate(today.getDate()-1);
+      const d3 = today;
+      const d4 = new Date(); d4.setDate(today.getDate()+1);
+
+      const dates = {
+        dayBefore: { date:this.dateHelper.ymd(d1), label:'Hace 2 días' },
+        yesterday: { date:this.dateHelper.ymd(d2), label:'Ayer' },
+        today:     { date:this.dateHelper.ymd(d3), label:'Hoy' },
+        tomorrow:  { date:this.dateHelper.ymd(d4), label:'Mañana' }
+      };
+      const labels = Object.values(dates).map(d=>d.label);
+      const keys   = Object.keys(dates);
+
+      // Asistencia (anteayer, ayer, hoy)
+      const attSnap = await this.db.collection('attendance')
+        .where('classDate','>=', dates.dayBefore.date)
+        .where('classDate','<=', dates.today.date)
+        .get();
+
+      const report = {};
+      Object.values(dates).forEach(d => { report[d.date] = { attended:0, absent:0, booked:0, details:{ attended:{}, absent:{}, booked:{} } }; });
+
+      attSnap.forEach(doc=>{
+        const r = doc.data();
+        if (!report[r.classDate]) return;
+        const cat = r.status==='attended' ? 'attended' : 'absent';
+        report[r.classDate][cat]++;
+        const key = `${r.className}`;
+        if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key]=[];
+        report[r.classDate].details[cat][key].push(r.userName);
+      });
+
+      // Reservas de mañana: suma bookings de clases mañana (usando cache de lotes)
+      const classesTomorrow = this.state.classes.filter(c => c.classDate === dates.tomorrow.date);
+      let bookedTomorrow = 0;
+      const bookedDetails = {};
+      classesTomorrow.forEach(c=>{
+        const arr = this.state.bookingsMap.get(c.id) || [];
+        bookedTomorrow += arr.length;
+        const label = `${c.time} - ${c.name}`;
+        bookedDetails[label] = arr.map(x => x.userName || 'Anónimo');
+      });
+      report[dates.tomorrow.date].booked = bookedTomorrow;
+      report[dates.tomorrow.date].details.booked = bookedDetails;
+
+      const attendedData = keys.map(k => report[dates[k].date].attended);
+      const absentData   = keys.map(k => report[dates[k].date].absent);
+      const bookedData   = keys.map(k => report[dates[k].date].booked);
+
+      if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
+      this.state.attendanceChartInstance = new Chart(ctx, {
+        type:'bar',
+        data:{
+          labels,
+          datasets:[
+            { label:'Asistieron',       data:attendedData, backgroundColor:'rgba(16,185,129,.6)'  },
+            { label:'Faltaron',         data:absentData,   backgroundColor:'rgba(244,63,94,.6)'  },
+            { label:'Reservas Mañana',  data:bookedData,   backgroundColor:'rgba(59,130,246,.6)' }
+          ]
+        },
+        options:{
+          scales:{
+            y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' } },
+            x:{ ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
+          },
+          plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
+        }
+      });
+
+      // Detalles
+      const renderList = (obj)=>{
+        const names = Object.keys(obj).sort();
+        if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
+        return names.map(n => `
+          <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
+          <ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>
+        `).join('');
+      };
+
+      details.innerHTML = keys.map(k=>{
+        const d = report[dates[k].date];
+        let content = '';
+        if (k !== 'tomorrow'){
+          content = `
+            <div class="font-semibold text-emerald-400">Asistieron (${d.attended})</div>${renderList(d.details.attended)}
+            <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent})</div>${renderList(d.details.absent)}
+          `;
+        } else {
+          content = `
+            <div class="font-semibold text-blue-400">Reservaron (${d.booked})</div>${renderList(d.details.booked)}
+          `;
+        }
+        return `<div class="bg-zinc-900 p-3 rounded-md"><h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>${content}</div>`;
+      }).join('');
+    },
+
+    // ---- MODAL
+    isClassInProgressWindow(cls){ // ventana ampliada: desde 24h antes hasta +120min
+      const todayStr = this.dateHelper.today();
+      if (cls.classDate !== todayStr) return false;
+      const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+      const open  = start - (24*60*60000);
+      const close = start + (120*60000);
+      const now = Date.now();
+      return now>=open && now<=close;
+    },
+
+    showClassModal(cls){
+      this.state.currentAttendance = {};
+      document.getElementById('class-id').value = cls.id;
+      document.getElementById('class-name').value = cls.name || '';
+      document.getElementById('class-instructor').value = cls.instructor || '';
+      document.getElementById('class-time').value = cls.time || '';
+      document.getElementById('class-icon').value = cls.icon || '';
+      document.getElementById('class-description').value = cls.description || '';
+
+      const tabD = document.getElementById('tab-details');
+      const tabA = document.getElementById('tab-attendance');
+      this.switchTab('details');
+      tabD.onclick = ()=> this.switchTab('details');
+
+      if (this.isClassInProgressWindow(cls)){
+        tabA.classList.remove('hidden');
+        tabA.onclick = ()=> this.switchTab('attendance');
+        this.loadAttendeesForAttendance(cls);
+      } else {
+        tabA.classList.add('hidden');
+        tabA.onclick = null;
+      }
+
+      const modal = document.getElementById('class-modal');
+      modal.classList.remove('hidden');
+      // foco accesible
+      document.getElementById('save-button').focus();
+    },
+
+    hideClassModal(){
+      document.getElementById('class-modal').classList.add('hidden');
+    },
+
+    switchTab(tab){
+      const tabD = document.getElementById('tab-details');
+      const tabA = document.getElementById('tab-attendance');
+      const contD= document.getElementById('details-content');
+      const contA= document.getElementById('attendance-content');
+      if (tab==='details'){
+        tabD.classList.add('border-b-2','border-indigo-500','text-indigo-400'); tabD.setAttribute('aria-selected','true');
+        tabA.classList.remove('border-b-2','border-indigo-500','text-indigo-400'); tabA.setAttribute('aria-selected','false');
+        contD.classList.remove('hidden'); contA.classList.add('hidden');
+      } else {
+        tabA.classList.add('border-b-2','border-indigo-500','text-indigo-400'); tabA.setAttribute('aria-selected','true');
+        tabD.classList.remove('border-b-2','border-indigo-500','text-indigo-400'); tabD.setAttribute('aria-selected','false');
+        contA.classList.remove('hidden'); contD.classList.add('hidden');
+      }
+    },
+
+    async loadAttendeesForAttendance(cls){
+      const list = document.getElementById('attendance-list');
+      const msg  = document.getElementById('attendance-status-message');
+      const save = document.getElementById('save-attendance-btn');
+
+      const currentBookings = this.state.bookingsMap.get(cls.id) || [];
+
+      const attSnap = await this.db.collection('attendance').where('classId','==', cls.id).get();
+      const existing = {};
+      attSnap.forEach(doc => {
+        const d = doc.data();
+        existing[d.userId] = d.status;
+      });
+
+      this.state.currentAttendance = {};
+      currentBookings.forEach(b=>{
+        if (existing[b.userId]){
+          this.state.currentAttendance[b.userId] = { status: existing[b.userId], userName: b.userName };
+        }
+      });
+
+      if (!currentBookings.length){
+        msg.textContent = 'No hay usuarios inscritos en esta clase.';
+        list.innerHTML = '';
+        save.classList.add('hidden');
+        return;
+      }
+
+      msg.textContent = `${currentBookings.length} usuarios inscritos.`;
+      list.innerHTML = currentBookings.map(b=>{
+        const st = existing[b.userId];
+        const selA = st==='attended' ? 'selected-attended':'';
+        const selF = st==='absent'   ? 'selected-absent':'';
+        return `
+          <div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
+            <span class="text-zinc-300">${b.userName || 'Anónimo'}</span>
+            <div class="space-x-2" data-user-id="${b.userId}" data-user-name="${b.userName||'Anónimo'}">
+              <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selA}" data-status="attended">Asistió</button>
+              <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selF}" data-status="absent">Faltó</button>
+            </div>
+          </div>`;
+      }).join('');
+      save.classList.remove('hidden');
+
+      list.onclick = (e)=>{
+        const btn = e.target.closest('.attendance-btn'); if (!btn) return;
+        const parent = btn.parentElement;
+        const { userId, userName } = parent.dataset;
+        const { status } = btn.dataset;
+        this.state.currentAttendance[userId] = { status, userName };
+        parent.querySelectorAll('.attendance-btn').forEach(x=>x.classList.remove('selected-attended','selected-absent'));
+        btn.classList.add(status==='attended'?'selected-attended':'selected-absent');
+      };
+
+      save.onclick = ()=> this.saveAttendance(cls);
+    },
+
+    async saveAttendance(cls){
+      const data = this.state.currentAttendance;
+      if (!Object.keys(data).length){
+        this.showToast({title:'Sin cambios', message:'No marcaste asistencia', variant:'warn'});
+        return;
+      }
+      const batch = this.db.batch();
+      Object.keys(data).forEach(uid=>{
+        const rec = data[uid];
+        const ref = this.db.collection('attendance').doc(`${cls.classDate}_${cls.id}_${uid}`);
+        batch.set(ref, {
+          classId: cls.id,
+          className: cls.name,
+          classDate: cls.classDate,
+          userId: uid,
+          userName: rec.userName,
+          status: rec.status,
+          recordedAt: new Date()
+        }, { merge:true });
+      });
+      try{
+        await batch.commit();
+        this.showToast({title:'Asistencia guardada'});
+        this.hideClassModal();
+      }catch(e){
+        this.showToast({title:'Error al guardar', message:e.message, variant:'error'});
+      }
+    },
+
+    // ---- USERS
+    async sendPasswordReset(){
+      const input = document.getElementById('user-email-input');
+      const email = input.value.trim();
+      if (!email) { this.showToast({title:'Falta correo', variant:'warn'}); return; }
+      try{
+        await this.auth.sendPasswordResetEmail(email);
+        this.showToast({title:'Correo enviado', message:`Revisa ${email}`});
+        input.value='';
+      }catch(e){
+        this.showToast({title:'No se pudo enviar', message:e.message, variant:'error'});
+      }
+    },
+
+    // ---- AUTH
+    login(){
+      const email = document.getElementById('email-input').value.trim();
+      const pass  = document.getElementById('password-input').value;
+      const errEl = document.getElementById('error-message');
+      errEl.classList.add('hidden');
+      this.auth.signInWithEmailAndPassword(email, pass).catch(err=>{
+        errEl.textContent = 'Error: ' + err.message;
+        errEl.classList.remove('hidden');
+      });
+    },
+    logout(){
+      this.auth.signOut();
+      this.showToast({title:'Sesión cerrada'});
+    },
+
+    // ---- CRUD Clase (sin tocar enrolledCount manualmente)
+    async saveClass(){
+      const id = document.getElementById('class-id').value;
+      if (!id) return;
+      const data = {
+        name: document.getElementById('class-name').value,
+        instructor: document.getElementById('class-instructor').value,
+        time: document.getElementById('class-time').value,
+        icon: document.getElementById('class-icon').value,
+        description: document.getElementById('class-description').value,
+      };
+      try{
+        await this.db.collection('classes').doc(id).set(data, { merge:true });
+        this.showToast({title:'Clase actualizada'});
+        this.hideClassModal();
+      }catch(e){
+        this.showToast({title:'No se guardó', message:e.message, variant:'error'});
+      }
+    },
+
+    async deleteClass(){
+      const id = document.getElementById('class-id').value;
+      if (!id) return;
+      // Modal sencillo de confirmación con toast
+      try{
+        // Borra reservas relacionadas y luego la clase
+        const snap = await this.db.collection('bookings').where('classId','==', id).get();
+        const batch = this.db.batch();
+        snap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        await this.db.collection('classes').doc(id).delete();
+        this.showToast({title:'Clase eliminada', message:`Se borraron ${snap.size} reservas`});
+        this.hideClassModal();
+      }catch(e){
+        this.showToast({title:'No se pudo eliminar', message:e.message, variant:'error'});
+      }
+    },
+  };
+
+  AdminPanel.init();
+  </script>
 </body>
 </html>
