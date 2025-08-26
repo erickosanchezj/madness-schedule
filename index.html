@@ -31,13 +31,16 @@
   <!-- App -->
   <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
     <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
+
     <!-- NavBar (z por debajo de los FABs) -->
     <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
       <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
-        <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
-        <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
-        <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
-        <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span></button>
+        <button data-screen="agenda" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
+          <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Agenda</span>
+        </button>
+        <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400">
+          <i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span>
+        </button>
       </div>
     </nav>
   </div>
@@ -99,22 +102,27 @@
         return `${y}-${m}-${d}`;
       },
       get today() { return this.getYYYYMMDD(new Date()); },
-      get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); }
+      get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); },
+      human(ymd) {
+        const [y,m,d] = ymd.split('-').map(n => parseInt(n,10));
+        const dt = new Date(y, m-1, d);
+        return dt.toLocaleDateString('es-MX', { weekday:'long', day:'2-digit', month:'short' });
+      }
     };
 
     let state = {
       currentUser: null,
       classes: [],
-      myBookings: [],
-      currentScreen: 'home',
+      myBookings: [],   // array de classId
+      currentScreen: 'agenda',
       scheduleFilter: 'today',
       selectedClassId: null
     };
 
-    // Soporte para shortcuts del manifest (?screen=...)
+    // Shortcuts (?screen=agenda|profile)
     const _params = new URLSearchParams(location.search);
     const _screen = _params.get('screen');
-    if (_screen && ['home','schedule','bookings','profile'].includes(_screen)) {
+    if (_screen && ['agenda','profile','classDetails'].includes(_screen)) {
       state.currentScreen = _screen;
     }
 
@@ -164,11 +172,11 @@
         </div>`;
       document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
       document.getElementById('auth-toggle').onclick = (e) => { e.preventDefault(); renderAuthScreen(!isLogin); };
-      // Asegura íconos en auth
       lucide.createIcons();
     }
 
     async function initializeApp() {
+      // Clases desde hoy en adelante (cubre todas las futuras)
       unsubClasses = db.collection('classes')
         .where('classDate', '>=', dateHelper.today)
         .orderBy('classDate', 'asc')
@@ -178,6 +186,7 @@
           render();
         }, (err)=> console.error('Error clases:', err));
 
+      // Mis bookings (cualquier fecha); se cruzan con las clases cargadas
       unsubMyBookings = db.collection('bookings')
         .where('userId', '==', state.currentUser.uid)
         .onSnapshot((snapshot) => {
@@ -192,9 +201,7 @@
     function render() {
       const screen = state.currentScreen;
       let content = '';
-      if (screen === 'home') content = getHomeScreenHTML();
-      else if (screen === 'schedule') content = getScheduleScreenHTML();
-      else if (screen === 'bookings') content = getBookingsScreenHTML();
+      if (screen === 'agenda') content = getAgendaScreenHTML();
       else if (screen === 'profile') content = getProfileScreenHTML();
       else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
 
@@ -203,128 +210,95 @@
       lucide.createIcons();
     }
 
-    function getHomeScreenHTML() {
-      const nextBooking = state.myBookings
+    // -------- AGENDA (Reservas futuras + Horario) --------
+    function getAgendaScreenHTML() {
+      // RESERVAS: todas las futuras (o que no hayan pasado aún hoy con 5 min de tolerancia)
+      const now = new Date();
+      const upcoming = state.myBookings
         .map(id => state.classes.find(c => c.id === id))
         .filter(Boolean)
         .filter(cls => {
-          const now = new Date();
-          const classStartTime = new Date(`${cls.classDate}T${cls.time}:00`);
-          const cutoffTime = new Date(classStartTime.getTime() + 5 * 60000);
-          return now <= cutoffTime;
+          const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+          const cutoff = start + 5*60*1000;
+          return Date.now() <= cutoff; // elimina pasadas de hoy que ya terminaron
         })
-        .sort((a, b) => (a.classDate + a.time).localeCompare(b.classDate + b.time))[0];
+        .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
 
-      let nextClassHTML = `
-        <h2 class="text-xl font-semibold mb-4">No tienes clases reservadas</h2>
-        <div class="bg-zinc-800 rounded-2xl p-5 text-center">
-          <p class="text-zinc-400">¡Anímate a reservar tu próxima sesión!</p>
-          <button data-action="navigate" data-screen="schedule" class="mt-4 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg">Ver Horario</button>
-        </div>`;
-      if (nextBooking) {
-        const dayText = nextBooking.classDate === dateHelper.today ? 'Hoy' : 'Mañana';
-        nextClassHTML = `
-          <h2 class="text-xl font-semibold mb-4">Tu Próxima Clase</h2>
-          <div class="bg-zinc-800 rounded-2xl p-5 flex items-center space-x-4">
-            <div>
-              <p class="font-semibold text-lg">${nextBooking.name}</p>
-              <p class="text-zinc-400">${dayText} a las ${nextBooking.time}</p>
-            </div>
-          </div>`;
-      }
-      return `
-        <div class="p-6 space-y-8">
-          <header>
-            <p class="text-zinc-400 text-lg">Hola,</p>
-            <h1 class="text-3xl font-bold tracking-tight">${state.currentUser.displayName || state.currentUser.email}</h1>
-          </header>
-          ${nextClassHTML}
-        </div>`;
-    }
+      const reservasHTML = upcoming.length
+        ? upcoming.map(cls => {
+            const dayText =
+              cls.classDate === dateHelper.today ? 'Hoy' :
+              cls.classDate === dateHelper.tomorrow ? 'Mañana' :
+              dateHelper.human(cls.classDate);
+            return `
+              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <p class="font-bold text-lg">${cls.name}</p>
+                  <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
+                </div>
+                <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+              </div>`;
+          }).join('')
+        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
 
-    function getScheduleScreenHTML() {
+      // HORARIO: hoy/mañana con toggle
       const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
       let filtered = state.classes.filter(cls => cls.classDate === targetDate);
-
       if (state.scheduleFilter === 'today') {
         const now = new Date();
         filtered = filtered.filter(cls => {
-          const classStartTime = new Date(`${dateHelper.today}T${cls.time}:00`);
-          const cutoffTime = new Date(classStartTime.getTime() + 5 * 60000);
-          return now <= cutoffTime;
+          const start = new Date(`${dateHelper.today}T${cls.time}:00`).getTime();
+          const cutoff = start + 5*60*1000;
+          return Date.now() <= cutoff;
         });
       }
+      const horarioHTML = filtered.length
+        ? filtered.map(cls => {
+            const enrolled = Number(cls.enrolledCount || 0);
+            const available = Number(cls.capacity || 0) - enrolled;
+            const isBooked = state.myBookings.includes(cls.id);
+            let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+            if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+            else if (available <= 0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
+
+            return `
+              <div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700">
+                <div>
+                  <p class="font-bold text-lg">${cls.name}</p>
+                  <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
+                  <p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p>
+                </div>
+                <div class="flex-1 text-right">${badge}</div>
+              </div>`;
+          }).join('')
+        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter === 'today' ? 'hoy' : 'mañana'}.</div>`;
 
       return `
-        <div class="p-6 space-y-6">
+        <div class="p-6 space-y-8">
           <header>
-            <h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1>
-            <p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p>
+            <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
+            <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
           </header>
 
-          <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-            <button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
-            <button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
-          </div>
+          <section aria-labelledby="mis-reservas">
+            <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
+            <div class="space-y-3">
+              ${reservasHTML}
+            </div>
+          </section>
 
-          <div class="space-y-4">
-            ${
-              filtered.length > 0
-                ? filtered.map(cls => {
-                    const enrolled = Number(cls.enrolledCount || 0);
-                    const availableSpots = Number(cls.capacity || 0) - enrolled;
-                    const isBooked = state.myBookings.includes(cls.id);
-                    let badgeHTML = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
-                    if (isBooked) badgeHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-                    else if (availableSpots <= 0) badgeHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
-
-                    return `
-                      <div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700">
-                        <div>
-                          <p class="font-bold text-lg">${cls.name}</p>
-                          <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
-                          <p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p>
-                        </div>
-                        <div class="flex-1 text-right">${badgeHTML}</div>
-                      </div>`;
-                  }).join('')
-                : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter === 'today' ? 'hoy' : 'mañana'}.</div>`
-            }
-          </div>
-        </div>`;
-    }
-
-    function getBookingsScreenHTML() {
-      const myBooked = state.myBookings
-        .map(id => state.classes.find(c => c.id === id))
-        .filter(Boolean)
-        .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
-
-      return `
-        <div class="p-6 space-y-6">
-          <header>
-            <h1 class="text-3xl font-bold tracking-tight">Mis Reservas</h1>
-            <p class="text-zinc-400">Tus próximas clases agendadas.</p>
-          </header>
-          <div class="space-y-4">
-            ${
-              myBooked.length > 0
-                ? myBooked.map(cls => {
-                    const dayText = cls.classDate === dateHelper.today ? 'Hoy' : (cls.classDate === dateHelper.tomorrow ? 'Mañana' : cls.classDate);
-                    return `
-                      <div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4">
-                        <div>
-                          <p class="font-bold text-lg">${cls.name}</p>
-                          <p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p>
-                        </div>
-                        <div class="flex-1 text-right">
-                          <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
-                        </div>
-                      </div>`;
-                  }).join('')
-                : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes clases agendadas.</div>`
-            }
-          </div>
+          <section aria-labelledby="horario">
+            <div class="flex items-center justify-between mb-3">
+              <h2 id="horario" class="text-xl font-semibold">Horario</h2>
+              <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
+                <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
+                <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
+              </div>
+            </div>
+            <div class="space-y-3">
+              ${horarioHTML}
+            </div>
+          </section>
         </div>`;
     }
 
@@ -344,7 +318,7 @@
 
     function getClassDetailsScreenHTML(classId) {
       const cls = state.classes.find(c => c.id === classId);
-      if (!cls) return getScheduleScreenHTML();
+      if (!cls) return getAgendaScreenHTML();
       const enrolled = Number(cls.enrolledCount || 0);
       const availableSpots = Number(cls.capacity || 0) - enrolled;
       const isBooked = state.myBookings.includes(cls.id);
@@ -357,7 +331,7 @@
         <div>
           <div class="relative">
             <img src="${cls.image}" class="w-full h-64 object-cover">
-            <button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+            <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
           </div>
           <div class="p-6 space-y-4 pb-40">
             <h1 class="text-3xl font-bold">${cls.name}</h1>
@@ -501,7 +475,8 @@
       setTimeout(() => {
         genericModal.classList.add('hidden');
         if (fabs) fabs.classList.remove('opacity-0','pointer-events-none');
-        app.navigateTo(state.currentScreen === 'classDetails' ? 'bookings' : state.currentScreen);
+        // Si estabas en detalles, regresa a la Agenda
+        app.navigateTo(state.currentScreen === 'classDetails' ? 'agenda' : state.currentScreen);
       }, 200);
     }
 
