@@ -537,14 +537,12 @@
   });
   </script>
   <script>
-  // Registro del Service Worker (asegúrate de servir /service-worker.js desde la raíz o ajusta la ruta)
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker
-            .register('/service-worker.js', { scope: '/' })
-            .catch(err => console.error('Fallo al registrar el Service Worker:', err));
-        });
-    }
-  </script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+      .catch(console.error);
+  });
+}
+</script>
 </body>
 </html>
