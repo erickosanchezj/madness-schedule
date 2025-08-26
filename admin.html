@@ -139,7 +139,12 @@
         state: { classes: [], bookings: [], weeklySchedule: {}, currentAttendance: {}, attendanceChartInstance: null },
         
         dateHelper: {
-            getYYYYMMDD(date) { return date.toISOString().split('T')[0]; },
+            getYYYYMMDD(date) {
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            },
             get today() { return this.getYYYYMMDD(new Date()); },
             get tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return this.getYYYYMMDD(d); }
         },
@@ -150,8 +155,7 @@
                 projectId: "madnessscheds",
                 storageBucket: "madnessscheds.firebasestorage.app",
                 messagingSenderId: "788538690861",
-                appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-             };
+                appId: "1:788538690861:web:ce19ead5929a8867c197a4" };
             firebase.initializeApp(firebaseConfig);
             this.db = firebase.firestore();
             this.auth = firebase.auth();
@@ -338,26 +342,29 @@
             const tomorrowBookingsSnapshot = await this.db.collection('bookings').where('classDate', '==', dateMap.tomorrow.date).get();
 
             const reportData = {};
-            Object.values(dateMap).forEach(d => reportData[d.date] = { attended: 0, absent: 0, booked: 0, attendedNames: [], absentNames: [], bookedNames: [] });
+            Object.values(dateMap).forEach(d => reportData[d.date] = { attended: 0, absent: 0, booked: 0, details: { attended: {}, absent: {}, booked: {} } });
 
             attendanceSnapshot.forEach(doc => {
                 const record = doc.data();
                 if (reportData[record.classDate]) {
-                    if (record.status === 'attended') {
-                        reportData[record.classDate].attended++;
-                        reportData[record.classDate].attendedNames.push(record.userName);
+                    const category = record.status === 'attended' ? 'attended' : 'absent';
+                    reportData[record.classDate][category]++;
+                    if (!reportData[record.classDate].details[category][record.className]) {
+                        reportData[record.classDate].details[category][record.className] = [];
                     }
-                    if (record.status === 'absent') {
-                        reportData[record.classDate].absent++;
-                        reportData[record.classDate].absentNames.push(record.userName);
-                    }
+                    reportData[record.classDate].details[category][record.className].push(record.userName);
                 }
             });
 
             tomorrowBookingsSnapshot.forEach(doc => {
                 const booking = doc.data();
+                const cls = this.state.classes.find(c => c.id === booking.classId);
+                const className = cls ? `${cls.time} - ${cls.name}` : 'Clase Desconocida';
                 reportData[dateMap.tomorrow.date].booked++;
-                reportData[dateMap.tomorrow.date].bookedNames.push(booking.userName);
+                if (!reportData[dateMap.tomorrow.date].details.booked[className]) {
+                    reportData[dateMap.tomorrow.date].details.booked[className] = [];
+                }
+                reportData[dateMap.tomorrow.date].details.booked[className].push(booking.userName);
             });
 
             const attendedData = dateKeys.map(key => reportData[dateMap[key].date].attended);
@@ -390,23 +397,21 @@
             detailsContainer.innerHTML = dateKeys.map(key => {
                 const data = reportData[dateMap[key].date];
                 let content = '';
+                const renderDetails = (detailsObj) => {
+                    let html = '';
+                    const sortedClassNames = Object.keys(detailsObj).sort();
+                    for (const className of sortedClassNames) {
+                        html += `<div class="font-semibold text-zinc-300 mt-1">${className}:</div><ul class="list-disc list-inside text-zinc-400">${detailsObj[className].map(name => `<li>${name}</li>`).join('')}</ul>`;
+                    }
+                    return html || '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
+                };
+
                 if (key !== 'tomorrow') {
-                    content = `
-                        <div class="font-semibold text-emerald-400">Asistieron (${data.attended})</div>
-                        <ul class="list-disc list-inside text-zinc-400">${data.attendedNames.map(name => `<li>${name}</li>`).join('') || '<li>Nadie</li>'}</ul>
-                        <div class="font-semibold text-rose-400 mt-2">Faltaron (${data.absent})</div>
-                        <ul class="list-disc list-inside text-zinc-400">${data.absentNames.map(name => `<li>${name}</li>`).join('') || '<li>Nadie</li>'}</ul>
-                    `;
+                    content = `<div class="font-semibold text-emerald-400">Asistieron (${data.attended})</div>${renderDetails(data.details.attended)}<div class="font-semibold text-rose-400 mt-2">Faltaron (${data.absent})</div>${renderDetails(data.details.absent)}`;
                 } else {
-                    content = `
-                        <div class="font-semibold text-blue-400">Reservaron (${data.booked})</div>
-                        <ul class="list-disc list-inside text-zinc-400">${data.bookedNames.map(name => `<li>${name}</li>`).join('') || '<li>Nadie</li>'}</ul>
-                    `;
+                    content = `<div class="font-semibold text-blue-400">Reservaron (${data.booked})</div>${renderDetails(data.details.booked)}`;
                 }
-                return `<div class="bg-zinc-900 p-3 rounded-md">
-                            <h4 class="font-bold text-lg mb-2">${dateMap[key].label}</h4>
-                            ${content}
-                        </div>`;
+                return `<div class="bg-zinc-900 p-3 rounded-md"><h4 class="font-bold text-lg mb-2">${dateMap[key].label}</h4>${content}</div>`;
             }).join('');
         },
 
