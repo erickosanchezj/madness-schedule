@@ -1,340 +1,637 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Madness - Reserva de Clases</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#18181b">
-    <style>
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .transition-all { transition: all 0.3s ease-in-out; }
-        .spinner { border-top-color: #6366f1; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GymApp - Reserva de Clases</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#18181b">
+  <style>
+    body { font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
+    .no-scrollbar::-webkit-scrollbar { display:none; }
+    .transition-all { transition: all .3s ease-in-out; }
+    .spinner { border-top-color:#6366f1; }
+    /* Focus visible para accesibilidad */
+    :focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius:.5rem; }
+    /* Toasts */
+    #toast-container { pointer-events:none; }
+    .toast { pointer-events:auto; }
+  </style>
 </head>
 <body class="bg-zinc-900 text-white antialiased">
 
-    <!-- Contenedor principal de la App -->
-    <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
-        <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
-        <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
-             <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
-                <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
-                <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
-                <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
-                <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span></button>
-            </div>
-        </nav>
+  <!-- Región aria-live para toasts (accesibilidad) -->
+  <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Contenedor principal de la App -->
+  <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
+    <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700" aria-label="Navegación principal">
+      <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
+        <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400" aria-current="page" aria-label="Inicio">
+          <i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span>
+        </button>
+        <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400" aria-label="Horario">
+          <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span>
+        </button>
+        <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400" aria-label="Reservas">
+          <i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span>
+        </button>
+        <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400" aria-label="Perfil">
+          <i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Pantalla de Login/Registro -->
+  <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+
+  <!-- Pantalla de Carga Global -->
+  <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50" role="status" aria-live="polite" aria-label="Cargando">
+    <div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
+  </div>
+
+  <!-- Modal Genérico (accesible con focus trap) -->
+  <div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
+    <div id="modal-content"
+         class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"
+         role="dialog" aria-modal="true" aria-labelledby="modal-title">
     </div>
+  </div>
 
-    <!-- Pantalla de Login/Registro -->
-    <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+  <!-- Firebase SDKs (compat por ahora) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
-    <!-- Pantalla de Carga Global -->
-    <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
-        <div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
-    </div>
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
+        authDomain: "madnessscheds.firebaseapp.com",
+        projectId: "madnessscheds",
+        storageBucket: "madnessscheds.firebasestorage.app",
+        messagingSenderId: "788538690861",
+        appId: "1:788538690861:web:ce19ead5929a8867c197a4"
+    };
 
-    <!-- Modal Genérico -->
-    <div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
-        <div id="modal-content" class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"></div>
-    </div>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    // Formatters (punto 5)
+    const timeFmt = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const dayFmt  = new Intl.DateTimeFormat('es-MX', { weekday: 'long', day:'2-digit', month:'short' });
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // PEGA AQUÍ TU OBJETO DE CONFIGURACIÓN DE FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
-            authDomain: "madnessscheds.firebaseapp.com",
-            projectId: "madnessscheds",
-            storageBucket: "madnessscheds.firebasestorage.app",
-            messagingSenderId: "788538690861",
-            appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-        };
+    // Helpers de fecha (se mantienen classDate+time, pero se formatea con Intl)
+    const dateHelper = {
+      getYYYYMMDD(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth()+1).padStart(2,'0');
+        const d = String(date.getDate()).padStart(2,'0');
+        return `${y}-${m}-${d}`;
+      },
+      get today() { return this.getYYYYMMDD(new Date()); },
+      get tomorrow() {
+        const t = new Date();
+        t.setDate(t.getDate()+1);
+        return this.getYYYYMMDD(t);
+      },
+      toDate(classDate, timeHHmm){
+        // Construye Date local con tolerancia
+        return new Date(`${classDate}T${timeHHmm}:00`);
+      },
+      isUpcoming(classDate, timeHHmm, toleranceMin=5){
+        const start = this.toDate(classDate, timeHHmm).getTime();
+        return (start + toleranceMin*60000) >= Date.now();
+      },
+      displayTime(timeHHmm){
+        // timeHHmm -> Date hoy con esa hora para formatear
+        const [H,M] = timeHHmm.split(':').map(Number);
+        const d = new Date(); d.setHours(H, M, 0, 0);
+        return timeFmt.format(d);
+      }
+    };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
+    // Estado
+    let state = {
+      currentUser: null,
+      classes: [],
+      bookings: [],            // array de classId
+      currentScreen: 'home',
+      scheduleFilter: 'today',
+      selectedClassId: null
+    };
 
-        const dateHelper = {
-            getYYYYMMDD(date) {
-                const year = date.getFullYear();
-                const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                const day = date.getDate().toString().padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            },
-            get today() { return this.getYYYYMMDD(new Date()); },
-            get tomorrow() {
-                const tomorrowDate = new Date();
-                tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-                return this.getYYYYMMDD(tomorrowDate);
-            }
-        };
+    // DOM
+    const mainContent   = document.getElementById('main-content');
+    const authContainer = document.getElementById('auth-container');
+    const appContainer  = document.getElementById('app-container');
+    const loadingSpinner= document.getElementById('loading-spinner');
+    const navBar        = document.getElementById('nav-bar');
+    const genericModal  = document.getElementById('generic-modal');
+    const modalContent  = document.getElementById('modal-content');
+    const toastContainer= document.getElementById('toast-container');
 
-        let state = {
-            currentUser: null,
-            classes: [],
-            bookings: [],
-            currentScreen: 'home',
-            scheduleFilter: 'today',
-            selectedClassId: null
-        };
+    // ---- TOASTS (punto 8)
+    function showToast({title='Listo', message='', variant='success', timeout=3000}){
+      const color = variant === 'error' ? 'rose' : variant === 'warn' ? 'amber' : 'emerald';
+      const el = document.createElement('div');
+      el.className = `toast max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-xl p-4 shadow-lg flex items-start space-x-3`;
+      el.innerHTML = `
+        <div class="w-10 h-10 rounded-lg bg-${color}-500/20 text-${color}-300 flex items-center justify-center shrink-0">
+          <i data-lucide="${variant==='error'?'alert-triangle':variant==='warn'?'alert-circle':'check'}" class="w-6 h-6"></i>
+        </div>
+        <div class="flex-1">
+          <p class="font-semibold">${title}</p>
+          ${message ? `<p class="text-sm text-zinc-400 mt-0.5">${message}</p>` : ''}
+        </div>
+        <button class="shrink-0 text-zinc-400 hover:text-zinc-200" aria-label="Cerrar notificación">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>`;
+      toastContainer.appendChild(el);
+      lucide.createIcons({ attrs: { 'aria-hidden':'true' }});
+      const closeBtn = el.querySelector('button');
+      const cleanup = () => { el.remove(); };
+      closeBtn.addEventListener('click', cleanup);
+      if (timeout) setTimeout(cleanup, timeout);
+    }
 
-        const mainContent = document.getElementById('main-content');
-        const authContainer = document.getElementById('auth-container');
-        const appContainer = document.getElementById('app-container');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const navBar = document.getElementById('nav-bar');
-
-        auth.onAuthStateChanged(user => {
-            loadingSpinner.classList.remove('hidden');
-            if (user) {
-                state.currentUser = user;
-                authContainer.style.display = 'none';
-                appContainer.style.display = 'flex';
-                initializeApp();
-            } else {
-                state.currentUser = null;
-                appContainer.style.display = 'none';
-                authContainer.style.display = 'flex';
-                renderAuthScreen();
-                loadingSpinner.classList.add('hidden');
-            }
-        });
-
-        function renderAuthScreen(isLogin = true) {
-            authContainer.innerHTML = `
-                <div class="w-full max-w-md mx-auto">
-                    <h1 class="text-4xl font-bold text-white mb-2">GymApp</h1>
-                    <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
-                    <div class="space-y-4">
-                        <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                    </div>
-                    <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
-                    <p class="text-center text-zinc-400 mt-6">${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'} <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a></p>
-                </div>`;
-            document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
-            document.getElementById('auth-toggle').onclick = (e) => { e.preventDefault(); renderAuthScreen(!isLogin); };
-        }
-        
-        async function initializeApp() {
-            await Promise.all([listenToClasses(), listenToBookings()]);
-            render();
-            loadingSpinner.classList.add('hidden');
-        }
-
-        function listenToClasses() {
-            return db.collection('classes')
-                .where('classDate', '>=', dateHelper.today)
-                .orderBy('classDate', 'asc')
-                .orderBy('time', 'asc')
-                .onSnapshot(async (snapshot) => {
-                    const classPromises = snapshot.docs.map(async (doc) => {
-                        const classData = { id: doc.id, ...doc.data() };
-                        const bookingsSnapshot = await db.collection('bookings').where('classId', '==', classData.id).get();
-                        classData.enrolledCount = bookingsSnapshot.size;
-                        return classData;
-                    });
-                    state.classes = await Promise.all(classPromises);
-                    if (state.currentUser) render();
-                }, error => console.error("Error al obtener clases (posiblemente falta un índice en Firestore): ", error));
-        }
-
-        function listenToBookings() {
-            if (!state.currentUser) return;
-            return db.collection('bookings').where('userId', '==', state.currentUser.uid).onSnapshot(snapshot => {
-                state.bookings = snapshot.docs.map(doc => doc.data().classId);
-                if (state.currentUser) render();
-            }, error => console.error("Error al obtener reservas: ", error));
-        }
-
-        function render() {
-            const screen = state.currentScreen;
-            let content = '';
-            if (screen === 'home') content = getHomeScreenHTML();
-            else if (screen === 'schedule') content = getScheduleScreenHTML();
-            else if (screen === 'bookings') content = getBookingsScreenHTML();
-            else if (screen === 'profile') content = getProfileScreenHTML();
-            else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
-            
-            mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
-            updateNavButtons();
-            lucide.createIcons();
-        }
-
-        function getHomeScreenHTML() {
-            const nextBooking = state.bookings
-                .map(id => state.classes.find(c => c.id === id))
-                .filter(Boolean)
-                .filter(cls => {
-                    const now = new Date();
-                    const classStartTime = new Date(`${cls.classDate}T${cls.time}:00`);
-                    const cutoffTime = new Date(classStartTime.getTime() + 5 * 60000); // 5 min de tolerancia
-                    return now <= cutoffTime;
-                })
-                .sort((a, b) => (a.classDate + a.time).localeCompare(b.classDate + b.time))[0];
-
-            let nextClassHTML = `<h2 class="text-xl font-semibold mb-4">No tienes clases reservadas</h2><div class="bg-zinc-800 rounded-2xl p-5 text-center"><p class="text-zinc-400">¡Anímate a reservar tu próxima sesión!</p><button data-action="navigate" data-screen="schedule" class="mt-4 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg">Ver Horario</button></div>`;
-            if (nextBooking) {
-                const dayText = nextBooking.classDate === dateHelper.today ? 'Hoy' : 'Mañana';
-                nextClassHTML = `<h2 class="text-xl font-semibold mb-4">Tu Próxima Clase</h2><div class="bg-zinc-800 rounded-2xl p-5 flex items-center space-x-4"><div><p class="font-semibold text-lg">${nextBooking.name}</p><p class="text-zinc-400">${dayText} a las ${nextBooking.time}</p></div></div>`;
-            }
-            return `<div class="p-6 space-y-8"><header><p class="text-zinc-400 text-lg">Hola,</p><h1 class="text-3xl font-bold tracking-tight">${state.currentUser.displayName || state.currentUser.email}</h1></header>${nextClassHTML}</div>`;
-        }
-        
-        function getScheduleScreenHTML() {
-            const targetDate = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
-            let filteredClasses = state.classes.filter(cls => cls.classDate === targetDate);
-
-            if (state.scheduleFilter === 'today') {
-                const now = new Date();
-                filteredClasses = filteredClasses.filter(cls => {
-                    const classStartTime = new Date(`${dateHelper.today}T${cls.time}:00`);
-                    const cutoffTime = new Date(classStartTime.getTime() + 5 * 60000); // 5 min de tolerancia
-                    return now <= cutoffTime;
-                });
-            }
-
-            return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1><p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p></header><div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg"><button data-action="set-filter" data-filter="today" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button><button data-action="set-filter" data-filter="tomorrow" class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button></div><div class="space-y-4">${filteredClasses.length > 0 ? filteredClasses.map(cls => { const availableSpots = cls.capacity - (cls.enrolledCount || 0); const isBooked = state.bookings.includes(cls.id); let spotsHTML = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`; if (isBooked) spotsHTML = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`; else if (availableSpots <= 0) spotsHTML = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`; return `<div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">con ${cls.instructor}</p><p class="text-sm mt-1 text-emerald-400">${cls.time} hrs</p></div><div class="flex-1 text-right">${spotsHTML}</div></div>`; }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por hoy.</div>`}</div></div>`;
-        }
-
-        function getBookingsScreenHTML() {
-             const myBookedClasses = state.bookings.map(id => state.classes.find(c => c.id === id)).filter(Boolean).sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
-             return `<div class="p-6 space-y-6"><header><h1 class="text-3xl font-bold tracking-tight">Mis Reservas</h1><p class="text-zinc-400">Tus próximas clases agendadas.</p></header><div class="space-y-4">${myBookedClasses.length > 0 ? myBookedClasses.map(cls => { const dayText = cls.classDate === dateHelper.today ? 'Hoy' : 'Mañana'; return `<div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4"><div><p class="font-bold text-lg">${cls.name}</p><p class="text-zinc-400 text-sm">${dayText} a las ${cls.time}</p></div><div class="flex-1 text-right"><button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button></div></div>`; }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes clases agendadas.</div>`}</div></div>`;
-        }
-
-        function getProfileScreenHTML() {
-            return `<div class="p-6 space-y-6"><header class="text-center space-y-4"><img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700"><div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div></header><div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700"><a href="#" data-action="edit-name" class="flex items-center justify-between py-3"><span>Editar Nombre</span><i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i></a><a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400"><span>Cerrar Sesión</span><i data-lucide="log-out" class="w-5 h-5"></i></a></div></div>`;
-        }
-        
-        function getClassDetailsScreenHTML(classId) {
-            const cls = state.classes.find(c => c.id === classId);
-            if (!cls) return getScheduleScreenHTML();
-            const availableSpots = cls.capacity - (cls.enrolledCount || 0);
-            const isBooked = state.bookings.includes(cls.id);
-            let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-            if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-            else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-            
-            // CORRECCIÓN: Se cambia 'fixed bottom-0' por 'fixed bottom-20' y 'pb-24' por 'pb-40'
-            return `<div>
-                        <div class="relative"><img src="${cls.image}" class="w-full h-64 object-cover"><button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button></div>
-                        <div class="p-6 space-y-4 pb-40">
-                            <h1 class="text-3xl font-bold">${cls.name}</h1>
-                            <p class="text-zinc-400 leading-relaxed">${cls.description}</p>
-                            <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                                <span class="font-semibold text-lg">Estado</span>
-                                <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span>
-                            </div>
-                        </div>
-                        <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div>
-                    </div>`;
-        }
-
-        const app = {
-            handleAuth: (isLogin) => {
-                const email = document.getElementById('email-input').value;
-                const pass = document.getElementById('password-input').value;
-                if (!email || !pass) { alert("Por favor, ingresa correo y contraseña."); return; }
-                loadingSpinner.classList.remove('hidden');
-                const authPromise = isLogin ? auth.signInWithEmailAndPassword(email, pass) : auth.createUserWithEmailAndPassword(email, pass);
-                authPromise.catch(err => { alert(err.message); loadingSpinner.classList.add('hidden'); });
-            },
-            logout: () => auth.signOut(),
-            editUserName: (event) => {
-                event.preventDefault();
-                const newName = prompt("Ingresa tu nombre y apellido:", state.currentUser.displayName || "");
-                if (newName && newName.trim() !== "") {
-                    loadingSpinner.classList.remove('hidden');
-                    state.currentUser.updateProfile({ displayName: newName.trim() }).then(() => {
-                        render(); 
-                        loadingSpinner.classList.add('hidden');
-                    }).catch(err => { alert("Error: " + err.message); loadingSpinner.classList.add('hidden'); });
-                }
-            },
-            navigateTo: (screen, data = {}) => {
-                state.currentScreen = screen;
-                if (data.classId) state.selectedClassId = data.classId;
-                render();
-            },
-            setScheduleFilter: (filter) => {
-                state.scheduleFilter = filter;
-                render();
-            },
-            confirmBooking: (classId) => {
-                db.collection('bookings').add({ classId, userId: state.currentUser.uid, userName: state.currentUser.displayName || state.currentUser.email, timestamp: new Date() })
-                  .then(() => showModal({ success: true, title: '¡Reserva Exitosa!' }))
-                  .catch(err => alert("Error: " + err.message));
-            },
-            cancelBooking: async (classId) => {
-                const snapshot = await db.collection('bookings').where('classId', '==', classId).where('userId', '==', state.currentUser.uid).limit(1).get();
-                if (!snapshot.empty) {
-                    snapshot.docs[0].ref.delete()
-                        .then(() => showModal({ success: false, title: 'Cancelación Exitosa' }))
-                        .catch(err => alert("Error: " + err.message));
-                }
-            }
-        };
-
-        // --- EVENT DELEGATION ---
-        function handleInteraction(e) {
-            const target = e.target.closest('[data-action]');
-            if (!target) return;
-            
-            const { action, screen, filter, classId } = target.dataset;
-
-            switch (action) {
-                case 'navigate': app.navigateTo(screen); break;
-                case 'navigate-details': app.navigateTo('classDetails', { classId }); break;
-                case 'set-filter': app.setScheduleFilter(filter); break;
-                case 'edit-name': app.editUserName(e); break;
-                case 'logout': app.logout(); break;
-                case 'confirm-booking': app.confirmBooking(classId); break;
-                case 'cancel-booking': app.cancelBooking(classId); break;
-            }
-        }
-        mainContent.addEventListener('click', handleInteraction);
-        navBar.addEventListener('click', e => {
-            const target = e.target.closest('.nav-button');
-            if (target) app.navigateTo(target.dataset.screen);
-        });
-
-        const genericModal = document.getElementById('generic-modal');
-        const modalContent = document.getElementById('modal-content');
-        function showModal({ success, title }) {
-            modalContent.innerHTML = `<div class="w-16 h-16 ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto"><i data-lucide="${success ? 'check' : 'trash-2'}" class="w-10 h-10"></i></div><h2 class="text-2xl font-bold">${title}</h2><button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
-            genericModal.classList.remove('hidden');
-            setTimeout(() => modalContent.classList.remove('scale-95', 'opacity-0'), 10);
-            document.getElementById('modal-close-btn').onclick = hideModal;
-        }
-        function hideModal() {
-            modalContent.classList.add('scale-95', 'opacity-0');
-            setTimeout(() => {
-                genericModal.classList.add('hidden');
-                app.navigateTo(state.currentScreen === 'classDetails' ? 'bookings' : state.currentScreen);
-            }, 200);
-        }
-
-        function updateNavButtons() {
-            const navButtons = navBar.querySelectorAll('.nav-button');
-            navButtons.forEach(button => {
-                const isActive = button.dataset.screen === state.currentScreen;
-                button.classList.toggle('active-nav', isActive);
-                button.classList.toggle('text-indigo-400', isActive);
-                button.classList.toggle('text-zinc-400', !isActive);
-            });
-        }
+    // ---- Auth
+    auth.onAuthStateChanged(user => {
+      loadingSpinner.classList.remove('hidden');
+      if (user) {
+        state.currentUser = user;
+        authContainer.style.display = 'none';
+        appContainer.style.display  = 'flex';
+        initializeApp().catch(e=>console.error(e)).finally(()=>loadingSpinner.classList.add('hidden'));
+      } else {
+        state.currentUser = null;
+        appContainer.style.display  = 'none';
+        authContainer.style.display = 'flex';
+        renderAuthScreen();
+        loadingSpinner.classList.add('hidden');
+      }
     });
-    </script>
+
+    function renderAuthScreen(isLogin=true){
+      authContainer.innerHTML = `
+        <div class="w-full max-w-md mx-auto">
+          <h1 class="text-4xl font-bold text-white mb-2">GymApp</h1>
+          <p class="text-zinc-400 mb-8">${isLogin?'Inicia sesión para continuar':'Crea una cuenta para empezar'}</p>
+          <div class="space-y-4">
+            <label class="w-full block">
+              <span class="sr-only">Correo electrónico</span>
+              <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none" autocomplete="email">
+            </label>
+            <label class="w-full block">
+              <span class="sr-only">Contraseña</span>
+              <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none" autocomplete="current-password">
+            </label>
+          </div>
+          <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin?'Iniciar Sesión':'Registrarse'}</button>
+          <p class="text-center text-zinc-400 mt-6">${isLogin?'¿No tienes cuenta?':'¿Ya tienes cuenta?'} <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin?'Regístrate':'Inicia Sesión'}</a></p>
+        </div>`;
+      document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
+      document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
+    }
+
+    async function initializeApp(){
+      // Listeners sin N+1 (punto 1)
+      const off1 = listenToClasses();
+      const off2 = listenToBookings();
+      // Guarda por si luego quieres desuscribir
+      state._unsubs = [off1, off2].filter(Boolean);
+      render();
+    }
+
+    // ---- LISTENERS
+
+    // (1) Sin N+1: ya no consultamos bookings por clase; usamos enrolledCount en el doc de clase
+    function listenToClasses(){
+      return db.collection('classes')
+        .where('classDate','>=',dateHelper.today)
+        .orderBy('classDate','asc')
+        .orderBy('time','asc')
+        .onSnapshot((snapshot)=>{
+          state.classes = snapshot.docs.map(d=>({ id:d.id, ...d.data() }));
+          if (state.currentUser) render();
+        }, (error)=>{
+          console.error('Error clases:', error);
+          showToast({title:'Error al cargar clases', message:error.message, variant:'error'});
+        });
+    }
+
+    function listenToBookings(){
+      if (!state.currentUser) return null;
+      return db.collection('bookings')
+        .where('userId','==',state.currentUser.uid)
+        .onSnapshot((snap)=>{
+          state.bookings = snap.docs.map(d=>d.data().classId);
+          if (state.currentUser) render();
+        }, (error)=>{
+          console.error('Error bookings:', error);
+          showToast({title:'Error al cargar reservas', message:error.message, variant:'error'});
+        });
+    }
+
+    // ---- RENDER
+    function render(){
+      const s = state.currentScreen;
+      let content = '';
+      if (s==='home') content = getHomeScreenHTML();
+      else if (s==='schedule') content = getScheduleScreenHTML();
+      else if (s==='bookings') content = getBookingsScreenHTML();
+      else if (s==='profile') content = getProfileScreenHTML();
+      else if (s==='classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
+
+      mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
+      updateNavButtons();
+      lucide.createIcons({ attrs: { 'aria-hidden':'true' }});
+      // Enfocar el main para lectores de pantalla al cambiar de vista
+      mainContent.setAttribute('tabindex','-1');
+      mainContent.focus();
+    }
+
+    function getHomeScreenHTML(){
+      const nextBooking = state.bookings
+        .map(id => state.classes.find(c=>c.id===id))
+        .filter(Boolean)
+        .filter(cls => dateHelper.isUpcoming(cls.classDate, cls.time))
+        .sort((a,b)=>(a.classDate+a.time).localeCompare(b.classDate+b.time))[0];
+
+      let nextHTML = `
+        <h2 class="text-xl font-semibold mb-4">No tienes clases reservadas</h2>
+        <div class="bg-zinc-800 rounded-2xl p-5 text-center">
+          <p class="text-zinc-400">¡Anímate a reservar tu próxima sesión!</p>
+          <button data-action="navigate" data-screen="schedule" class="mt-4 bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg">Ver Horario</button>
+        </div>`;
+
+      if (nextBooking){
+        const dayText = nextBooking.classDate === dateHelper.today ? 'Hoy' : (nextBooking.classDate === dateHelper.tomorrow ? 'Mañana' : dayFmt.format(new Date(nextBooking.classDate)));
+        nextHTML = `
+          <h2 class="text-xl font-semibold mb-4">Tu Próxima Clase</h2>
+          <div class="bg-zinc-800 rounded-2xl p-5 flex items-center space-x-4">
+            <div>
+              <p class="font-semibold text-lg">${nextBooking.name}</p>
+              <p class="text-zinc-400">${dayText} a las ${dateHelper.displayTime(nextBooking.time)}</p>
+            </div>
+          </div>`;
+      }
+
+      return `
+        <div class="p-6 space-y-8">
+          <header>
+            <p class="text-zinc-400 text-lg">Hola,</p>
+            <h1 class="text-3xl font-bold tracking-tight">${state.currentUser.displayName || state.currentUser.email}</h1>
+          </header>
+          ${nextHTML}
+        </div>`;
+    }
+
+    function getScheduleScreenHTML(){
+      const targetDate = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
+      let filtered = state.classes.filter(cls => cls.classDate === targetDate);
+
+      if (state.scheduleFilter==='today'){
+        filtered = filtered.filter(cls => dateHelper.isUpcoming(dateHelper.today, cls.time));
+      }
+
+      return `
+        <div class="p-6 space-y-6">
+          <header>
+            <h1 class="text-3xl font-bold tracking-tight">Horario de Clases</h1>
+            <p class="text-zinc-400">Encuentra y reserva tu próxima sesión.</p>
+          </header>
+
+          <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg" role="tablist" aria-label="Filtro de fecha">
+            <button data-action="set-filter" data-filter="today" role="tab" aria-selected="${state.scheduleFilter==='today'}"
+              class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter==='today'?'bg-indigo-600 text-white':''}">Hoy</button>
+            <button data-action="set-filter" data-filter="tomorrow" role="tab" aria-selected="${state.scheduleFilter==='tomorrow'}"
+              class="flex-1 py-2 text-sm font-semibold rounded-md ${state.scheduleFilter==='tomorrow'?'bg-indigo-600 text-white':''}">Mañana</button>
+          </div>
+
+          <div class="space-y-4">
+            ${
+              filtered.length>0
+              ? filtered.map(cls=>{
+                  const enrolled = Number(cls.enrolledCount || 0);
+                  const capacity = Number(cls.capacity || 0);
+                  const available = Math.max(capacity - enrolled, 0);
+                  const isBooked = state.bookings.includes(cls.id);
+
+                  let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+                  if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+                  else if (available<=0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
+
+                  return `
+                    <div data-action="navigate-details" data-class-id="${cls.id}"
+                         class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4 cursor-pointer hover:bg-zinc-700"
+                         role="button" aria-label="Ver detalles de ${cls.name} a las ${dateHelper.displayTime(cls.time)}">
+                      <div>
+                        <p class="font-bold text-lg">${cls.name}</p>
+                        <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
+                        <p class="text-sm mt-1 text-emerald-400">${dateHelper.displayTime(cls.time)} hrs</p>
+                      </div>
+                      <div class="flex-1 text-right">${badge}</div>
+                    </div>`;
+                }).join('')
+              : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por hoy.</div>`
+            }
+          </div>
+        </div>`;
+    }
+
+    function getBookingsScreenHTML(){
+      const myBooked = state.bookings
+        .map(id => state.classes.find(c=>c.id===id))
+        .filter(Boolean)
+        .sort((a,b)=>(a.classDate+a.time).localeCompare(b.classDate+b.time));
+
+      return `
+        <div class="p-6 space-y-6">
+          <header>
+            <h1 class="text-3xl font-bold tracking-tight">Mis Reservas</h1>
+            <p class="text-zinc-400">Tus próximas clases agendadas.</p>
+          </header>
+
+          <div class="space-y-4">
+            ${
+              myBooked.length>0
+              ? myBooked.map(cls=>{
+                  const dayText = cls.classDate===dateHelper.today ? 'Hoy'
+                                 : cls.classDate===dateHelper.tomorrow ? 'Mañana'
+                                 : dayFmt.format(new Date(cls.classDate));
+                  return `
+                    <div class="bg-zinc-800 rounded-2xl p-4 flex items-center space-x-4">
+                      <div>
+                        <p class="font-bold text-lg">${cls.name}</p>
+                        <p class="text-zinc-400 text-sm">${dayText} a las ${dateHelper.displayTime(cls.time)}</p>
+                      </div>
+                      <div class="flex-1 text-right">
+                        <button data-action="cancel-booking" data-class-id="${cls.id}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+                      </div>
+                    </div>`;
+                }).join('')
+              : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes clases agendadas.</div>`
+            }
+          </div>
+        </div>`;
+    }
+
+    function getProfileScreenHTML(){
+      return `
+        <div class="p-6 space-y-6">
+          <header class="text-center space-y-4">
+            <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}"
+                 class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700" alt="Foto de perfil">
+            <div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div>
+          </header>
+          <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
+            <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
+              <span>Editar Nombre</span><i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
+            </a>
+            <a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400">
+              <span>Cerrar Sesión</span><i data-lucide="log-out" class="w-5 h-5"></i>
+            </a>
+          </div>
+        </div>`;
+    }
+
+    function getClassDetailsScreenHTML(classId){
+      const cls = state.classes.find(c=>c.id===classId);
+      if (!cls) return getScheduleScreenHTML();
+
+      const enrolled = Number(cls.enrolledCount || 0);
+      const capacity = Number(cls.capacity || 0);
+      const available = Math.max(capacity - enrolled, 0);
+      const isBooked  = state.bookings.includes(cls.id);
+
+      let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+      if (isBooked)         buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+      else if (available<=0)buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
+
+      return `
+        <div>
+          <div class="relative">
+            <img src="${cls.image || 'https://placehold.co/800x400/0b0b0e/ffffff?text=Clase'}" class="w-full h-64 object-cover" alt="${cls.name}">
+            <button data-action="navigate" data-screen="schedule" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white" aria-label="Volver al horario">
+              <i data-lucide="arrow-left" class="w-6 h-6"></i>
+            </button>
+          </div>
+
+          <div class="p-6 space-y-4 pb-40">
+            <h1 id="modal-title" class="text-3xl font-bold">${cls.name}</h1>
+            <p class="text-zinc-400 leading-relaxed">${cls.description || ''}</p>
+            <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+              <span class="font-semibold text-lg">Estado</span>
+              <span class="text-2xl font-bold ${available>0?'text-emerald-400':'text-rose-400'}">${available>0?'¡Hay cupo!':'Llena'}</span>
+            </div>
+            <p class="text-zinc-400">Empieza: ${dayFmt.format(new Date(cls.classDate))} ${dateHelper.displayTime(cls.time)}</p>
+          </div>
+
+          <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+            ${buttonHTML}
+          </div>
+        </div>`;
+    }
+
+    // ---- APP API (puntos 1 y 8: transacciones + toasts)
+    const app = {
+      handleAuth: (isLogin)=>{
+        const email = document.getElementById('email-input').value.trim();
+        const pass  = document.getElementById('password-input').value.trim();
+        if (!email || !pass) { showToast({title:'Faltan datos', message:'Ingresa correo y contraseña', variant:'warn'}); return; }
+        loadingSpinner.classList.remove('hidden');
+        const p = isLogin ? auth.signInWithEmailAndPassword(email, pass)
+                          : auth.createUserWithEmailAndPassword(email, pass);
+        p.then(()=>{
+          showToast({title:'Bienvenido', message:'Autenticación exitosa'});
+        }).catch(err=>{
+          showToast({title:'No se pudo iniciar sesión', message:err.message, variant:'error'});
+        }).finally(()=> loadingSpinner.classList.add('hidden'));
+      },
+
+      logout: ()=>{
+        auth.signOut().catch(err=>{
+          showToast({title:'Error al cerrar sesión', message:err.message, variant:'error'});
+        });
+      },
+
+      editUserName: (event)=>{
+        event.preventDefault();
+        const newName = prompt("Ingresa tu nombre y apellido:", state.currentUser.displayName || "");
+        if (newName && newName.trim()!==""){
+          loadingSpinner.classList.remove('hidden');
+          state.currentUser.updateProfile({ displayName:newName.trim() })
+            .then(()=>{
+              render();
+              showToast({title:'Nombre actualizado'});
+            })
+            .catch(err=> showToast({title:'No se pudo actualizar', message:err.message, variant:'error'}))
+            .finally(()=> loadingSpinner.classList.add('hidden'));
+        }
+      },
+
+      navigateTo: (screen, data={})=>{
+        state.currentScreen = screen;
+        if (data.classId) state.selectedClassId = data.classId;
+        render();
+      },
+
+      setScheduleFilter: (filter)=>{
+        state.scheduleFilter = filter;
+        render();
+      },
+
+      // ---- Transacción de reserva (punto 1)
+      confirmBooking: async (classId)=>{
+        if (!state.currentUser) return;
+        const uid = state.currentUser.uid;
+        const clsRef = db.collection('classes').doc(classId);
+        const bookingId = `${classId}_${uid}`;
+        const bookingRef= db.collection('bookings').doc(bookingId);
+
+        try {
+          await db.runTransaction(async (tx)=>{
+            const clsSnap = await tx.get(clsRef);
+            if (!clsSnap.exists) throw new Error('La clase no existe');
+
+            const cls = clsSnap.data();
+            const enrolled = Number(cls.enrolledCount || 0);
+            const capacity = Number(cls.capacity || 0);
+            if (enrolled >= capacity) throw new Error('Clase llena');
+
+            const bSnap = await tx.get(bookingRef);
+            if (bSnap.exists) throw new Error('Ya cuentas con esta reserva');
+
+            tx.set(bookingRef, {
+              classId: classId,
+              userId: uid,
+              userName: state.currentUser.displayName || state.currentUser.email,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            tx.update(clsRef, { enrolledCount: enrolled + 1 });
+          });
+
+          showModal({ success:true, title:'¡Reserva Exitosa!' });
+        } catch (err){
+          console.error(err);
+          showToast({title:'No se pudo reservar', message:err.message, variant:'error'});
+        }
+      },
+
+      // ---- Transacción de cancelación (punto 1)
+      cancelBooking: async (classId)=>{
+        if (!state.currentUser) return;
+        const uid = state.currentUser.uid;
+        const clsRef = db.collection('classes').doc(classId);
+        const bookingId = `${classId}_${uid}`;
+        const bookingRef= db.collection('bookings').doc(bookingId);
+
+        try {
+          await db.runTransaction(async (tx)=>{
+            const bSnap = await tx.get(bookingRef);
+            if (!bSnap.exists) throw new Error('La reserva no existe');
+
+            tx.delete(bookingRef);
+
+            const clsSnap = await tx.get(clsRef);
+            if (clsSnap.exists){
+              const enrolled = Number(clsSnap.data().enrolledCount || 0);
+              tx.update(clsRef, { enrolledCount: Math.max(enrolled - 1, 0) });
+            }
+          });
+
+          showModal({ success:false, title:'Cancelación Exitosa' });
+        } catch (err){
+          console.error(err);
+          showToast({title:'No se pudo cancelar', message:err.message, variant:'error'});
+        }
+      }
+    };
+
+    // ---- Delegación de eventos
+    function handleInteraction(e){
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+
+      const { action, screen, filter, classId } = target.dataset;
+      switch(action){
+        case 'navigate': app.navigateTo(screen); break;
+        case 'navigate-details': app.navigateTo('classDetails', { classId }); break;
+        case 'set-filter': app.setScheduleFilter(filter); break;
+        case 'edit-name': app.editUserName(e); break;
+        case 'logout': app.logout(); break;
+        case 'confirm-booking': app.confirmBooking(classId); break;
+        case 'cancel-booking': app.cancelBooking(classId); break;
+      }
+    }
+    mainContent.addEventListener('click', handleInteraction);
+    navBar.addEventListener('click', e=>{
+      const target = e.target.closest('.nav-button');
+      if (target) app.navigateTo(target.dataset.screen);
+    });
+
+    // ---- Modal accesible (punto 7) con focus trap simple
+    let lastFocused = null;
+    function showModal({ success, title }){
+      modalContent.innerHTML = `
+        <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-300':'bg-rose-500/20 text-rose-300'} rounded-full flex items-center justify-center mx-auto">
+          <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
+        </div>
+        <h2 id="modal-title" class="text-2xl font-bold">${title}</h2>
+        <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>
+      `;
+      genericModal.classList.remove('hidden');
+      setTimeout(()=> modalContent.classList.remove('scale-95','opacity-0'), 10);
+      lucide.createIcons({ attrs: { 'aria-hidden':'true' }});
+
+      // Focus trap
+      lastFocused = document.activeElement;
+      const closeBtn = document.getElementById('modal-close-btn');
+      closeBtn.focus();
+
+      function onKey(e){
+        if (e.key === 'Escape') hideModal();
+        if (e.key === 'Tab'){
+          e.preventDefault();
+          closeBtn.focus();
+        }
+      }
+      genericModal.addEventListener('keydown', onKey);
+      closeBtn.onclick = ()=>{
+        genericModal.removeEventListener('keydown', onKey);
+        hideModal();
+      };
+    }
+    function hideModal(){
+      modalContent.classList.add('scale-95','opacity-0');
+      setTimeout(()=>{
+        genericModal.classList.add('hidden');
+        if (lastFocused) lastFocused.focus();
+        // Tras cerrar modal, si veníamos de classDetails, navega a bookings para confirmar el cambio
+        app.navigateTo(state.currentScreen === 'classDetails' ? 'bookings' : state.currentScreen);
+      }, 180);
+    }
+
+    function updateNavButtons(){
+      const navButtons = navBar.querySelectorAll('.nav-button');
+      navButtons.forEach(btn=>{
+        const active = btn.dataset.screen === state.currentScreen;
+        btn.classList.toggle('active-nav', active);
+        btn.classList.toggle('text-indigo-400', active);
+        btn.classList.toggle('text-zinc-400', !active);
+        btn.setAttribute('aria-current', active ? 'page' : 'false');
+      });
+    }
+  });
+  </script>
 </body>
 </html>
