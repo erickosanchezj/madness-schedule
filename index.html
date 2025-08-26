@@ -93,7 +93,6 @@
     try {
       await firebase.firestore().enablePersistence({ synchronizeTabs: true });
     } catch (e) {
-      // Iguala si ya está activo o si el navegador no soporta
       console.warn('Persistence not enabled:', e && e.code);
     }
 
@@ -125,13 +124,16 @@
       }
     };
 
+    // ---- Helpers varios
+    function asDate(x){ return x?.toDate ? x.toDate() : new Date(x); }
+
     // ---- "Empieza en …" (solo si faltan <= 4 horas)
     function timeUntilLabel(ymd, hhmm) {
       if (!ymd || !hhmm) return '';
       const start = new Date(`${ymd}T${hhmm}:00`).getTime();
       const now   = Date.now();
       const diff  = start - now;
-      if (diff > 4*60*60*1000) return ''; // >4h: no mostramos
+      if (diff > 4*60*60*1000) return '';
       const min = Math.round(diff / 60000);
 
       if (min <= -120) return 'finalizada';
@@ -207,6 +209,7 @@
     function attachAgendaListeners(){
       if (listenersAttached || !state.currentUser) return;
       const nowMinus5 = new Date(Date.now() - 5*60*1000); // tolerancia
+
       // Clases: usar startAt (Requiere backfill)
       unsubClasses = db.collection('classes')
         .where('startAt','>=', nowMinus5)
@@ -217,16 +220,17 @@
           scheduleRender();
         }, err => console.error('Error clases:', err));
 
-      // Mis bookings (solo futuras por fecha de clase)
+      // Mis bookings (futuros) — usar startAt para evitar inconsistencias
       unsubMyBookings = db.collection('bookings')
         .where('userId','==', state.currentUser.uid)
-        .where('classDate','>=', dateHelper.today)
-        .orderBy('classDate','asc')
+        .where('startAt','>=', nowMinus5)
+        .orderBy('startAt','asc')
         .onSnapshot(snap => {
           state.myBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
           scheduleRender();
         }, err => console.error('Error mis reservas:', err));
 
+      // Nota: este query puede requerir índice compuesto (userId ASC, startAt ASC)
       listenersAttached = true;
     }
 
@@ -281,30 +285,40 @@
 
     // -------- AGENDA (Reservas futuras + Horario) --------
     function getAgendaScreenHTML() {
-      // RESERVAS (render desde booking docs; sin cross-join)
+      // RESERVAS (render desde booking docs; priorizamos startAt)
       const upcoming = state.myBookings
         .filter(Boolean)
         .filter(b => {
-          const start = new Date(`${b.classDate}T${b.time}:00`).getTime();
-          return Date.now() <= start + 5*60*1000; // tolerancia
+          const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
+          return Date.now() <= startObj.getTime() + 5*60*1000; // tolerancia
         })
-        .sort((a,b) => (a.classDate + a.time).localeCompare(b.classDate + b.time));
+        .sort((a,b) => {
+          const sa = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00`).getTime();
+          const sb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00`).getTime();
+          return sa - sb;
+        });
 
       const reservasHTML = upcoming.length
         ? upcoming.map(b => {
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
+            const ymd  = b.classDate || dateHelper.getYYYYMMDD(startObj);
+            const hhmm = b.time || new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(startObj);
+
             const dayText =
-              b.classDate === dateHelper.today ? 'Hoy' :
-              b.classDate === dateHelper.tomorrow ? 'Mañana' :
-              dateHelper.human(b.classDate);
+              ymd === dateHelper.today ? 'Hoy' :
+              ymd === dateHelper.tomorrow ? 'Mañana' :
+              dateHelper.human(ymd);
+
             const cover = coverHelper.forClassName(b.className, b.className);
+
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                   <img src="${cover}" alt="${b.className}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                   <div>
                     <p class="font-bold text-lg">${b.className}</p>
-                    <p class="text-zinc-400 text-sm">${dayText} • ${b.time}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(b.classDate, b.time)}</p>
+                    <p class="text-zinc-400 text-sm">${dayText} • ${hhmm}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
                   </div>
                 </div>
                 <button data-action="cancel-booking" data-class-id="${b.classId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
@@ -492,12 +506,22 @@
             const capacity = Number(cls.capacity || 0);
             if (enrolled >= capacity) throw new Error('Clase llena.');
 
+            // Normalizamos startAt y derivados para guardar SIEMPRE en el booking
+            const startAtTs = cls.startAt?.toDate
+              ? cls.startAt
+              : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
+            const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
+            const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
+            const timeFmt   = new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
+            const time      = cls.time || timeFmt.format(startDateObj);
+
             tx.set(bookingRef, {
               classId,
               userId: uid,
               userName: state.currentUser.displayName || state.currentUser.email,
-              classDate: cls.classDate,   // seguimos guardando estos campos
-              time: cls.time,
+              startAt: startAtTs,     // clave para queries robustos
+              classDate,              // derivados para UI
+              time,
               className: cls.name,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -591,7 +615,6 @@
     }
 
     // Asegura íconos para FABs al cargar
-    //updating for actions
     lucide.createIcons();
   });
   </script>
