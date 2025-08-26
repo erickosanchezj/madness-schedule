@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GymApp - Reserva de Clases</title>
+  <title>Madness - Reserva de Clases</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,18 +18,35 @@
 </head>
 <body class="bg-zinc-900 text-white antialiased">
 
-  <!-- App -->
-  <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
-    <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
-    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
-      <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
-        <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
-        <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
-        <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
-        <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span></button>
-      </div>
-    </nav>
-  </div>
+    <!-- App -->
+    <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
+        <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main> 
+        <!-- ↑ aumenté pb-32 para dar espacio a los botones extra -->
+
+        <!-- Botones sociales -->
+        <div class="fixed bottom-20 right-4 flex flex-col gap-3 z-40">
+            <!-- WhatsApp -->
+            <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer"
+               class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+                <i data-lucide="message-circle" class="w-6 h-6"></i>
+            </a>
+            <!-- Instagram -->
+            <a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer"
+               class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+                <i data-lucide="camera" class="w-6 h-6"></i>
+            </a>
+        </div>
+
+        <!-- NavBar -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700">
+             <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
+                <button data-screen="home" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400"><i data-lucide="home" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Inicio</span></button>
+                <button data-screen="schedule" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Horario</span></button>
+                <button data-screen="bookings" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="bookmark" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Reservas</span></button>
+                <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400"><i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span></button>
+            </div>
+        </nav>
+    </div>
 
   <!-- Auth -->
   <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
