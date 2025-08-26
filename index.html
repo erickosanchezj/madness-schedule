@@ -111,6 +111,24 @@
       }
     };
 
+    // ---- time helper: "HH:mm–HH:mm"
+    const timeHelper = {
+      range(ymd, startHHmm, durationMin = 60) {
+        try {
+          const start = new Date(`${ymd}T${startHHmm}:00`);
+          const end   = new Date(start.getTime() + (Number(durationMin || 60) * 60000));
+          const fmt   = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+          return `${fmt.format(start)}–${fmt.format(end)}`;
+        } catch {
+          // fallback si algo raro viene en los datos
+          const [h, m] = String(startHHmm || '00:00').split(':');
+          const endH = String((Number(h)*60 + Number(m) + Number(durationMin || 60)) / 60 | 0).padStart(2,'0');
+          const endM = String((Number(m) + Number(durationMin || 60)) % 60).padStart(2,'0');
+          return `${h}:${m}–${endH}:${endM}`;
+        }
+      }
+    };
+    
     // ---- "Empieza en …"
     function timeUntilLabel(ymd, hhmm) {
       if (!ymd || !hhmm) return '';
@@ -365,31 +383,45 @@
     function getClassDetailsScreenHTML(classId) {
       const cls = state.classes.find(c => c.id === classId);
       if (!cls) return getAgendaScreenHTML();
-      const enrolled = Number(cls.enrolledCount || 0);
-      const availableSpots = Number(cls.capacity || 0) - enrolled;
-      const isBooked = state.myBookings.includes(cls.id);
 
-      const hero = coverHelper.forClass(cls);
+      const enrolled       = Number(cls.enrolledCount || 0);
+      const availableSpots = Number(cls.capacity || 0) - enrolled;
+      const isBooked       = state.myBookings.includes(cls.id);
+      const durationMin    = Number(cls.duration || 60);
+      const timeRange      = timeHelper.range(cls.classDate, cls.time, durationMin);
 
       let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-      if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+      if (isBooked)        buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
       else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
 
       return `
         <div>
           <div class="relative">
-            <img src="${hero}" alt="${cls.name}" class="w-full h-64 object-cover" loading="lazy" decoding="async">
-            <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+            <img src="${cls.image}" class="w-full h-64 object-cover">
+            <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
+              <i data-lucide="arrow-left" class="w-6 h-6"></i>
+            </button>
           </div>
+
           <div class="p-6 space-y-4 pb-40">
-            <h1 class="text-3xl font-bold">${cls.name}</h1>
+            <h1 class="text-3xl font-bold">
+              ${cls.name}
+              <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+            </h1>
+
             <p class="text-zinc-400 leading-relaxed">${cls.description || ''}</p>
+
             <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
               <span class="font-semibold text-lg">Estado</span>
-              <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}</span>
+              <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">
+                ${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}
+              </span>
             </div>
           </div>
-          <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">${buttonHTML}</div>
+
+          <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+            ${buttonHTML}
+          </div>
         </div>`;
     }
 
