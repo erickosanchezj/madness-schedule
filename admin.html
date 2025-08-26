@@ -208,29 +208,47 @@
       document.getElementById('cancel-button').onclick = ()=> this.hideClassModal();
       document.getElementById('save-button').onclick = ()=> this.saveClass();
 
-      this.auth.onAuthStateChanged(async (user)=>{
-        if (user){
-          const token = await user.getIdTokenResult();
-          if (token.claims && token.claims.admin){
+    this.auth.onAuthStateChanged(async (user)=>{
+    if (user){
+        try {
+        // Fuerza refresco del token para traer los últimos claims
+        await user.getIdToken(true);
+        const token = await user.getIdTokenResult();
+        const isAdmin = !!(token.claims && token.claims.admin);
+
+        if (isAdmin){
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
             try{
-              await this.loadWeeklyScheduleTemplate();
-              this.listenClassesTodayTomorrow(); // monta listeners (puntos 1 y 8)
+            await this.loadWeeklyScheduleTemplate();
+            this.listenClassesTodayTomorrow();
+            this.showToast({title:'Conectado', message:`UID: ${user.uid}`});
             }catch(e){
-              this.showToast({title:'Error al iniciar', message:e.message, variant:'error'});
+            this.showToast({title:'Error al iniciar', message:e.message, variant:'error'});
             }
-          } else {
-            this.logout();
-            this.showToast({title:'Acceso denegado', message:'Tu cuenta no tiene rol de admin', variant:'error'});
-          }
         } else {
-          document.getElementById('login-screen').classList.remove('hidden');
-          document.getElementById('admin-panel').classList.add('hidden');
-          this.teardownBookingsListeners();
-          if (this.state.unsubClasses) this.state.unsubClasses();
+            // Si no es admin, muestra un mensaje útil con su UID para asignar el claim
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+            this.showToast({
+            title:'Acceso denegado',
+            message:`El usuario ${user.email || user.uid} no tiene el claim admin. UID: ${user.uid}`,
+            variant:'error'
+            });
         }
-      });
+        } catch (e){
+        console.error(e);
+        this.showToast({title:'Error verificando sesión', message:e.message, variant:'error'});
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('admin-panel').classList.add('hidden');
+        }
+    } else {
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('admin-panel').classList.add('hidden');
+        this.teardownBookingsListeners();
+        if (this.state.unsubClasses) this.state.unsubClasses();
+    }
+    });
 
       lucide.createIcons();
     },
@@ -686,19 +704,24 @@
 
     // ---- AUTH
     login(){
-      const email = document.getElementById('email-input').value.trim();
-      const pass  = document.getElementById('password-input').value;
-      const errEl = document.getElementById('error-message');
-      errEl.classList.add('hidden');
-      this.auth.signInWithEmailAndPassword(email, pass).catch(err=>{
-        errEl.textContent = 'Error: ' + err.message;
-        errEl.classList.remove('hidden');
-      });
+        const email = document.getElementById('email-input').value.trim();
+        const pass  = document.getElementById('password-input').value;
+        const errEl = document.getElementById('error-message');
+        errEl.classList.add('hidden');
+        this.auth.signInWithEmailAndPassword(email, pass).catch(err=>{
+            // Mensajes comunes
+            const hint = err.code === 'auth/operation-not-allowed'
+            ? 'Activa Email/Password en Firebase Console → Authentication → Sign-in method.'
+            : err.code === 'auth/user-not-found'
+            ? 'El usuario no existe o el email está mal escrito.'
+            : err.code === 'auth/wrong-password'
+            ? 'Contraseña incorrecta.'
+            : '';
+            errEl.textContent = 'Error: ' + err.message + (hint ? ' — ' + hint : '');
+            errEl.classList.remove('hidden');
+        });
     },
-    logout(){
-      this.auth.signOut();
-      this.showToast({title:'Sesión cerrada'});
-    },
+
 
     // ---- CRUD Clase (sin tocar enrolledCount manualmente)
     async saveClass(){
