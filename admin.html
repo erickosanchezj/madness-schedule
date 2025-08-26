@@ -815,6 +815,7 @@
       // Modal sencillo de confirmación con toast
       try{
         // Borra reservas relacionadas y luego la clase
+        //updating for actions
         const snap = await this.db.collection('bookings').where('classId','==', id).get();
         const batch = this.db.batch();
         snap.forEach(doc => batch.delete(doc.ref));
