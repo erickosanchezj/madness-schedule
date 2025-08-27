@@ -75,6 +75,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
 
   <script>
   document.addEventListener('DOMContentLoaded', async () => {
@@ -94,6 +95,11 @@
       await firebase.firestore().enablePersistence({ synchronizeTabs: true });
     } catch (e) {
       console.warn('Persistence not enabled:', e && e.code);
+    }
+
+    // 👉 Register messaging SW at ROOT (required by FCM)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(console.error);
     }
 
     const db   = firebase.firestore();
@@ -213,7 +219,7 @@
           scheduleRender();
         }, err => console.error('Error clases:', err));
 
-      // Mis bookings: SOLO por userId (sin índice compuesto); filtramos en cliente
+      // Mis bookings: SOLO por userId
       unsubMyBookings = db.collection('bookings')
         .where('userId','==', state.currentUser.uid)
         .onSnapshot(snap => {
@@ -223,6 +229,58 @@
 
       listenersAttached = true;
     }
+
+    // --- Messaging setup (member app) ---
+    const messaging = firebase.messaging();
+
+    async function ensurePushPermissionAndToken(user) {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.warn('Notifications permission not granted');
+          return;
+        }
+
+        // 🔑 Replace with your Firebase Web Push public key
+        const currentToken = await messaging.getToken({
+          vapidKey: 'BMHxQ0qi8xl6omPHAPt0aQaOBo2PPz-zatdZN9XKuF8mPvPSUUtTbjcIhRf1N8oSfcd0BU7M4vOJ4g7YtOQvN-o'
+        });
+
+        if (!currentToken) return;
+
+        const userRef = firebase.firestore().collection('users').doc(user.uid);
+        await userRef.set({
+          fcmTokens: {
+            [currentToken]: {
+              platform: detectPlatform(),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }
+          }
+        }, { merge: true });
+
+        // Foreground messages (swap alert for your toast if desired)
+        messaging.onMessage((payload) => {
+          alert((payload.notification?.title || 'Notificación') + '\n' + (payload.notification?.body || ''));
+        });
+
+      } catch (e) {
+        console.error('Push setup error:', e);
+      }
+    }
+
+    function detectPlatform(){
+      const ua = navigator.userAgent || '';
+      if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
+      if (/Android/.test(ua)) return 'Android';
+      if (/Win/.test(ua)) return 'Windows';
+      if (/Mac/.test(ua)) return 'macOS';
+      return 'Web';
+    }
+
+    // Save token when user signs in
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) ensurePushPermissionAndToken(user);
+    });
 
     // ---- Auth gate
     auth.onAuthStateChanged(async user => {
@@ -500,7 +558,6 @@
             const capacity = Number(cls.capacity || 0);
             if (enrolled >= capacity) throw new Error('Clase llena.');
 
-            // Normaliza startAt y derivados
             const startAtTs = cls.startAt?.toDate
               ? cls.startAt
               : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
@@ -577,6 +634,7 @@
     const genericModal = document.getElementById('generic-modal');
     const modalContent = document.getElementById('modal-content');
     function showModal({ success, title }) {
+      const fabs = document.getElementById('social-fabs');
       if (fabs) fabs.classList.add('opacity-0','pointer-events-none');
       modalContent.innerHTML = `
         <div class="w-16 h-16 ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
@@ -590,6 +648,7 @@
       lucide.createIcons();
     }
     function hideModal() {
+      const fabs = document.getElementById('social-fabs');
       modalContent.classList.add('scale-95', 'opacity-0');
       setTimeout(() => {
         genericModal.classList.add('hidden');
@@ -613,7 +672,7 @@
   });
   </script>
 
-  <!-- Service Worker (sin offline) -->
+  <!-- Your app’s own (optional) service worker for caching/offline -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
