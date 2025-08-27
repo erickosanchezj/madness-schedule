@@ -39,9 +39,7 @@
 		</style>
 	</head>
 	<body class="bg-zinc-900 text-white">
-		<!-- TOASTS -->
 		<div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2" aria-live="polite" aria-atomic="true"></div>
-		<!-- LOGIN -->
 		<div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
 			<div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
 				<h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
@@ -51,7 +49,6 @@
 				<p id="error-message" class="text-rose-400 text-center mt-4 hidden"></p>
 			</div>
 		</div>
-		<!-- PANEL -->
 		<div id="admin-panel" class="hidden p-4 md:p-8">
 			<div class="flex justify-between items-center mb-6">
 				<h1 class="text-3xl font-bold">Panel de Administración</h1>
@@ -62,7 +59,6 @@
 					<i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Generar/Verificar Clases (Hoy/Mañana) </button>
 				<span id="panel-hint" class="text-zinc-400 self-center text-sm">Las clases nuevas se crean con <code>enrolledCount: 0</code>. </span>
 			</div>
-			<!-- HOY / MAÑANA -->
 			<div class="space-y-8">
 				<section aria-labelledby="hoy-title">
 					<h2 id="hoy-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de Hoy</h2>
@@ -73,7 +69,6 @@
 					<div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
 				</section>
 			</div>
-			<!-- RESERVAS -->
 			<section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="reservas-title">
 				<h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas del Día</h2>
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -87,10 +82,8 @@
 					</div>
 				</div>
 			</section>
-			<!-- ASISTENCIA / PROYECCIÓN -->
 			<section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="asistencia-title">
 				<h2 id="asistencia-title" class="text-2xl font-bold mb-2">Reporte de Asistencia y Proyección</h2>
-				<!-- Nueva leyenda de refresco -->
 				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 mb-3 gap-2">
 					<div class="flex items-center gap-4">
 						<span id="att-last">Última actualización: —</span>
@@ -104,9 +97,9 @@
 				</div>
 				<div id="attendance-details" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
 			</section>
-			<!-- USUARIOS -->
 			<section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
 				<h2 id="usuarios-title" class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
+				
 				<div>
 					<label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Reinicio de Contraseña</label>
 					<div class="flex gap-2">
@@ -114,9 +107,21 @@
 						<button id="send-reset-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
 					</div>
 				</div>
+
+				<hr class="border-zinc-700 my-6">
+
+				<div>
+					<label for="find-user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Enviar Notificación Directa</label>
+					<div class="flex gap-2">
+						<input type="email" id="find-user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="Correo del usuario a notificar">
+						<button id="find-user-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md">Buscar</button>
+					</div>
+					
+					<div id="user-details-container" class="mt-4 hidden space-y-4"></div>
+				</div>
+
 			</section>
 		</div>
-		<!-- MODAL CLASE -->
 		<div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
 			<div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
 				<h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
@@ -148,14 +153,15 @@
 				</div>
 			</div>
 		</div>
-		<!-- Firebase -->
 		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
 		<script>
 			const AdminPanel = {
 				db: null,
 				auth: null,
+				functions: null,
 				state: {
 					classes: [], // visibles (ayer / hoy / mañana)
 					bookingsMap: new Map(), // classId -> [{...booking}]
@@ -214,19 +220,16 @@
 					const el = document.createElement('div');
 					el.className = 'toast max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-xl p-4 shadow-lg flex items-start gap-3';
 					el.innerHTML = `
-        
-												<div class="w-10 h-10 rounded-lg bg-${color}-500/20 text-${color}-300 flex items-center justify-center shrink-0">
-													<i data-lucide="${variant==='error'?'alert-triangle':variant==='warn'?'alert-circle':'check'}" class="w-6 h-6"></i>
-												</div>
-												<div class="flex-1">
-													<p class="font-semibold">${title}</p>
-          ${message?`
-													<p class="text-sm text-zinc-400 mt-0.5">${message}</p>`:''}
-        
-												</div>
-												<button class="shrink-0 text-zinc-400 hover:text-zinc-200" aria-label="Cerrar notificación">
-													<i data-lucide="x" class="w-5 h-5"></i>
-												</button>`;
+						<div class="w-10 h-10 rounded-lg bg-${color}-500/20 text-${color}-300 flex items-center justify-center shrink-0">
+							<i data-lucide="${variant==='error'?'alert-triangle':variant==='warn'?'alert-circle':'check'}" class="w-6 h-6"></i>
+						</div>
+						<div class="flex-1">
+							<p class="font-semibold">${title}</p>
+          ${message?`<p class="text-sm text-zinc-400 mt-0.5">${message}</p>`:''}
+						</div>
+						<button class="shrink-0 text-zinc-400 hover:text-zinc-200" aria-label="Cerrar notificación">
+							<i data-lucide="x" class="w-5 h-5"></i>
+						</button>`;
 					wrap.appendChild(el);
 					lucide.createIcons({
 						attrs: {
@@ -250,10 +253,12 @@
 					firebase.initializeApp(firebaseConfig);
 					this.db = firebase.firestore();
 					this.auth = firebase.auth();
+					this.functions = firebase.functions();
 					document.getElementById('login-btn').onclick = () => this.login();
 					document.getElementById('logout-btn').onclick = () => this.logout();
 					document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
 					document.getElementById('send-reset-btn').onclick = () => this.sendPasswordReset();
+					document.getElementById('find-user-btn').onclick = () => this.findUserByEmail();
 					document.getElementById('delete-button').onclick = () => this.deleteClass();
 					document.getElementById('cancel-button').onclick = () => this.hideClassModal();
 					document.getElementById('save-button').onclick = () => this.saveClass();
@@ -437,8 +442,6 @@
 				renderAll() {
 					this.renderClassCards();
 					this.renderDailyBookings();
-					// El chart ahora solo se pinta desde cache (sin lecturas)
-					// this.renderAttendanceChartFromCache(); // ya se llama en listeners también
 				},
 				isClassRunningNow(cls) {
 					if (!cls || !cls.classDate) return false;
@@ -466,23 +469,22 @@
 						card.setAttribute('aria-label', `Editar ${cls.name} a las ${cls.time}`);
 						card.onclick = () => this.showClassModal(cls);
 						card.innerHTML = `
-          
-													<div class="flex justify-between items-start">
-														<div>
-															<p class="text-xl font-bold">${cls.name}</p>
-															<p class="text-sm text-zinc-400">${cls.instructor}</p>
-														</div>
-														<span class="text-2xl">${cls.icon || '💪'}</span>
-													</div>
-													<div class="mt-4 flex justify-between items-center text-sm">
-														<span class="font-semibold">a las ${cls.time}</span>
-														<span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
-													</div>`;
+							<div class="flex justify-between items-start">
+								<div>
+									<p class="text-xl font-bold">${cls.name}</p>
+									<p class="text-sm text-zinc-400">${cls.instructor}</p>
+								</div>
+								<span class="text-2xl">${cls.icon || '💪'}</span>
+							</div>
+							<div class="mt-4 flex justify-between items-center text-sm">
+								<span class="font-semibold">a las ${cls.time}</span>
+								<span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
+							</div>`;
 						if (cls.classDate === this.dateHelper.today()) todayC.appendChild(card);
 						else if (cls.classDate === this.dateHelper.tomorrow()) tomorrowC.appendChild(card);
 					}
-					if (!todayC.children.length) todayC.innerHTML = ' < p class = "text-zinc-500 col-span-full" > No hay clases programadas para hoy. < /p>';
-					if (!tomorrowC.children.length) tomorrowC.innerHTML = ' < p class = "text-zinc-500 col-span-full" > No hay clases programadas para mañana. < /p>';
+					if (!todayC.children.length) todayC.innerHTML = ' <p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
+					if (!tomorrowC.children.length) tomorrowC.innerHTML = ' <p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
 				},
 				renderDailyBookings() {
 					const todayList = document.getElementById('today-bookings-list');
@@ -501,15 +503,14 @@
 							const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
 							const enrolled = Number(cls.enrolledCount || 0);
 							const cap = Number(cls.capacity || 0);
-							const names = attendees.map(n => `
-													<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
+							const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
 							return `
-													<div class="mb-3">
-														<p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p>
-														<ul class="list-none">${names}</ul>
-													</div>`;
+								<div class="mb-3">
+									<p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p>
+									<ul class="list-none">${names}</ul>
+								</div>`;
 						});
-						return blocks.join('') || ' < p class = "text-zinc-500" > No hay reservas. < /p>';
+						return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
 					};
 					todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
 					tomList.innerHTML = buildHTML(byDate[this.dateHelper.tomorrow()]);
@@ -637,11 +638,7 @@
 					if (!ctx || !details) return;
 					const dataCache = this.state.attendanceData;
 					if (!dataCache) {
-						details.innerHTML = `
-          
-													<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">
-            Cargando reporte… se actualizará automáticamente.
-          </div>`;
+						details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
 						return;
 					}
 					const {
@@ -690,63 +687,41 @@
 							scales: {
 								y: {
 									beginAtZero: true,
-									ticks: {
-										color: '#a1a1aa',
-										stepSize: 1
-									},
-									grid: {
-										color: '#3f3f46'
-									}
+									ticks: { color: '#a1a1aa', stepSize: 1 },
+									grid: { color: '#3f3f46' }
 								},
 								x: {
-									ticks: {
-										color: '#a1a1aa'
-									},
-									grid: {
-										color: '#3f3f46'
-									}
+									ticks: { color: '#a1a1aa' },
+									grid: { color: '#3f3f46' }
 								}
 							},
 							plugins: {
-								legend: {
-									labels: {
-										color: '#d4d4d8'
-									}
-								}
+								legend: { labels: { color: '#d4d4d8' } }
 							}
 						}
 					});
 					const renderList = (obj) => {
 						const names = Object.keys(obj || {}).sort();
-						if (!names.length) return ' < ul class = "list-disc list-inside text-zinc-400" > < li > Nadie < /li> < /ul>';
+						if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
 						return names.map(n => `
-          
-													<div class="font-semibold text-zinc-300 mt-1">${n}:</div>
-													<ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`
-														<li>${p}</li>`).join('')}
-													</ul>
-        `).join('');
+							<div class="font-semibold text-zinc-300 mt-1">${n}:</div>
+							<ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>`).join('');
 					};
 					details.innerHTML = keys.map(k => {
 						const d = report[dates[k].date];
 						if (k !== 'tomorrow') {
 							return `
-            
-													<div class="bg-zinc-900 p-3 rounded-md">
-														<h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
-														<div class="font-semibold text-emerald-400">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
-              
-														<div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
-            
-													</div>`;
+								<div class="bg-zinc-900 p-3 rounded-md">
+									<h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
+									<div class="font-semibold text-emerald-400">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
+									<div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
+								</div>`;
 						}
 						return `
-          
-													<div class="bg-zinc-900 p-3 rounded-md">
-														<h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
-														<div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
-          
-													</div>`;
+							<div class="bg-zinc-900 p-3 rounded-md">
+								<h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
+								<div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
+							</div>`;
 					}).join('');
 				},
 				// ---- MODAL / Asistencia
@@ -838,14 +813,13 @@
 						const selA = st === 'attended' ? 'selected-attended' : '';
 						const selF = st === 'absent' ? 'selected-absent' : '';
 						return `
-          
-													<div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
-														<span class="text-zinc-300">${b.userName || 'Anónimo'}</span>
-														<div class="space-x-2" data-user-id="${b.userId}" data-user-name="${b.userName||'Anónimo'}">
-															<button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selA}" data-status="attended">Asistió</button>
-															<button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selF}" data-status="absent">Faltó</button>
-														</div>
-													</div>`;
+							<div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
+								<span class="text-zinc-300">${b.userName || 'Anónimo'}</span>
+								<div class="space-x-2" data-user-id="${b.userId}" data-user-name="${b.userName||'Anónimo'}">
+									<button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selA}" data-status="attended">Asistió</button>
+									<button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selF}" data-status="absent">Faltó</button>
+								</div>
+							</div>`;
 					}).join('');
 					save.classList.remove('hidden');
 					list.onclick = (e) => {
@@ -934,6 +908,98 @@
 							message: e.message,
 							variant: 'error'
 						});
+					}
+				},
+				async findUserByEmail() {
+					const input = document.getElementById('find-user-email-input');
+					const email = input.value.trim().toLowerCase();
+					const container = document.getElementById('user-details-container');
+					container.innerHTML = ''; // Clear previous results
+					container.classList.add('hidden');
+
+					if (!email) {
+						this.showToast({ title: 'Falta correo', variant: 'warn' });
+						return;
+					}
+
+					try {
+						const userSnap = await this.db.collection('users').where('email', '==', email).limit(1).get();
+						if (userSnap.empty) {
+							this.showToast({ title: 'Usuario no encontrado', message: `No se encontró un perfil para ${email}`, variant: 'warn' });
+							return;
+						}
+						const userDoc = userSnap.docs[0];
+						this.renderUserDetails(userDoc);
+					} catch (e) {
+						this.showToast({ title: 'Error al buscar', message: e.message, variant: 'error' });
+					}
+				},
+				renderUserDetails(userDoc) {
+					const userData = userDoc.data();
+					const container = document.getElementById('user-details-container');
+					
+					const tokens = userData.fcmTokens ? Object.keys(userData.fcmTokens) : [];
+					
+					let tokensHTML = '<p class="text-sm text-zinc-400">Este usuario no tiene dispositivos registrados para recibir notificaciones.</p>';
+
+					if (tokens.length > 0) {
+						tokensHTML = tokens.map((token, index) => `
+							<div class="p-3 bg-zinc-900 rounded-lg border border-zinc-700">
+								<p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${index + 1}: ${token.substring(0, 30)}...</p>
+								<div class="mt-3 space-y-2">
+									<input type="text" id="noti-title-${index}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
+									<textarea id="noti-body-${index}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
+									<button data-token="${token}" data-index="${index}" class="send-noti-btn w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md text-sm">Enviar a este Dispositivo</button>
+								</div>
+							</div>
+						`).join('');
+					}
+
+					container.innerHTML = `
+						<div class="p-4 bg-zinc-700/50 rounded-lg">
+							<h4 class="font-bold">${userData.displayName || 'Usuario sin nombre'}</h4>
+							<p class="text-sm text-zinc-400">${userData.email}</p>
+							<div class="mt-4 space-y-3">
+								${tokensHTML}
+							</div>
+						</div>
+					`;
+
+					container.classList.remove('hidden');
+
+					// Add event listeners to the new buttons
+					document.querySelectorAll('.send-noti-btn').forEach(btn => {
+						btn.onclick = (event) => this.sendDirectNotification(event);
+					});
+				},
+				async sendDirectNotification(event) {
+					const btn = event.target;
+					const { token, index } = btn.dataset;
+					const title = document.getElementById(`noti-title-${index}`).value.trim();
+					const body = document.getElementById(`noti-body-${index}`).value.trim();
+
+					if (!title || !body) {
+						this.showToast({ title: 'Faltan datos', message: 'El título y el cuerpo son requeridos.', variant: 'warn' });
+						return;
+					}
+
+					btn.disabled = true;
+					btn.textContent = 'Enviando...';
+
+					try {
+						const send = this.functions.httpsCallable('sendDirectNotification');
+						const result = await send({ token, title, body });
+
+						if (result.data.success) {
+							this.showToast({ title: 'Notificación Enviada', message: `Enviada al dispositivo seleccionado.` });
+						} else {
+							throw new Error(result.data.error || 'El servidor devolvió un error.');
+						}
+					} catch (e) {
+						this.showToast({ title: 'Error al Enviar', message: e.message, variant: 'error' });
+					} finally {
+						btn.disabled = false;
+						btn.textContent = 'Enviar a este Dispositivo';
 					}
 				},
 				// ---- AUTH
