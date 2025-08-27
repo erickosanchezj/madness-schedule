@@ -16,16 +16,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Background notifications (when app/tab is not focused)
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'Clase próxima';
-  const options = {
-    body: payload.notification?.body || 'Tu clase comienza pronto.',
+const swMessaging = firebase.messaging();
+swMessaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
+  self.registration.showNotification(notification.title || 'Recordatorio de clase', {
+    body: notification.body || '',
     icon: './images/icon-192x192.png',
     badge: './images/icon-192x192.png',
-    data: payload.data || {}
-  };
-  self.registration.showNotification(title, options);
+    data: { url: data.url || './' }
+  });
 });
 
 // Handle clicks
