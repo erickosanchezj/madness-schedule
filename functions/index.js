@@ -1,24 +1,23 @@
-// v2 style
+// functions/index.js
 const admin = require("firebase-admin");
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
 admin.initializeApp();
 
 exports.sendDirectNotification = onCall(
-  { region: "us-central1" },          // 👈 region here (v2 style)
+  { region: "us-central1" },
   async (request) => {
     const auth = request.auth;
     if (!auth) {
-      // onCall v2 throws plain Errors; the SDK maps them to HttpsError client-side
-      throw new Error("unauthenticated");
+      throw new HttpsError("unauthenticated", "Auth required.");
     }
     if (auth.token?.admin !== true) {
-      throw new Error("permission-denied");
+      throw new HttpsError("permission-denied", "Admins only.");
     }
 
     const { token, title, body } = request.data || {};
     if (!token || !title || !body) {
-      throw new Error("invalid-argument");
+      throw new HttpsError("invalid-argument", "Missing token/title/body.");
     }
 
     try {
@@ -28,8 +27,13 @@ exports.sendDirectNotification = onCall(
       });
       return { success: true, messageId };
     } catch (err) {
-      // Return a structured error; client will see a FirebaseError
-      throw new Error(err?.message || "Failed to send notification.");
+      console.error("FCM send failed:", err);
+      // Map common FCM errors to friendlier codes if you like:
+      // e.g. invalid token:
+      if (err?.errorInfo?.code === "messaging/invalid-registration-token") {
+        throw new HttpsError("invalid-argument", "Invalid FCM token.", err);
+      }
+      throw new HttpsError("unknown", err?.message || "Failed to send.", err);
     }
   }
 );
