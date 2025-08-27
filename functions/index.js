@@ -3,37 +3,119 @@ const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
 admin.initializeApp();
+const db = admin.firestore();
 
-exports.sendDirectNotification = onCall(
-  { region: "us-central1" },
-  async (request) => {
-    const auth = request.auth;
-    if (!auth) {
-      throw new HttpsError("unauthenticated", "Auth required.");
-    }
-    if (auth.token?.admin !== true) {
-      throw new HttpsError("permission-denied", "Admins only.");
+/**
+ * Small helper: remove a bad FCM token from any user doc that has it as:
+ *   users/{uid}.fcmTokens.<token> == true
+ */
+async function pruneTokenInUsers(token) {
+  try {
+    const fieldPath = `fcmTokens.${token}`;
+    const snap = await db.collection("users").where(fieldPath, "==", true).get();
+    if (snap.empty) return { prunedDocs: 0 };
+
+    const batch = db.batch();
+    snap.forEach(doc => {
+      batch.set(
+        doc.ref,
+        { [fieldPath]: admin.firestore.FieldValue.delete() },
+        { merge: true }
+      );
+    });
+    await batch.commit();
+    return { prunedDocs: snap.size };
+  } catch (e) {
+    console.error("Failed pruning token in users:", e);
+    return { prunedDocs: 0, error: e?.message };
+  }
+}
+
+/**
+ * Admin-only: send a direct push notification to a provided FCM token.
+ * Auto-prunes token if FCM responds with "not registered" or "invalid".
+ */
+exports.sendDirectNotification = onCall({ region: "us-central1" }, async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+  if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
+
+  const { token, title, body } = request.data || {};
+  if (!token || !title || !body) {
+    throw new HttpsError("invalid-argument", "Missing token/title/body.");
+  }
+
+  try {
+    const messageId = await admin.messaging().send({
+      token,
+      notification: { title, body },
+    });
+    return { success: true, messageId };
+  } catch (err) {
+    console.error("FCM send failed:", err);
+
+    // Known FCM errors for dead/invalid tokens
+    const code = err?.errorInfo?.code || err?.code || "";
+    const isInvalid =
+      code === "messaging/invalid-registration-token" ||
+      code === "messaging/registration-token-not-registered";
+
+    if (isInvalid) {
+      const prune = await pruneTokenInUsers(token);
+      throw new HttpsError(
+        "failed-precondition",
+        `FCM token is invalid/not registered; pruned=${prune.prunedDocs || 0}.`,
+        { pruned: true, prunedDocs: prune.prunedDocs || 0 }
+      );
     }
 
-    const { token, title, body } = request.data || {};
-    if (!token || !title || !body) {
-      throw new HttpsError("invalid-argument", "Missing token/title/body.");
-    }
+    // Other errors → bubble up
+    throw new HttpsError("unknown", err?.message || "Failed to send.", err);
+  }
+});
 
-    try {
-      const messageId = await admin.messaging().send({
-        token,
-        notification: { title, body },
-      });
-      return { success: true, messageId };
-    } catch (err) {
-      console.error("FCM send failed:", err);
-      // Map common FCM errors to friendlier codes if you like:
-      // e.g. invalid token:
-      if (err?.errorInfo?.code === "messaging/invalid-registration-token") {
-        throw new HttpsError("invalid-argument", "Invalid FCM token.", err);
+/**
+ * Admin-only: backfill/normalize user emails.
+ * - Ensures `email` is trimmed
+ * - Writes `emailLower` = email.toLowerCase()
+ * Returns counts.
+ */
+exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+  if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
+
+  const snap = await db.collection("users").get();
+  let updated = 0;
+
+  // Batch in chunks of ~400 to stay under write limits
+  const CHUNK = 400;
+  const docs = snap.docs;
+
+  for (let i = 0; i < docs.length; i += CHUNK) {
+    const slice = docs.slice(i, i + CHUNK);
+    const batch = db.batch();
+
+    slice.forEach((doc) => {
+      const d = doc.data() || {};
+      const email = (d.email || "").trim();
+      if (!email) return;
+      const emailLower = email.toLowerCase();
+
+      // Only write if something actually changes
+      if (d.email !== email || d.emailLower !== emailLower) {
+        batch.set(doc.ref, { email, emailLower }, { merge: true });
+        updated++;
       }
-      throw new HttpsError("unknown", err?.message || "Failed to send.", err);
+    });
+
+    // Commit this chunk if we scheduled any writes
+    if (updated % CHUNK !== 0) {
+      await batch.commit();
+    } else if (slice.length > 0) {
+      await batch.commit();
     }
   }
-);
+
+  return { ok: true, total: snap.size, updated };
+});
