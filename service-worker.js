@@ -1,7 +1,12 @@
-// --- FCM hooks ---
-importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
+// ===============================
+// service-worker.js  (GitHub Pages: scope "/madness-schedule/")
+// ===============================
 
+// --- Firebase Web Messaging (Compat) ---
+importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
+
+// Your Firebase config (same as your app)
 firebase.initializeApp({
   apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
   authDomain: "madnessscheds.firebaseapp.com",
@@ -13,27 +18,48 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Show background notifications when the page is closed or hidden.
+// Works when your FCM payload has a `notification` key OR you build one yourself.
 messaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
-  self.registration.showNotification(notification.title || 'Recordatorio de clase', {
-    body: notification.body || '',
-    // Better use absolute paths on GH Pages to avoid scope surprises:
-    icon: '/madness-schedule/images/icon-192x192.png',
-    badge: '/madness-schedule/images/icon-192x192.png',
-    data: { url: data?.url || '/madness-schedule/' }
+  const title = notification.title || "Recordatorio de clase";
+  const body  = notification.body  || "";
+  const icon  = "/madness-schedule/images/icon-192x192.png"; // adjust if needed
+  const url   = data?.url || "/madness-schedule/";           // you can set this in fcmOptions.link too
+
+  self.registration.showNotification(title, {
+    body,
+    icon,
+    badge: icon,
+    data: { url },
+    // Keep notifications quiet if you like:
+    // silent: true,
   });
 });
 
-self.addEventListener('notificationclick', (event) => {
+// Focus an existing tab under this SW scope or open a new one on click
+self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/madness-schedule/';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      const existing = list.find(c => c.url.includes(self.registration.scope));
-      return existing ? existing.focus() : clients.openWindow(targetUrl);
-    })
-  );
+  const targetUrl = event.notification?.data?.url || "/madness-schedule/";
+
+  event.waitUntil((async () => {
+    const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const scope = self.registration.scope; // e.g. https://erickosanchezj.github.io/madness-schedule/
+    const candidate = allClients.find(c => c.url.startsWith(scope));
+    if (candidate) {
+      await candidate.focus();
+      // Optionally navigate the existing tab:
+      // candidate.navigate(targetUrl);
+      return;
+    }
+    await clients.openWindow(targetUrl);
+  })());
 });
 
-// No caching → passthrough
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+// --- Lifecycle: take control ASAP so updates ship fast ---
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+// Optional: token rotation hook (usually not necessary to handle manually)
+self.addEventListener("pushsubscriptionchange", () => {
+  // No-op; the page can call messaging.getToken() again on next load.
+});
