@@ -276,9 +276,9 @@
           const prev = localStorage.getItem(LS_KEY);
           await saveToken(user.uid, token, prev);
           // Foreground handler opcional
-          messaging.onMessage(payload => {
-            const title = payload?.notification?.title || 'Notificación';
-            const body  = payload?.notification?.body  || '';
+          messaging.onMessage((payload) => {
+            const title = payload.notification?.title || payload.data?.title || 'Notificación';
+            const body  = payload.notification?.body  || payload.data?.body  || '';
             alert(`${title}\n${body}`);
           });
           return token;
