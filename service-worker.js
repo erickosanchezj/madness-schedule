@@ -1,16 +1,13 @@
-// ===============================
 // service-worker.js  (scope: "/madness-schedule/")
-// ===============================
 
-// Minimal shim so compat bundles don't crash, without breaking SW detection:
-var window = self;  // <-- declare a local var, do NOT set self.window
-// IMPORTANT: do NOT create self.document or window.document here.
+var window = self; // <- requerido por firebase-*-compat en SW
+// OJO: no crees self.document ni window.document aquí
 
-// Load Firebase (must be same-origin inside a SW)
+// Firebase libs desde tu origen (para evitar CSP/CORS en SW)
 importScripts("/madness-schedule/vendor/firebase-app-compat-10.12.5.js");
 importScripts("/madness-schedule/vendor/firebase-messaging-compat-10.12.5.js");
 
-// Initialize Firebase (same config as your app)
+// Inicializa Firebase
 firebase.initializeApp({
   apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
   authDomain: "madnessscheds.firebaseapp.com",
@@ -22,33 +19,63 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Background notifications when the page is closed/hidden
-messaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
-  const title = notification.title || "Recordatorio de clase";
-  const body  = notification.body  || "";
-  const url   = data?.url || "/madness-schedule/";
+// -------- util de log --------
+const LOG = true;
+const log = (...a) => { if (LOG) console.log("[SW]", ...a); };
+
+// Notificaciones en background
+messaging.onBackgroundMessage((payload) => {
+  log("onBackgroundMessage payload:", payload);
+
+  // Si el servidor manda "notification", el navegador ya muestra 1 (auto)
+  // → Evitamos mostrar una segunda.
+  const hasNotification =
+    !!payload?.notification &&
+    (!!payload.notification.title || !!payload.notification.body);
+
+  if (hasNotification) {
+    log("Payload trae notification → dejo que el navegador muestre la suya y NO duplico.");
+    return;
+  }
+
+  // Data-only → mostramos nosotros
+  const data = payload?.data || {};
+  const title = data.title || "Recordatorio de clase";
+  const body  = data.body  || "";
+  const url   = data.url   || "/madness-schedule/";
   const icon  = "/madness-schedule/images/icon-192x192.png";
 
+  log("Mostrando notificación manual (data-only):", { title, body, url });
   self.registration.showNotification(title, {
     body,
     icon,
     badge: icon,
-    data: { url },
+    data: { url }
   });
 });
 
-// Click → focus existing tab under this scope or open one
+// Click → enfocamos pestaña existente del scope o abrimos una nueva
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = event.notification?.data?.url || "/madness-schedule/";
   event.waitUntil((async () => {
     const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
     const existing = list.find(c => c.url.startsWith(self.registration.scope));
-    if (existing) return existing.focus();
+    if (existing) {
+      log("Focus a tab existente:", existing.url);
+      return existing.focus();
+    }
+    log("Abriendo nueva ventana:", targetUrl);
     return clients.openWindow(targetUrl);
   })());
 });
 
-// Fast activate so updates take effect immediately
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+// Activación rápida para que el SW nuevo tome control
+self.addEventListener("install", () => {
+  log("SW install → skipWaiting()");
+  self.skipWaiting();
+});
+self.addEventListener("activate", (e) => {
+  log("SW activate → clients.claim()");
+  e.waitUntil(self.clients.claim());
+});
