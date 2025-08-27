@@ -325,23 +325,48 @@
 					return 'Web';
 				}
 				// ---- Auth gate
-				auth.onAuthStateChanged(async user => {
-					loadingSpinner.classList.remove('hidden');
-					if (user) {
-						state.currentUser = user;
-						authContainer.style.display = 'none';
-						appContainer.style.display = 'flex';
-						if (state.currentScreen === 'agenda') attachAgendaListeners();
-						scheduleRender();
-					} else {
-						state.currentUser = null;
-						detachListeners();
-						appContainer.style.display = 'none';
-						authContainer.style.display = 'flex';
-						renderAuthScreen();
-					}
-					loadingSpinner.classList.add('hidden');
-				});
+        auth.onAuthStateChanged(async user => {
+          loadingSpinner.classList.remove('hidden');
+          if (user) {
+            // --- NEW LOGIC STARTS HERE ---
+            // 1. Get a reference to the user's document in Firestore.
+            const userRef = db.collection('users').doc(user.uid);
+            const docSnap = await userRef.get();
+
+            // 2. If the document does NOT exist, create it now.
+            if (!docSnap.exists) {
+              try {
+                await userRef.set({
+                  email: user.email,
+                  displayName: user.displayName || '',
+                  photoURL: user.photoURL || '',
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                  // We don't set fcmTokens here, that happens later.
+                });
+                console.log('New user document created in Firestore.');
+              } catch (err) {
+                console.error("Error creating user document:", err);
+                alert("Hubo un problema al configurar tu perfil. Por favor, intenta de nuevo.");
+                auth.signOut(); // Log out the user if profile creation fails
+                return;
+              }
+            }
+            // --- NEW LOGIC ENDS HERE ---
+
+            state.currentUser = user;
+            authContainer.style.display = 'none';
+            appContainer.style.display = 'flex';
+            if (state.currentScreen === 'agenda') attachAgendaListeners();
+            scheduleRender();
+          } else {
+            state.currentUser = null;
+            detachListeners();
+            appContainer.style.display = 'none';
+            authContainer.style.display = 'flex';
+            renderAuthScreen();
+          }
+          loadingSpinner.classList.add('hidden');
+        });
 
 				function renderAuthScreen(isLogin = true) {
 					authContainer.innerHTML = `
