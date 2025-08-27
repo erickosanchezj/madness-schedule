@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Inter', sans-serif; }
       :focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: .5rem; }
@@ -48,7 +48,6 @@
           <h2 id="hoy-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de Hoy</h2>
           <div id="today-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
         </section>
-
         <section aria-labelledby="maniana-title">
           <h2 id="maniana-title" class="text-2xl font-bold mb-4 text-sky-400 border-b border-zinc-700 pb-2">Clases de Mañana</h2>
           <div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
@@ -89,7 +88,6 @@
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
         <h2 id="usuarios-title" class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
 
-        <!-- Reset -->
         <div>
           <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Reinicio de Contraseña</label>
           <div class="flex gap-2">
@@ -100,37 +98,24 @@
 
         <hr class="border-zinc-700 my-6">
 
-        <!-- Buscar por correo + enviar noti -->
+        <!-- NUEVA UI: buscar por nombre/correo + listar -->
         <div>
-          <label for="find-user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Enviar Notificación Directa</label>
-          <div class="flex flex-wrap gap-2">
-            <input type="email" id="find-user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="Correo del usuario a notificar">
-            <button id="find-user-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md">Buscar</button>
-          </div>
-          <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
-        </div>
-
-        <hr class="border-zinc-700 my-6">
-
-        <!-- NUEVO: Lista de usuarios -->
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Lista de Usuarios</h3>
+          <label for="find-user-query-input" class="block text-sm font-medium text-zinc-300 mb-2">
+            Buscar usuario (nombre o correo)
+          </label>
           <div class="flex gap-2">
-            <input id="users-search-input" type="text" placeholder="Buscar nombre o correo" class="bg-zinc-700 text-white p-2 rounded-md text-sm w-56">
-            <button id="list-users-btn" class="bg-zinc-700 hover:bg-zinc-600 text-white font-semibold px-3 rounded-md text-sm">Listar</button>
+            <input type="text" id="find-user-query-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md"
+                   placeholder="Ej: Valery, Erick o alguien@correo.com">
+            <button id="find-user-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md">Buscar</button>
+            <button id="list-users-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Listar</button>
           </div>
-        </div>
 
-        <div id="users-list" class="space-y-3"></div>
-
-        <div class="flex justify-end gap-2 mt-3">
-          <button id="users-prev-btn" class="bg-zinc-700 hover:bg-zinc-600 text-white font-semibold px-3 py-2 rounded-md text-sm" disabled>Anterior</button>
-          <button id="users-next-btn" class="bg-zinc-700 hover:bg-zinc-600 text-white font-semibold px-3 py-2 rounded-md text-sm" disabled>Siguiente</button>
+          <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
+          <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
         </div>
       </section>
     </div>
 
-    <!-- Modal edición clase -->
     <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
       <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
@@ -163,7 +148,7 @@
       </div>
     </div>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -189,28 +174,22 @@
           attendanceTickTimer: null
         },
 
-        // ===== Listado de usuarios (paginación) =====
-        usersPaging: {
-          size: 20,
-          stack: [],     // para volver atrás
-          cursor: null,  // último doc de la página actual
-          current: []    // docs actuales
-        },
-
-        timeFmt: new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit' }),
-        dayFmt: new Intl.DateTimeFormat('es-MX', { weekday: 'long', day: '2-digit', month: 'short' }),
+        // --- Helpers ---
+        timeFmt: new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit'}),
+        dayFmt: new Intl.DateTimeFormat('es-MX',{weekday:'long',day:'2-digit',month:'short'}),
         dateHelper: {
-          ymd(date) {
-            const y = date.getFullYear(), m = String(date.getMonth()+1).padStart(2,'0'), d = String(date.getDate()).padStart(2,'0');
-            return `${y}-${m}-${d}`;
-          },
-          today() { return this.ymd(new Date()); },
-          tomorrow() { const t=new Date(); t.setDate(t.getDate()+1); return this.ymd(t); },
-          yesterday() { const t=new Date(); t.setDate(t.getDate()-1); return this.ymd(t); }
+          ymd(date){ const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; },
+          today(){ return this.ymd(new Date()); },
+          tomorrow(){ const t=new Date(); t.setDate(t.getDate()+1); return this.ymd(t); },
+          yesterday(){ const t=new Date(); t.setDate(t.getDate()-1); return this.ymd(t); }
+        },
+        normalizeStr(s=''){
+          return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
         },
 
-        showToast({ title='Hecho', message='', variant='success', timeout=3000 }) {
-          const color = variant === 'error' ? 'rose' : variant === 'warn' ? 'amber' : 'emerald';
+        // --- TOASTS ---
+        showToast({ title='Hecho', message='', variant='success', timeout=3000 }){
+          const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';
           const wrap = document.getElementById('toast-container');
           const el = document.createElement('div');
           el.className = 'toast max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-xl p-4 shadow-lg flex items-start gap-3';
@@ -226,13 +205,14 @@
               <i data-lucide="x" class="w-5 h-5"></i>
             </button>`;
           wrap.appendChild(el);
-          lucide.createIcons({attrs:{'aria-hidden':'true'}});
+          lucide.createIcons({ attrs:{'aria-hidden':'true'} });
           const close = () => el.remove();
           el.querySelector('button').addEventListener('click', close);
           if (timeout) setTimeout(close, timeout);
         },
 
-        init() {
+        // --- INIT / AUTH ---
+        init(){
           const firebaseConfig = {
             apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
             authDomain: "madnessscheds.firebaseapp.com",
@@ -246,18 +226,16 @@
           this.auth = firebase.auth();
           this.functions = firebase.app().functions('us-central1');
 
+          // Top buttons
           document.getElementById('login-btn').onclick = () => this.login();
           document.getElementById('logout-btn').onclick = () => this.logout();
           document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
           document.getElementById('send-reset-btn').onclick = () => this.sendPasswordReset();
-          document.getElementById('find-user-btn').onclick = () => this.findUserByEmail();
-          document.getElementById('delete-button').onclick = () => this.deleteClass();
-          document.getElementById('cancel-button').onclick = () => this.hideClassModal();
-          document.getElementById('save-button').onclick = () => this.saveClass();
           document.getElementById('att-refresh').onclick = () => this.fetchAttendanceData(true);
 
-          // NUEVO: UI de usuarios
-          this.attachUsersUI();
+          // Users: find + list
+          document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
+          document.getElementById('list-users-btn').onclick = () => this.listUsersPage();
 
           this.auth.onAuthStateChanged(async (user) => {
             if (user) {
@@ -269,12 +247,12 @@
                   await this.loadWeeklyScheduleTemplate();
                   this.listenClassesTodayTomorrow();
                   this.startAttendancePolling();
-                } catch (e) {
-                  this.showToast({ title: 'Error al iniciar', message: e.message, variant: 'error' });
+                } catch(e){
+                  this.showToast({ title:'Error al iniciar', message:e.message, variant:'error' });
                 }
               } else {
                 this.logout();
-                this.showToast({ title: 'Acceso denegado', message: 'Tu cuenta no tiene rol de admin', variant: 'error' });
+                this.showToast({ title:'Acceso denegado', message:'Tu cuenta no tiene rol de admin', variant:'error' });
               }
             } else {
               document.getElementById('login-screen').classList.remove('hidden');
@@ -284,256 +262,120 @@
               this.stopAttendancePolling();
             }
           });
+
           lucide.createIcons();
         },
 
-        // ===== Lista de usuarios =====
-        attachUsersUI() {
-          const btnList = document.getElementById('list-users-btn');
-          const btnPrev = document.getElementById('users-prev-btn');
-          const btnNext = document.getElementById('users-next-btn');
-          const inputSearch = document.getElementById('users-search-input');
-          if (!btnList || !btnPrev || !btnNext) return;
-
-          btnList.onclick = () => this.loadUsersPage(true);
-          btnNext.onclick = () => this.loadUsersPage(false);
-          btnPrev.onclick = () => this.loadPrevUsersPage();
-          inputSearch.onkeydown = (e) => { if (e.key === 'Enter') this.loadUsersPage(true); };
-        },
-
-        async loadUsersPage(reset = false) {
-          const listEl = document.getElementById('users-list');
-          const btnPrev = document.getElementById('users-prev-btn');
-          const btnNext = document.getElementById('users-next-btn');
-          const qText = (document.getElementById('users-search-input')?.value || '').trim().toLowerCase();
-
-          btnPrev.disabled = true; btnNext.disabled = true;
-          listEl.innerHTML = `<div class="bg-zinc-900 p-3 rounded-lg text-zinc-400">Cargando usuarios…</div>`;
-
-          try {
-            let query = this.db.collection('users');
-
-            // Búsqueda naive: si escribes, filtramos por email o displayName (prefijo) usando orderBy + startAt/endAt.
-            if (qText) {
-              // Intento 1: por email
-              let snap = await query
-                .orderBy('email')
-                .startAt(qText)
-                .endAt(qText + '\uf8ff')
-                .limit(this.usersPaging.size)
-                .get();
-
-              // Si no hay resultados, intento por displayName
-              if (snap.empty) {
-                snap = await query
-                  .orderBy('displayName')
-                  .startAt(qText)
-                  .endAt(qText + '\uf8ff')
-                  .limit(this.usersPaging.size)
-                  .get();
-              }
-
-              // Reinicia el stack de paginación en modo búsqueda
-              this.usersPaging.stack = [];
-              this.usersPaging.cursor = snap.docs[snap.docs.length - 1] || null;
-              this.usersPaging.current = snap.docs;
-              this.renderUsersPage();
-              btnPrev.disabled = true; // sin prev en búsqueda
-              btnNext.disabled = !this.usersPaging.cursor; // si hay cursor, quizá hay más (pero necesitaremos repetir la misma búsqueda con startAfter)
-              // Para simplicidad, en búsqueda dejamos una sola página (mejor UX: “cargar más” con mismo filtro → requiere más lógica).
-            } else {
-              // Listado normal por displayName, paginado
-              if (reset) {
-                this.usersPaging.stack = [];
-                this.usersPaging.cursor = null;
-              }
-
-              let base = query.orderBy('displayName').limit(this.usersPaging.size);
-              if (this.usersPaging.cursor) base = base.startAfter(this.usersPaging.cursor);
-              const snap = await base.get();
-
-              if (reset) this.usersPaging.stack = [];
-              if (this.usersPaging.current.length) {
-                // Apila el último de la página actual para poder volver
-                const lastDoc = this.usersPaging.current[this.usersPaging.current.length - 1];
-                if (lastDoc) this.usersPaging.stack.push(lastDoc);
-              }
-              this.usersPaging.current = snap.docs;
-              this.usersPaging.cursor = snap.docs[snap.docs.length - 1] || null;
-
-              this.renderUsersPage();
-              btnPrev.disabled = this.usersPaging.stack.length === 0;
-              btnNext.disabled = !this.usersPaging.cursor;
-            }
-          } catch (e) {
-            listEl.innerHTML = `<div class="bg-zinc-900 p-3 rounded-lg text-rose-400">Error: ${e.message}</div>`;
-          }
-        },
-
-        async loadPrevUsersPage() {
-          const listEl = document.getElementById('users-list');
-          const btnPrev = document.getElementById('users-prev-btn');
-          const btnNext = document.getElementById('users-next-btn');
-
-          btnPrev.disabled = true; btnNext.disabled = true;
-          listEl.innerHTML = `<div class="bg-zinc-900 p-3 rounded-lg text-zinc-400">Cargando…</div>`;
-
-          try {
-            if (this.usersPaging.stack.length === 0) {
-              this.renderUsersPage();
-              btnPrev.disabled = true;
-              btnNext.disabled = !this.usersPaging.cursor;
-              return;
-            }
-
-            const backCursor = this.usersPaging.stack[this.usersPaging.stack.length - 2]; // el “último de la página anterior”
-            let base = this.db.collection('users').orderBy('displayName').limit(this.usersPaging.size);
-            if (backCursor) base = base.startAfter(backCursor);
-            const snap = await base.get();
-
-            // Mueve el stack hacia atrás
-            this.usersPaging.stack.pop();
-            this.usersPaging.current = snap.docs;
-            this.usersPaging.cursor = snap.docs[snap.docs.length - 1] || null;
-
-            this.renderUsersPage();
-            btnPrev.disabled = this.usersPaging.stack.length === 0;
-            btnNext.disabled = !this.usersPaging.cursor;
-          } catch (e) {
-            listEl.innerHTML = `<div class="bg-zinc-900 p-3 rounded-lg text-rose-400">Error: ${e.message}</div>`;
-          }
-        },
-
-        renderUsersPage() {
-          const listEl = document.getElementById('users-list');
-          if (!this.usersPaging.current.length) {
-            listEl.innerHTML = `<div class="bg-zinc-900 p-3 rounded-lg text-zinc-400">No hay usuarios.</div>`;
-            return;
-          }
-          listEl.innerHTML = this.usersPaging.current.map(doc => {
-            const u = doc.data() || {};
-            const tokens = u.fcmTokens ? Object.keys(u.fcmTokens) : [];
-            const tokenBadges = tokens.length
-              ? `<span class="text-xs bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded">FCM: ${tokens.length}</span>`
-              : `<span class="text-xs bg-zinc-600/40 text-zinc-300 px-2 py-0.5 rounded">Sin FCM</span>`;
-
-            // Tarjeta con botón para ver detalle y enviar
-            return `
-              <div class="p-4 bg-zinc-900 rounded-lg border border-zinc-700">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="font-semibold">${u.displayName || u.email || 'Sin nombre'}</p>
-                    <p class="text-sm text-zinc-400">${u.email || ''}</p>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    ${tokenBadges}
-                    <button class="text-xs bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
-                            data-action="open-user-detail" data-user-id="${doc.id}">Ver</button>
-                  </div>
-                </div>
-              </div>`;
-          }).join('');
-          // Wire botones "Ver"
-          listEl.querySelectorAll('[data-action="open-user-detail"]').forEach(btn => {
-            btn.onclick = async (e) => {
-              const uid = e.currentTarget.dataset.userId;
-              const userDoc = await this.db.collection('users').doc(uid).get();
-              if (userDoc.exists) this.renderUserDetails(userDoc);
-            };
-          });
-        },
-
-        // ===== Clases y reservas =====
-        async loadWeeklyScheduleTemplate() {
+        async loadWeeklyScheduleTemplate(){
           const snap = await this.db.collection('schedule_template').get();
           if (snap.empty) throw new Error('No existe la plantilla de horario.');
           snap.forEach(doc => { this.state.weeklySchedule[doc.id] = doc.data().classes || []; });
         },
 
-        listenClassesTodayTomorrow() {
+        // --- LISTENERS (ayer/hoy/mañana) ---
+        listenClassesTodayTomorrow(){
           const yesterday = this.dateHelper.yesterday();
           const today = this.dateHelper.today();
           const tomorrow = this.dateHelper.tomorrow();
+
           if (this.state.unsubClasses) this.state.unsubClasses();
           this.state.unsubClasses = this.db.collection('classes')
             .where('classDate', 'in', [yesterday, today, tomorrow])
-            .orderBy('classDate', 'asc').orderBy('time', 'asc')
-            .onSnapshot((snap) => {
-              this.state.classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            .orderBy('classDate','asc').orderBy('time','asc')
+            .onSnapshot((snap)=>{
+              this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
               this.mountBookingsListenersForVisibleClasses();
               this.renderAll();
               this.renderAttendanceChartFromCache();
-            }, (err) => this.showToast({ title:'Error listando clases', message: err.message, variant:'error' }));
+            }, err=>{
+              console.error(err);
+              this.showToast({ title:'Error listando clases', message: err.message, variant:'error' });
+            });
         },
 
-        teardownBookingsListeners() {
-          this.state.unsubBookings.forEach(fn => { try { fn && fn(); } catch {} });
+        teardownBookingsListeners(){
+          this.state.unsubBookings.forEach(fn=>{ try{ fn&&fn(); }catch{} });
           this.state.unsubBookings = [];
           this.state.bookingsMap.clear();
         },
 
-        mountBookingsListenersForVisibleClasses() {
+        mountBookingsListenersForVisibleClasses(){
           this.teardownBookingsListeners();
-          const classIds = this.state.classes.map(c => c.id);
-          for (let i = 0; i < classIds.length; i += 10) {
-            const batch = classIds.slice(i, i + 10);
-            const unsub = this.db.collection('bookings').where('classId', 'in', batch).onSnapshot((snap) => {
-              batch.forEach(cid => this.state.bookingsMap.delete(cid));
-              snap.docs.forEach(doc => {
-                const b = doc.data();
-                const arr = this.state.bookingsMap.get(b.classId) || [];
-                arr.push({ id: doc.id, ...b });
-                this.state.bookingsMap.set(b.classId, arr);
+          const classIds = this.state.classes.map(c=>c.id);
+          for (let i=0;i<classIds.length;i+=10){
+            const batch = classIds.slice(i,i+10);
+            const unsub = this.db.collection('bookings')
+              .where('classId','in',batch)
+              .onSnapshot((snap)=>{
+                batch.forEach(cid => this.state.bookingsMap.delete(cid));
+                snap.docs.forEach(doc=>{
+                  const b = doc.data();
+                  const arr = this.state.bookingsMap.get(b.classId) || [];
+                  arr.push({ id:doc.id, ...b });
+                  this.state.bookingsMap.set(b.classId, arr);
+                });
+                this.renderAll();
+                this.renderAttendanceChartFromCache();
               });
-              this.renderAll();
-              this.renderAttendanceChartFromCache();
-            });
             this.state.unsubBookings.push(unsub);
           }
         },
 
-        _buildStartEnd(dateStr, timeStr, duration = 60) {
+        // --- GENERACIÓN (startAt/endAt) ---
+        _buildStartEnd(dateStr, timeStr, duration=60){
           const start = new Date(`${dateStr}T${timeStr}:00`);
-          const end = new Date(start.getTime() + (Number(duration||60) * 60000));
+          const end = new Date(start.getTime() + (Number(duration||60)*60000));
           return {
             startAt: firebase.firestore.Timestamp.fromDate(start),
             endAt: firebase.firestore.Timestamp.fromDate(end)
           };
         },
 
-        async generateDailyClasses() {
+        async generateDailyClasses(){
           if (!Object.keys(this.state.weeklySchedule).length) {
-            this.showToast({ title:'Plantilla no cargada', variant:'warn' }); return;
+            this.showToast({ title:'Plantilla no cargada', variant:'warn' });
+            return;
           }
           const today = new Date();
-          const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
+          const tomorrow = new Date(); tomorrow.setDate(today.getDate()+1);
           const days = [
             { dateStr: this.dateHelper.ymd(today), dow: today.getDay() },
             { dateStr: this.dateHelper.ymd(tomorrow), dow: tomorrow.getDay() }
           ];
-          const batch = this.db.batch(); let created = 0;
-          for (const d of days) {
+          const batch = this.db.batch();
+          let created = 0;
+
+          for (const d of days){
             const tpl = this.state.weeklySchedule[String(d.dow)] || [];
             if (!tpl.length) continue;
-            const existingSnap = await this.db.collection('classes').where('classDate', '==', d.dateStr).get();
-            const existingTimes = new Set(existingSnap.docs.map(x => x.data().time));
-            for (const c of tpl) {
-              if (!existingTimes.has(c.time)) {
+            const existingSnap = await this.db.collection('classes').where('classDate','==',d.dateStr).get();
+            const existingTimes = new Set(existingSnap.docs.map(x=>x.data().time));
+            for (const c of tpl){
+              if (!existingTimes.has(c.time)){
                 const ref = this.db.collection('classes').doc();
-                const { startAt, endAt } = this._buildStartEnd(d.dateStr, c.time, c.duration || 60);
+                const { startAt, endAt } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
                 const isTRX = /trx/i.test(c.name || "");
                 const capacity = (typeof c.capacity === "number") ? c.capacity : (isTRX ? 13 : 15);
-                batch.set(ref, {
-                  name: c.name, time: c.time, instructor: c.instructor || 'Por Asignar',
-                  duration: c.duration || 60, classDate: d.dateStr, capacity,
-                  enrolledCount: 0, startAt, endAt, description: `Clase de ${c.name}`,
-                  icon: '💪', image: `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
+                batch.set(ref,{
+                  name: c.name,
+                  time: c.time,
+                  instructor: c.instructor || 'Por Asignar',
+                  duration: c.duration || 60,
+                  classDate: d.dateStr,
+                  capacity,
+                  enrolledCount: 0,
+                  startAt,
+                  endAt,
+                  description:`Clase de ${c.name}`,
+                  icon:'💪',
+                  image:`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
                 });
                 created++;
               }
             }
           }
-          if (created > 0) {
+
+          if (created>0){
             await batch.commit();
             this.showToast({ title:'Clases generadas', message:`Se crearon ${created} clases` });
           } else {
@@ -541,32 +383,34 @@
           }
         },
 
-        renderAll() { this.renderClassCards(); this.renderDailyBookings(); },
+        // --- RENDER ---
+        renderAll(){ this.renderClassCards(); this.renderDailyBookings(); },
 
-        isClassRunningNow(cls) {
+        isClassRunningNow(cls){
           if (!cls || !cls.classDate) return false;
           const todayStr = this.dateHelper.today();
           if (cls.classDate !== todayStr) return false;
           const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
-          const end = start + (Number(cls.duration || 60) * 60000);
+          const end   = start + (Number(cls.duration||60)*60000);
           const now = Date.now();
-          return now >= start && now <= end;
+          return now>=start && now<=end;
         },
 
-        renderClassCards() {
+        renderClassCards(){
           const todayC = document.getElementById('today-classes-container');
           const tomorrowC = document.getElementById('tomorrow-classes-container');
-          todayC.innerHTML = ''; tomorrowC.innerHTML = '';
+          todayC.innerHTML=''; tomorrowC.innerHTML='';
+
           const sorted = [...this.state.classes].sort((a,b)=>(a.classDate+a.time).localeCompare(b.classDate+b.time));
-          for (const cls of sorted) {
+          for (const cls of sorted){
             const isRunning = this.isClassRunningNow(cls);
             const style = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
-            const enrolled = Number(cls.enrolledCount || 0);
-            const capacity = Number(cls.capacity || 0);
+            const enrolled = Number(cls.enrolledCount||0);
+            const capacity = Number(cls.capacity||0);
             const card = document.createElement('div');
             card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${style}`;
             card.setAttribute('role','button');
-            card.setAttribute('aria-label',`Editar ${cls.name} a las ${cls.time}`);
+            card.setAttribute('aria-label', `Editar ${cls.name} a las ${cls.time}`);
             card.onclick = () => this.showClassModal(cls);
             card.innerHTML = `
               <div class="flex justify-between items-start">
@@ -587,18 +431,20 @@
           if (!tomorrowC.children.length) tomorrowC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
         },
 
-        renderDailyBookings() {
+        renderDailyBookings(){
           const todayList = document.getElementById('today-bookings-list');
           const tomList = document.getElementById('tomorrow-bookings-list');
-          todayList.innerHTML = ''; tomList.innerHTML = '';
-          const byDate = { [this.dateHelper.today()]: [], [this.dateHelper.tomorrow()]: [] };
-          this.state.classes.forEach(c => { if (byDate[c.classDate]) byDate[c.classDate].push(c); });
-          const buildHTML = (classesArr) => {
-            const blocks = classesArr.map(cls => {
-              const attendees = (this.state.bookingsMap.get(cls.id) || []).map(b => b.userName || 'Anónimo');
-              const enrolled = Number(cls.enrolledCount || 0);
-              const cap = Number(cls.capacity || 0);
-              const names = attendees.map(n => `<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
+          todayList.innerHTML=''; tomList.innerHTML='';
+
+          const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
+          this.state.classes.forEach(c=>{ if(byDate[c.classDate]) byDate[c.classDate].push(c); });
+
+          const buildHTML = (classesArr)=>{
+            const blocks = classesArr.map(cls=>{
+              const attendees = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
+              const enrolled = Number(cls.enrolledCount||0);
+              const cap = Number(cls.capacity||0);
+              const names = attendees.map(n=>`<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
               return `
                 <div class="mb-3">
                   <p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p>
@@ -608,11 +454,11 @@
             return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
           };
           todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
-          tomList.innerHTML = buildHTML(byDate[this.dateHelper.tomorrow()]);
+          tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
         },
 
-        // ====== Asistencia ======
-        getAttendanceDateMap() {
+        // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
+        getAttendanceDateMap(){
           const today = new Date();
           const d1 = new Date(); d1.setDate(today.getDate()-2);
           const d2 = new Date(); d2.setDate(today.getDate()-1);
@@ -620,40 +466,39 @@
           const d4 = new Date(); d4.setDate(today.getDate()+1);
           const ymd = (dt)=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
           return {
-            dayBefore:{date: ymd(d1), label:'Hace 2 días'},
-            yesterday:{date: ymd(d2), label:'Ayer'},
-            today:{date: ymd(d3), label:'Hoy'},
-            tomorrow:{date: ymd(d4), label:'Mañana'}
+            dayBefore: { date: ymd(d1), label:'Hace 2 días' },
+            yesterday: { date: ymd(d2), label:'Ayer' },
+            today    : { date: ymd(d3), label:'Hoy' },
+            tomorrow : { date: ymd(d4), label:'Mañana' }
           };
         },
 
-        startAttendancePolling() {
+        startAttendancePolling(){
           this.fetchAttendanceData(true);
           this.stopAttendancePolling();
           this.state.attendancePollTimer = setInterval(()=>{ this.fetchAttendanceData(true); }, 15*60*1000);
           this.state.attendanceTickTimer = setInterval(()=>{ this.updateAttendanceLegend(); }, 1000);
         },
-
-        stopAttendancePolling() {
-          if (this.state.attendancePollTimer) { clearInterval(this.state.attendancePollTimer); this.state.attendancePollTimer = null; }
-          if (this.state.attendanceTickTimer) { clearInterval(this.state.attendanceTickTimer); this.state.attendanceTickTimer = null; }
+        stopAttendancePolling(){
+          if (this.state.attendancePollTimer){ clearInterval(this.state.attendancePollTimer); this.state.attendancePollTimer=null; }
+          if (this.state.attendanceTickTimer){ clearInterval(this.state.attendanceTickTimer); this.state.attendanceTickTimer=null; }
         },
 
-        async fetchAttendanceData(force=false) {
+        async fetchAttendanceData(force=false){
           const now = Date.now();
           if (!force && this.state.attendanceNextAt && now < this.state.attendanceNextAt) return;
           const dates = this.getAttendanceDateMap();
           const daysToRead = [dates.dayBefore.date, dates.yesterday.date, dates.today.date];
           try {
-            const snap = await this.db.collection('attendance').where('classDate','in', daysToRead).get();
+            const snap = await this.db.collection('attendance').where('classDate','in',daysToRead).get();
             const report = {};
-            Object.values(dates).forEach(d => {
-              report[d.date] = { attended:0, absent:0, booked:0, details:{attended:{}, absent:{}, booked:{}} };
+            Object.values(dates).forEach(d=>{
+              report[d.date] = { attended:0, absent:0, booked:0, details:{ attended:{}, absent:{}, booked:{} } };
             });
-            snap.forEach(doc => {
+            snap.forEach(doc=>{
               const r = doc.data();
               if (!report[r.classDate]) return;
-              const cat = r.status === 'attended' ? 'attended' : 'absent';
+              const cat = r.status==='attended' ? 'attended' : 'absent';
               report[r.classDate][cat]++;
               const key = `${r.className}`;
               if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key] = [];
@@ -667,62 +512,67 @@
           } catch(e){ console.error('Error leyendo asistencia:', e); }
         },
 
-        updateAttendanceLegend() {
+        updateAttendanceLegend(){
           const lastEl = document.getElementById('att-last');
           const nextEl = document.getElementById('att-next');
           if (!lastEl || !nextEl) return;
-          if (this.state.attendanceLastAt) {
-            const fmt = new Intl.DateTimeFormat('es-MX',{hour:'2-digit', minute:'2-digit'});
+          if (this.state.attendanceLastAt){
+            const fmt = new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit'});
             lastEl.textContent = `Última actualización: ${fmt.format(new Date(this.state.attendanceLastAt))}`;
           } else lastEl.textContent = 'Última actualización: —';
-          if (this.state.attendanceNextAt) {
+
+          if (this.state.attendanceNextAt){
             const ms = Math.max(0, this.state.attendanceNextAt - Date.now());
-            const mm = Math.floor(ms/60000), ss = Math.floor((ms%60000)/1000);
+            const mm = Math.floor(ms/60000);
+            const ss = Math.floor((ms%60000)/1000);
             nextEl.textContent = `Próxima actualización en: ${mm}m ${String(ss).padStart(2,'0')}s`;
           } else nextEl.textContent = 'Próxima actualización en: —';
         },
 
-        renderAttendanceChartFromCache() {
+        renderAttendanceChartFromCache(){
           const ctx = document.getElementById('attendanceChart')?.getContext('2d');
           const details = document.getElementById('attendance-details');
           if (!ctx || !details) return;
           const dataCache = this.state.attendanceData;
-          if (!dataCache) {
+          if (!dataCache){
             details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
             return;
           }
-          const {report, dates} = dataCache;
+          const { report, dates } = dataCache;
           const keys = ['dayBefore','yesterday','today','tomorrow'];
-          const labels = keys.map(k => dates[k].label);
+          const labels = keys.map(k=>dates[k].label);
 
-          // “Reservas Mañana” desde bookingsMap
-          const classesTomorrow = this.state.classes.filter(c => c.classDate === dates.tomorrow.date);
-          let bookedTomorrow = 0; const bookedDetails = {};
-          classesTomorrow.forEach(c => {
+          // "Reservas Mañana" desde bookings visibles
+          const classesTomorrow = this.state.classes.filter(c=>c.classDate===dates.tomorrow.date);
+          let bookedTomorrow=0; const bookedDetails={};
+          classesTomorrow.forEach(c=>{
             const arr = this.state.bookingsMap.get(c.id) || [];
-            if (arr.length) {
+            if (arr.length){
               bookedTomorrow += arr.length;
               const label = `${c.time} - ${c.name}`;
-              bookedDetails[label] = arr.map(x => x.userName || 'Anónimo');
+              bookedDetails[label] = arr.map(x=>x.userName||'Anónimo');
             }
           });
           report[dates.tomorrow.date].booked = bookedTomorrow;
           report[dates.tomorrow.date].details.booked = bookedDetails;
 
-          const attendedData = keys.map(k => report[dates[k].date].attended || 0);
-          const absentData   = keys.map(k => report[dates[k].date].absent || 0);
-          const bookedData   = keys.map(k => report[dates[k].date].booked || 0);
+          const attendedData = keys.map(k=>report[dates[k].date].attended||0);
+          const absentData   = keys.map(k=>report[dates[k].date].absent||0);
+          const bookedData   = keys.map(k=>report[dates[k].date].booked||0);
 
           if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
-          this.state.attendanceChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: { labels, datasets: [
-              { label:'Asistieron', data:attendedData, backgroundColor:'rgba(16,185,129,.6)' },
-              { label:'Faltaron',   data:absentData,   backgroundColor:'rgba(244,63,94,.6)' },
-              { label:'Reservas Mañana', data:bookedData, backgroundColor:'rgba(59,130,246,.6)' }
-            ]},
-            options: {
-              scales: {
+          this.state.attendanceChartInstance = new Chart(ctx,{
+            type:'bar',
+            data:{
+              labels,
+              datasets:[
+                { label:'Asistieron', data:attendedData, backgroundColor:'rgba(16,185,129,.6)' },
+                { label:'Faltaron', data:absentData, backgroundColor:'rgba(244,63,94,.6)' },
+                { label:'Reservas Mañana', data:bookedData, backgroundColor:'rgba(59,130,246,.6)' }
+              ]
+            },
+            options:{
+              scales:{
                 y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' } },
                 x:{ ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
               },
@@ -730,16 +580,18 @@
             }
           });
 
-          const renderList = (obj) => {
-            const names = Object.keys(obj || {}).sort();
+          const renderList = (obj)=>{
+            const names = Object.keys(obj||{}).sort();
             if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
-            return names.map(n => `
+            return names.map(n=>`
               <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
-              <ul class="list-disc list-inside text-zinc-400">${obj[n].map(p=>`<li>${p}</li>`).join('')}</ul>`).join('');
+              <ul class="list-disc list-inside text-zinc-400">${(obj[n]||[]).map(p=>`<li>${p}</li>`).join('')}</ul>
+            `).join('');
           };
-          details.innerHTML = keys.map(k => {
+
+          details.innerHTML = keys.map(k=>{
             const d = report[dates[k].date];
-            if (k !== 'tomorrow') {
+            if (k!=='tomorrow'){
               return `
                 <div class="bg-zinc-900 p-3 rounded-md">
                   <h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
@@ -755,17 +607,17 @@
           }).join('');
         },
 
-        // ===== Modal / asistencia
-        isClassInProgressWindow(cls) {
+        // --- MODAL / Asistencia ---
+        isClassInProgressWindow(cls){
           if (!cls || !cls.classDate || !cls.time) return false;
           const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
           const now = Date.now();
           const lower = now - (15*60*60*1000);
           const upper = now + (30*60*1000);
-          return (start >= lower) && (start <= upper);
+          return (start>=lower) && (start<=upper);
         },
 
-        showClassModal(cls) {
+        showClassModal(cls){
           this.state.currentAttendance = {};
           document.getElementById('class-id').value = cls.id;
           document.getElementById('class-name').value = cls.name || '';
@@ -773,30 +625,31 @@
           document.getElementById('class-time').value = cls.time || '';
           document.getElementById('class-icon').value = cls.icon || '';
           document.getElementById('class-description').value = cls.description || '';
+
           const tabD = document.getElementById('tab-details');
           const tabA = document.getElementById('tab-attendance');
           this.switchTab('details');
           tabD.onclick = () => this.switchTab('details');
-          if (this.isClassInProgressWindow(cls)) {
+          if (this.isClassInProgressWindow(cls)){
             tabA.classList.remove('hidden');
             tabA.onclick = () => this.switchTab('attendance');
             this.loadAttendeesForAttendance(cls);
           } else {
-            tabA.classList.add('hidden');
-            tabA.onclick = null;
+            tabA.classList.add('hidden'); tabA.onclick = null;
           }
-          document.getElementById('class-modal').classList.remove('hidden');
+          const modal = document.getElementById('class-modal');
+          modal.classList.remove('hidden');
           document.getElementById('save-button').focus();
         },
 
         hideClassModal(){ document.getElementById('class-modal').classList.add('hidden'); },
 
-        switchTab(tab) {
+        switchTab(tab){
           const tabD = document.getElementById('tab-details');
           const tabA = document.getElementById('tab-attendance');
           const contD = document.getElementById('details-content');
           const contA = document.getElementById('attendance-content');
-          if (tab==='details') {
+          if (tab==='details'){
             tabD.classList.add('border-b-2','border-indigo-500','text-indigo-400'); tabD.setAttribute('aria-selected','true');
             tabA.classList.remove('border-b-2','border-indigo-500','text-indigo-400'); tabA.setAttribute('aria-selected','false');
             contD.classList.remove('hidden'); contA.classList.add('hidden');
@@ -807,256 +660,310 @@
           }
         },
 
-        async loadAttendeesForAttendance(cls) {
+        async loadAttendeesForAttendance(cls){
           const list = document.getElementById('attendance-list');
-          const msg = document.getElementById('attendance-status-message');
+          const msg  = document.getElementById('attendance-status-message');
           const save = document.getElementById('save-attendance-btn');
+
           const currentBookings = this.state.bookingsMap.get(cls.id) || [];
           const attSnap = await this.db.collection('attendance').where('classId','==',cls.id).get();
           const existing = {};
-          attSnap.forEach(doc => { const d=doc.data(); existing[d.userId] = d.status; });
+          attSnap.forEach(doc=>{ const d=doc.data(); existing[d.userId] = d.status; });
 
           this.state.currentAttendance = {};
-          currentBookings.forEach(b => {
-            if (existing[b.userId]) {
+          currentBookings.forEach(b=>{
+            if (existing[b.userId]){
               this.state.currentAttendance[b.userId] = { status: existing[b.userId], userName: b.userName };
             }
           });
 
-          if (!currentBookings.length) {
+          if (!currentBookings.length){
             msg.textContent = 'No hay usuarios inscritos en esta clase.';
-            list.innerHTML = ''; save.classList.add('hidden'); return;
+            list.innerHTML=''; save.classList.add('hidden');
+            return;
           }
+
           msg.textContent = `${currentBookings.length} usuarios inscritos.`;
-          list.innerHTML = currentBookings.map(b => {
+          list.innerHTML = currentBookings.map(b=>{
             const st = existing[b.userId];
-            const selA = st==='attended' ? 'selected-attended' : '';
-            const selF = st==='absent' ? 'selected-absent' : '';
+            const selA = st==='attended' ? 'selected-attended':'';
+            const selF = st==='absent'   ? 'selected-absent':'';
             return `
               <div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
-                <span class="text-zinc-300">${b.userName || 'Anónimo'}</span>
+                <span class="text-zinc-300">${b.userName||'Anónimo'}</span>
                 <div class="space-x-2" data-user-id="${b.userId}" data-user-name="${b.userName||'Anónimo'}">
                   <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selA}" data-status="attended">Asistió</button>
                   <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selF}" data-status="absent">Faltó</button>
                 </div>
               </div>`;
           }).join('');
+
           save.classList.remove('hidden');
-          list.onclick = (e) => {
-            const btn = e.target.closest('.attendance-btn'); if (!btn) return;
+          list.onclick = (e)=>{
+            const btn = e.target.closest('.attendance-btn'); if(!btn) return;
             const parent = btn.parentElement;
-            const { userId, userName } = parent.dataset; const { status } = btn.dataset;
+            const { userId, userName } = parent.dataset;
+            const { status } = btn.dataset;
             this.state.currentAttendance[userId] = { status, userName };
             parent.querySelectorAll('.attendance-btn').forEach(x=>x.classList.remove('selected-attended','selected-absent'));
-            btn.classList.add(status==='attended' ? 'selected-attended' : 'selected-absent');
+            btn.classList.add(status==='attended'?'selected-attended':'selected-absent');
           };
           save.onclick = () => this.saveAttendance(cls);
         },
 
-        async saveAttendance(cls) {
+        async saveAttendance(cls){
           const data = this.state.currentAttendance;
-          if (!Object.keys(data).length) { this.showToast({ title:'Sin cambios', message:'No marcaste asistencia', variant:'warn' }); return; }
+          if (!Object.keys(data).length){
+            this.showToast({ title:'Sin cambios', message:'No marcaste asistencia', variant:'warn' });
+            return;
+          }
           const batch = this.db.batch();
-          Object.keys(data).forEach(uid => {
+          Object.keys(data).forEach(uid=>{
             const rec = data[uid];
             const ref = this.db.collection('attendance').doc(`${cls.classDate}_${cls.id}_${uid}`);
-            batch.set(ref, {
-              classId: cls.id, className: cls.name, classDate: cls.classDate, userId: uid, userName: rec.userName,
-              status: rec.status, recordedAt: new Date()
-            }, { merge:true });
+            batch.set(ref,{
+              classId: cls.id, className: cls.name, classDate: cls.classDate,
+              userId: uid, userName: rec.userName, status: rec.status, recordedAt: new Date()
+            },{ merge:true });
           });
-          try {
+          try{
             await batch.commit();
             this.showToast({ title:'Asistencia guardada' });
             this.fetchAttendanceData(true);
             this.hideClassModal();
-          } catch(e){ this.showToast({ title:'Error al guardar', message:e.message, variant:'error' }); }
+          }catch(e){
+            this.showToast({ title:'Error al guardar', message:e.message, variant:'error' });
+          }
         },
 
-        // ===== Usuarios: reset / búsqueda puntual / detalle + notificación =====
-        async sendPasswordReset() {
+        // ---- USERS: Password reset ----
+        async sendPasswordReset(){
           const input = document.getElementById('user-email-input');
           const email = input.value.trim();
-          if (!email) { this.showToast({ title:'Falta correo', variant:'warn' }); return; }
-          try {
+          if (!email){ this.showToast({ title:'Falta correo', variant:'warn' }); return; }
+          try{
             await this.auth.sendPasswordResetEmail(email);
             this.showToast({ title:'Correo enviado', message:`Revisa ${email}` });
-            input.value = '';
-          } catch(e){ this.showToast({ title:'No se pudo enviar', message:e.message, variant:'error' }); }
+            input.value='';
+          }catch(e){
+            this.showToast({ title:'No se pudo enviar', message:e.message, variant:'error' });
+          }
         },
 
-        async findUserByEmail() {
-			const input = document.getElementById('find-user-email-input');
-			const raw = (input.value || '').trim();
-			const emailLower = raw.toLowerCase();
-			const container = document.getElementById('user-details-container');
-
-			container.innerHTML = '';
-			container.classList.add('hidden');
-
-			if (!raw) {
-				this.showToast({ title: 'Falta correo', variant: 'warn' });
-				return;
-			}
-
-			try {
-				// 1) Preferido: emailLower
-				let snap = await this.db.collection('users')
-				.where('emailLower', '==', emailLower)
-				.limit(1).get();
-
-				// 2) Fallback: email exacto (por si algún doc no está normalizado aún)
-				if (snap.empty) {
-				snap = await this.db.collection('users')
-					.where('email', '==', raw)
-					.limit(1).get();
-				}
-
-				// 3) Último recurso: lee una página y filtra en cliente
-				if (snap.empty) {
-				const page = await this.db.collection('users').limit(200).get();
-				const hit = page.docs.find(d => ((d.data().email || '').trim().toLowerCase()) === emailLower);
-				if (hit) snap = { empty: false, docs: [hit] };
-				}
-
-				if (snap.empty) {
-				this.showToast({ title: 'Usuario no encontrado', message: `No se encontró un perfil para ${raw}`, variant: 'warn' });
-				return;
-				}
-
-				const userDoc = snap.docs[0];
-				this.renderUserDetails(userDoc);
-			} catch (e) {
-				this.showToast({ title: 'Error al buscar', message: e.message, variant: 'error' });
-			}
-		},
-
-        renderUserDetails(userDoc) {
-          const userData = userDoc.data();
+        // ---- USERS: Buscar por nombre o correo ----
+        async findUsersByQuery(){
+          const input = document.getElementById('find-user-query-input');
+          const raw = (input.value||'').trim();
+          const q = this.normalizeStr(raw);
           const container = document.getElementById('user-details-container');
-          const uid = userDoc.id;
-          const tokens = userData.fcmTokens ? Object.keys(userData.fcmTokens) : [];
+          const hint = document.getElementById('user-results-hint');
 
-          let tokensHTML = '<p class="text-sm text-zinc-400">Este usuario no tiene dispositivos registrados para recibir notificaciones.</p>';
-          if (tokens.length > 0) {
-            tokensHTML = tokens.map((token, index) => `
-              <div class="p-3 bg-zinc-900 rounded-lg border border-zinc-700">
-                <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${index + 1}: ${token.substring(0, 30)}...</p>
-                <div class="mt-3 space-y-2">
-                  <input type="text" id="noti-title-${index}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
-                  <textarea id="noti-body-${index}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
-                  <div class="flex gap-2">
-                    <button data-token="${token}" data-index="${index}" data-uid="${uid}"
-                            class="send-noti-btn flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md text-sm">Enviar</button>
-                    <button data-token="${token}" data-uid="${uid}"
-                            class="prune-token-btn bg-zinc-700 hover:bg-zinc-600 text-white font-semibold px-3 rounded-md text-sm">Prune</button>
-                  </div>
-                </div>
-              </div>
-            `).join('');
+          container.innerHTML=''; container.classList.add('hidden'); hint.classList.add('hidden');
+          if (!raw){ this.showToast({ title:'Falta texto de búsqueda', variant:'warn' }); return; }
+
+          try{
+            const results = [];
+
+            if (raw.includes('@')) {
+              // correo exacto
+              const snap = await this.db.collection('users').where('emailLower','==',q).limit(10).get();
+              snap.forEach(d=>results.push(d));
+              if (!results.length){
+                const snap2 = await this.db.collection('users').where('email','==',raw).limit(10).get();
+                snap2.forEach(d=>results.push(d));
+              }
+            } else {
+              // nombre (prefijo, si existe índice) o fallback local
+              let triedPrefix=false;
+              try{
+                const start=q, end=q+'\uf8ff';
+                const byName = await this.db.collection('users').orderBy('displayNameLower').startAt(start).endAt(end).limit(20).get();
+                byName.forEach(d=>results.push(d));
+                triedPrefix=true;
+              }catch(_){ /* falta índice */ }
+
+              if (!results.length){
+                const page = await this.db.collection('users').limit(300).get();
+                page.forEach(d=>{
+                  const data=d.data()||{};
+                  const emailL=this.normalizeStr(data.email||'');
+                  const nameL=this.normalizeStr(data.displayName||'');
+                  if (emailL.includes(q) || nameL.includes(q)) results.push(d);
+                });
+                if (!triedPrefix && results.length){
+                  hint.textContent='Resultado por búsqueda local (sin índice). Considera guardar displayNameLower y crear índice.';
+                  hint.classList.remove('hidden');
+                }
+              }
+            }
+
+            if (!results.length){
+              this.showToast({ title:'Sin resultados', message:`No encontramos "${raw}"`, variant:'warn' });
+              return;
+            }
+
+            container.innerHTML = results.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
+            container.classList.remove('hidden');
+            this.wireUserCardButtons();
+          }catch(e){
+            this.showToast({ title:'Error al buscar', message:e.message, variant:'error' });
           }
+        },
 
-          container.innerHTML = `
+        // ---- USERS: Listar primera página ----
+        async listUsersPage(){
+          const container = document.getElementById('user-details-container');
+          const hint = document.getElementById('user-results-hint');
+          container.innerHTML=''; container.classList.add('hidden'); hint.classList.add('hidden');
+
+          try{
+            let snap;
+            try{
+              snap = await this.db.collection('users').orderBy('displayNameLower').limit(50).get();
+            }catch{
+              snap = await this.db.collection('users').orderBy('emailLower').limit(50).get();
+            }
+
+            if (snap.empty){ this.showToast({ title:'Sin usuarios', variant:'warn' }); return; }
+
+            container.innerHTML = snap.docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
+            container.classList.remove('hidden');
+            hint.textContent = `Mostrando ${snap.size} usuarios (primera página).`;
+            hint.classList.remove('hidden');
+            this.wireUserCardButtons();
+          }catch(e){
+            this.showToast({ title:'Error listando', message:e.message, variant:'error' });
+          }
+        },
+
+        // ---- USERS: Render tarjeta + cableado ----
+        userCardHTML(userDoc, indexBase=0){
+          const userData = userDoc.data() || {};
+          const tokens = userData.fcmTokens ? Object.keys(userData.fcmTokens) : [];
+          const head = `
             <div class="p-4 bg-zinc-700/50 rounded-lg">
               <h4 class="font-bold">${userData.displayName || 'Usuario sin nombre'}</h4>
               <p class="text-sm text-zinc-400">${userData.email || ''}</p>
-              <div class="mt-4 space-y-3">${tokensHTML}</div>
-            </div>`;
-          container.classList.remove('hidden');
+          `;
+          if (!tokens.length){
+            return head + `<p class="text-sm text-zinc-400 mt-3">Sin dispositivos registrados.</p></div>`;
+          }
+          const bodies = tokens.map((token,i)=>`
+            <div class="p-3 bg-zinc-900 rounded-lg border border-zinc-700 mt-3">
+              <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${i+1}: ${token.substring(0,30)}...</p>
+              <div class="mt-3 space-y-2">
+                <input type="text" id="noti-title-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
+                <textarea id="noti-body-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
+                <div class="flex gap-2">
+                  <button data-token="${token}" data-index="${indexBase}_${i}" data-uid="${userDoc.id}"
+                          class="send-noti-btn flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md text-sm">
+                    Enviar a este Dispositivo
+                  </button>
+                  <button data-token="${token}" data-uid="${userDoc.id}"
+                          class="prune-token-btn px-3 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold rounded-md text-sm">
+                    Prune
+                  </button>
+                </div>
+              </div>
+            </div>
+          `).join('');
+          return head + `<div class="mt-4 space-y-3">${bodies}</div></div>`;
+        },
 
-          container.querySelectorAll('.send-noti-btn').forEach(btn => {
-            btn.onclick = (event) => this.sendDirectNotification(event);
+        wireUserCardButtons(){
+          document.querySelectorAll('.send-noti-btn').forEach(btn=>{
+            btn.onclick = (event)=> this.sendDirectNotification(event);
           });
-          container.querySelectorAll('.prune-token-btn').forEach(btn => {
-            btn.onclick = (event) => this.pruneTokenManual(event);
+          document.querySelectorAll('.prune-token-btn').forEach(btn=>{
+            btn.onclick = (event)=> this.pruneTokenManually(event);
           });
         },
 
-        // ===== Notificación directa + PRUNE de tokens inválidos =====
-        async sendDirectNotification(event) {
+        // ---- USERS: Envío + AUTOPRUNE ----
+        async sendDirectNotification(event){
           const btn = event.target;
           const { token, index, uid } = btn.dataset;
-          const title = document.getElementById(`noti-title-${index}`)?.value.trim() || '(sin título)';
-          const body  = document.getElementById(`noti-body-${index}`)?.value.trim() || '';
+          const title = document.getElementById(`noti-title-${index}`)?.value.trim();
+          const body  = document.getElementById(`noti-body-${index}`)?.value.trim();
 
-          if (!body) {
-            this.showToast({ title:'Faltan datos', message:'El cuerpo es requerido.', variant:'warn' });
+          if (!title || !body){
+            this.showToast({ title:'Faltan datos', message:'El título y el cuerpo son requeridos.', variant:'warn' });
             return;
           }
 
-          btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Enviando…';
-          try {
-            if (this.auth.currentUser) { await this.auth.currentUser.getIdToken(true); }
+          btn.disabled = true;
+          btn.textContent = 'Enviando...';
+
+          try{
+            if (this.auth.currentUser) await this.auth.currentUser.getIdToken(true);
             const send = this.functions.httpsCallable('sendDirectNotification');
             const result = await send({ token, title, body });
 
-            if (result.data?.success) {
-              this.showToast({ title:'Notificación enviada', message:'Dispositivo notificado.' });
+            if (result.data?.success){
+              this.showToast({ title:'Notificación enviada', message:'Dispositivo notificado ✅' });
             } else {
               throw new Error(result.data?.error || 'El servidor devolvió un error.');
             }
-          } catch (e) {
-            const msg = String(e?.message || '');
-            // Detecta token inválido y lo elimina de Firestore
-            if (/registration-token-not-registered|Requested entity was not found/i.test(msg)) {
-              try {
-                await this.db.collection('users').doc(uid).set({
-                  [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
-                }, { merge: true });
-                this.showToast({ title:'Token inválido eliminado', message:'Se purgó de Firestore.', variant:'warn' });
-                // refrescar detalles
-                const userDoc = await this.db.collection('users').doc(uid).get();
-                if (userDoc.exists) this.renderUserDetails(userDoc);
-              } catch (delErr) {
-                this.showToast({ title:'No se pudo eliminar token', message: delErr.message, variant:'error' });
+          }catch(e){
+            const msg = String(e?.message || e);
+            this.showToast({ title:'Error al enviar', message: msg, variant:'error' });
+
+            // Heurística de token inválido/no registrado
+            const looksInvalid = /not[-\s]?registered|unregistered|invalid[-\s]?registration|registration[-\s]?token|mismatch/i.test(msg);
+            if (looksInvalid && uid && token){
+              const ok = confirm('Este token parece inválido. ¿Quieres eliminarlo del perfil del usuario?');
+              if (ok){
+                try{
+                  await this.db.collection('users').doc(uid).set({
+                    [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
+                  }, { merge:true });
+                  this.showToast({ title:'Token eliminado', message:'Se removió el token inválido.' });
+                }catch(pruneErr){
+                  this.showToast({ title:'No se pudo eliminar token', message: pruneErr.message, variant:'error' });
+                }
               }
-            } else {
-              this.showToast({ title:'Error al enviar', message: msg, variant:'error' });
             }
-          } finally {
-            btn.disabled = false; btn.textContent = prev;
+          }finally{
+            btn.disabled = false;
+            btn.textContent = 'Enviar a este Dispositivo';
           }
         },
 
-        // Botón "Prune" manual por token (sin enviar notificación)
-        async pruneTokenManual(event) {
+        async pruneTokenManually(event){
           const btn = event.target;
           const { token, uid } = btn.dataset;
-          btn.disabled = true; const prev = btn.textContent; btn.textContent = 'Eliminando…';
-          try {
+          if (!uid || !token) return;
+          const ok = confirm('¿Eliminar este token del usuario?');
+          if (!ok) return;
+          btn.disabled = true;
+          try{
             await this.db.collection('users').doc(uid).set({
               [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
-            }, { merge: true });
-            this.showToast({ title:'Token eliminado', message:'Se removió de Firestore.' });
-            const userDoc = await this.db.collection('users').doc(uid).get();
-            if (userDoc.exists) this.renderUserDetails(userDoc);
-          } catch (e) {
-            this.showToast({ title:'No se pudo eliminar token', message: e.message, variant:'error' });
-          } finally {
-            btn.disabled = false; btn.textContent = prev;
+            }, { merge:true });
+            this.showToast({ title:'Token eliminado' });
+          }catch(e){
+            this.showToast({ title:'No se pudo eliminar', message:e.message, variant:'error' });
+          }finally{
+            btn.disabled = false;
           }
         },
 
-        // ===== Auth =====
-        login() {
+        // ---- AUTH ----
+        login(){
           const email = document.getElementById('email-input').value.trim();
           const pass  = document.getElementById('password-input').value;
           const errEl = document.getElementById('error-message');
           errEl.classList.add('hidden');
-          this.auth.signInWithEmailAndPassword(email, pass).catch(err => {
+          this.auth.signInWithEmailAndPassword(email,pass).catch(err=>{
             errEl.textContent = 'Error: ' + err.message;
             errEl.classList.remove('hidden');
           });
         },
+        logout(){ this.auth.signOut(); this.showToast({ title:'Sesión cerrada' }); },
 
-        logout() {
-          this.auth.signOut();
-          this.showToast({ title:'Sesión cerrada' });
-        },
-
-        async saveClass() {
-          const id = document.getElementById('class-id').value;
-          if (!id) return;
+        // ---- CRUD Clase ----
+        async saveClass(){
+          const id = document.getElementById('class-id').value; if(!id) return;
           const data = {
             name: document.getElementById('class-name').value,
             instructor: document.getElementById('class-instructor').value,
@@ -1064,32 +971,31 @@
             icon: document.getElementById('class-icon').value,
             description: document.getElementById('class-description').value,
           };
-          try {
-            const cls = this.state.classes.find(c => c.id === id);
-            if (cls && data.time && data.time !== cls.time) {
-              const { startAt, endAt } = this._buildStartEnd(cls.classDate, data.time, cls.duration || 60);
+          try{
+            const cls = this.state.classes.find(c=>c.id===id);
+            if (cls && data.time && data.time !== cls.time){
+              const { startAt, endAt } = this._buildStartEnd(cls.classDate, data.time, cls.duration||60);
               data.startAt = startAt; data.endAt = endAt;
             }
-            await this.db.collection('classes').doc(id).set(data, { merge:true });
+            await this.db.collection('classes').doc(id).set(data,{ merge:true });
             this.showToast({ title:'Clase actualizada' });
             this.hideClassModal();
-          } catch (e) {
+          }catch(e){
             this.showToast({ title:'No se guardó', message:e.message, variant:'error' });
           }
         },
 
-        async deleteClass() {
-          const id = document.getElementById('class-id').value;
-          if (!id) return;
-          try {
+        async deleteClass(){
+          const id = document.getElementById('class-id').value; if(!id) return;
+          try{
             const snap = await this.db.collection('bookings').where('classId','==',id).get();
             const batch = this.db.batch();
-            snap.forEach(doc => batch.delete(doc.ref));
+            snap.forEach(doc=>batch.delete(doc.ref));
             await batch.commit();
             await this.db.collection('classes').doc(id).delete();
             this.showToast({ title:'Clase eliminada', message:`Se borraron ${snap.size} reservas` });
             this.hideClassModal();
-          } catch (e) {
+          }catch(e){
             this.showToast({ title:'No se pudo eliminar', message:e.message, variant:'error' });
           }
         },
