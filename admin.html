@@ -253,7 +253,7 @@
 					firebase.initializeApp(firebaseConfig);
 					this.db = firebase.firestore();
 					this.auth = firebase.auth();
-					this.functions = firebase.functions();
+					this.functions = firebase.functions('us-central1');
 					document.getElementById('login-btn').onclick = () => this.login();
 					document.getElementById('logout-btn').onclick = () => this.logout();
 					document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
