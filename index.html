@@ -1,783 +1,858 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Madness - Reserva de Clases</title>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Madness - Reserva de Clases</title>
+		<!-- Tailwind + Lucide + Fuente -->
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script src="https://unpkg.com/lucide@latest"></script>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+		<!-- PWA -->
+		<link rel="manifest" href="./manifest.json">
+		<meta name="theme-color" content="#18181b">
+		<!-- iOS -->
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="mobile-web-app-capable" content="yes">
+		<!-- modern hint -->
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+		<link rel="apple-touch-icon" href="./images/icon-192x192.png">
+		<style>
+			body {
+				font-family: 'Inter', sans-serif;
+				-webkit-tap-highlight-color: transparent;
+			}
 
-  <!-- Tailwind + Lucide + Fuente -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+			.no-scrollbar::-webkit-scrollbar {
+				display: none;
+			}
 
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#18181b">
-  <!-- iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes"><!-- modern hint -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="./images/icon-192x192.png">
+			.transition-all {
+				transition: all 0.3s ease-in-out;
+			}
 
-  <style>
-    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .transition-all { transition: all 0.3s ease-in-out; }
-    .spinner { border-top-color: #6366f1; }
-  </style>
-</head>
-<body class="bg-zinc-900 text-white antialiased">
+			.spinner {
+				border-top-color: #6366f1;
+			}
+		</style>
+	</head>
+	<body class="bg-zinc-900 text-white antialiased">
+		<!-- App -->
+		<div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
+			<main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
+			<!-- NavBar -->
+			<nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
+				<div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
+					<button data-screen="agenda" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
+						<i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i>
+						<span class="text-xs font-medium">Agenda</span>
+					</button>
+					<button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400">
+						<i data-lucide="user-circle" class="w-6 h-6 mb-1"></i>
+						<span class="text-xs font-medium">Perfil</span>
+					</button>
+				</div>
+			</nav>
+		</div>
+		<!-- Auth -->
+		<div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+		<!-- Loading -->
+		<div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
+			<div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
+		</div>
+		<!-- Modal -->
+		<div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
+			<div id="modal-content" class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"></div>
+		</div>
+		<!-- FABs -->
+		<div id="social-fabs" class="fixed right-4 flex flex-col gap-3 z-[70] pointer-events-auto" style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);">
+			<a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer" class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+				<i data-lucide="message-circle" class="w-6 h-6"></i>
+			</a>
+			<a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer" class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+				<i data-lucide="camera" class="w-6 h-6"></i>
+			</a>
+		</div>
+		<!-- Firebase SDKs (compat) -->
+		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
+		<script>
+			document.addEventListener('DOMContentLoaded', async () => {
+				// ---- Firebase config
+				const firebaseConfig = {
+					apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
+					authDomain: "madnessscheds.firebaseapp.com",
+					projectId: "madnessscheds",
+					storageBucket: "madnessscheds.firebasestorage.app",
+					messagingSenderId: "788538690861",
+					appId: "1:788538690861:web:ce19ead5929a8867c197a4"
+				};
+				firebase.initializeApp(firebaseConfig);
+				// Expose for console/tests
+				window.auth = firebase.auth();
+				window.messaging = firebase.messaging();
+				// ---- Enable client cache (multi-tab safe)
+				try {
+					await firebase.firestore().enablePersistence({
+						synchronizeTabs: true
+					});
+				} catch (e) {
+					console.warn('Persistence not enabled:', e && e.code);
+				}
+				const db = firebase.firestore();
+				const auth = firebase.auth();
+				// ---- Helpers
+				const dateHelper = {
+					pad(n) {
+						return String(n).padStart(2, '0');
+					},
+					getYYYYMMDD(date) {
+						return `${date.getFullYear()}-${this.pad(date.getMonth()+1)}-${this.pad(date.getDate())}`;
+					},
+					get today() {
+						return this.getYYYYMMDD(new Date());
+					},
+					get tomorrow() {
+						const d = new Date();
+						d.setDate(d.getDate() + 1);
+						return this.getYYYYMMDD(d);
+					},
+					human(ymd) {
+						const [y, m, d] = ymd.split('-').map(n => parseInt(n, 10));
+						const dt = new Date(y, m - 1, d);
+						return dt.toLocaleDateString('es-MX', {
+							weekday: 'long',
+							day: '2-digit',
+							month: 'short'
+						});
+					}
+				};
+				const timeHelper = {
+					range(ymd, startHHmm, durationMin = 60) {
+						const start = new Date(`${ymd}T${startHHmm}:00`);
+						const end = new Date(start.getTime() + (Number(durationMin || 60) * 60000));
+						const fmt = new Intl.DateTimeFormat('es-MX', {
+							hour: '2-digit',
+							minute: '2-digit',
+							hour12: false
+						});
+						return `${fmt.format(start)}–${fmt.format(end)}`;
+					}
+				};
+				const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
 
-  <!-- App -->
-  <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
-    <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
+				function timeUntilLabel(ymd, hhmm) {
+					if (!ymd || !hhmm) return '';
+					const start = new Date(`${ymd}T${hhmm}:00`).getTime();
+					const now = Date.now();
+					const diff = start - now;
+					if (diff > 4 * 60 * 60 * 1000) return '';
+					const min = Math.round(diff / 60000);
+					if (min <= -120) return 'finalizada';
+					if (min < 0) return 'en curso';
+					if (min === 0) return 'empieza ahora';
+					if (min < 60) return `empieza en ${min} min`;
+					const h = Math.floor(min / 60),
+						r = min % 60;
+					return r === 0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
+				}
+				const coverHelper = {
+					byName(name = '') {
+						const n = name.toLowerCase();
+						if (n.includes('trx')) return 'images/trx.png';
+						if (n.includes('yoga')) return 'images/yoga.png';
+						if (n.includes('hiit')) return 'images/HIIT.png';
+						if (n.includes('funcional') || n.includes('functional')) return 'images/functional.png';
+						return null;
+					},
+					forClassName(name, fallbackText) {
+						return this.byName(name) || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(fallbackText||name||'Clase')}`;
+					},
+					forClass(cls) {
+						return this.byName(cls.name) || cls.image || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
+					}
+				};
+				// ---- Estado
+				let state = {
+					currentUser: null,
+					classes: [],
+					myBookings: [],
+					currentScreen: 'agenda',
+					scheduleFilter: 'today',
+					selectedClassId: null
+				};
+				// ---- Render scheduler
+				let renderQueued = false;
 
-    <!-- NavBar -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
-      <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
-        <button data-screen="agenda" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
-          <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Agenda</span>
-        </button>
-        <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400">
-          <i data-lucide="user-circle" class="w-6 h-6 mb-1"></i><span class="text-xs font-medium">Perfil</span>
-        </button>
-      </div>
-    </nav>
-  </div>
+				function scheduleRender() {
+					if (renderQueued) return;
+					renderQueued = true;
+					requestAnimationFrame(() => {
+						renderQueued = false;
+						render();
+					});
+				}
+				// Shortcuts (?screen=agenda|profile|classDetails)
+				const _params = new URLSearchParams(location.search);
+				const _screen = _params.get('screen');
+				if (_screen && ['agenda', 'profile', 'classDetails'].includes(_screen)) {
+					state.currentScreen = _screen;
+				}
+				// DOM refs
+				const mainContent = document.getElementById('main-content');
+				const authContainer = document.getElementById('auth-container');
+				const appContainer = document.getElementById('app-container');
+				const loadingSpinner = document.getElementById('loading-spinner');
+				const navBar = document.getElementById('nav-bar');
+				const fabs = document.getElementById('social-fabs');
+				// Listeners control
+				let unsubClasses = null;
+				let unsubMyBookings = null;
+				let listenersAttached = false;
 
-  <!-- Auth -->
-  <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+				function detachListeners() {
+					if (unsubClasses) {
+						try {
+							unsubClasses();
+						} catch {};
+						unsubClasses = null;
+					}
+					if (unsubMyBookings) {
+						try {
+							unsubMyBookings();
+						} catch {};
+						unsubMyBookings = null;
+					}
+					listenersAttached = false;
+				}
 
-  <!-- Loading -->
-  <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
-    <div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
-  </div>
+				function attachAgendaListeners() {
+					if (listenersAttached || !state.currentUser) return;
+					const nowMinus5 = new Date(Date.now() - 5 * 60 * 1000); // tolerancia
+					// Clases futuras por startAt
+					unsubClasses = db.collection('classes').where('startAt', '>=', nowMinus5).orderBy('startAt', 'asc').limit(100).onSnapshot(snap => {
+						state.classes = snap.docs.map(d => ({
+							id: d.id,
+							...d.data()
+						}));
+						scheduleRender();
+					}, err => console.error('Error clases:', err));
+					// Mis bookings: SOLO por userId
+					unsubMyBookings = db.collection('bookings').where('userId', '==', state.currentUser.uid).onSnapshot(snap => {
+						state.myBookings = snap.docs.map(d => ({
+							id: d.id,
+							...d.data()
+						}));
+						scheduleRender();
+					}, err => console.error('Error mis reservas:', err));
+					listenersAttached = true;
+				}
+				// --- Messaging setup (member app) ---
+				// window.messaging already set; keep a local alias if you prefer:
+				const messaging = window.messaging;
+				// Robust helper used by your button
+				async function ensurePushPermissionAndToken(user) {
+					if (!user) throw new Error('No user session');
+					// Some browsers/environments don’t support web push
+					if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
+						throw new Error('Push no soportado en este navegador');
+					}
+					// iOS requires a user gesture (your button provides it) + installed PWA
+					const permission = await Notification.requestPermission();
+					if (permission !== 'granted') throw new Error('Permiso no concedido');
+					// Make sure we pass YOUR service worker registration (important on GH Pages)
+					if (!window._msgSW) {
+						window._msgSW = await navigator.serviceWorker.ready;
+					}
+					// Get / refresh the token (use your real VAPID public key)
+					const token = await messaging.getToken({
+						vapidKey: 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw',
+						serviceWorkerRegistration: window._msgSW
+					});
+					if (!token) throw new Error('No se obtuvo token FCM');
+					// --- THE FIX ---
+          // Store the token directly with a simple 'true' value.
+          // This matches the security rules and is all the backend needs.
 
-  <!-- Modal -->
-  <div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
-    <div id="modal-content" class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"></div>
-  </div>
-
-  <!-- FABs -->
-  <div id="social-fabs"
-       class="fixed right-4 flex flex-col gap-3 z-[70] pointer-events-auto"
-       style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);">
-    <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer"
-       class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
-      <i data-lucide="message-circle" class="w-6 h-6"></i>
-    </a>
-    <a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer"
-       class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
-      <i data-lucide="camera" class="w-6 h-6"></i>
-    </a>
-  </div>
-
-  <!-- Firebase SDKs (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
-
-  <script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    // ---- Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
-      authDomain: "madnessscheds.firebaseapp.com",
-      projectId: "madnessscheds",
-      storageBucket: "madnessscheds.firebasestorage.app",
-      messagingSenderId: "788538690861",
-      appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    // Expose for console/tests
-    window.auth = firebase.auth();
-    window.messaging = firebase.messaging();
-
-    // ---- Enable client cache (multi-tab safe)
-    try {
-      await firebase.firestore().enablePersistence({ synchronizeTabs: true });
-    } catch (e) {
-      console.warn('Persistence not enabled:', e && e.code);
-    }
-
-    const db   = firebase.firestore();
-    const auth = firebase.auth();
-
-    // ---- Helpers
-    const dateHelper = {
-      pad(n){ return String(n).padStart(2,'0'); },
-      getYYYYMMDD(date) {
-        return `${date.getFullYear()}-${this.pad(date.getMonth()+1)}-${this.pad(date.getDate())}`;
-      },
-      get today()    { return this.getYYYYMMDD(new Date()); },
-      get tomorrow() { const d = new Date(); d.setDate(d.getDate()+1); return this.getYYYYMMDD(d); },
-      human(ymd) {
-        const [y,m,d] = ymd.split('-').map(n => parseInt(n,10));
-        const dt = new Date(y, m-1, d);
-        return dt.toLocaleDateString('es-MX', { weekday:'long', day:'2-digit', month:'short' });
-      }
-    };
-    const timeHelper = {
-      range(ymd, startHHmm, durationMin = 60) {
-        const start = new Date(`${ymd}T${startHHmm}:00`);
-        const end   = new Date(start.getTime() + (Number(durationMin || 60) * 60000));
-        const fmt   = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-        return `${fmt.format(start)}–${fmt.format(end)}`;
-      }
-    };
-    const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
-
-    function timeUntilLabel(ymd, hhmm) {
-      if (!ymd || !hhmm) return '';
-      const start = new Date(`${ymd}T${hhmm}:00`).getTime();
-      const now   = Date.now();
-      const diff  = start - now;
-      if (diff > 4*60*60*1000) return '';
-      const min = Math.round(diff / 60000);
-      if (min <= -120) return 'finalizada';
-      if (min < 0)     return 'en curso';
-      if (min === 0)   return 'empieza ahora';
-      if (min < 60)    return `empieza en ${min} min`;
-      const h = Math.floor(min/60), r = min % 60;
-      return r === 0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
-    }
-
-    const coverHelper = {
-      byName(name = '') {
-        const n = name.toLowerCase();
-        if (n.includes('trx')) return 'images/trx.png';
-        if (n.includes('yoga')) return 'images/yoga.png';
-        if (n.includes('hiit')) return 'images/HIIT.png';
-        if (n.includes('funcional') || n.includes('functional')) return 'images/functional.png';
-        return null;
-      },
-      forClassName(name, fallbackText){
-        return this.byName(name) || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(fallbackText||name||'Clase')}`;
-      },
-      forClass(cls){
-        return this.byName(cls.name) || cls.image || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
-      }
-    };
-
-    // ---- Estado
-    let state = {
-      currentUser: null,
-      classes: [],
-      myBookings: [],
-      currentScreen: 'agenda',
-      scheduleFilter: 'today',
-      selectedClassId: null
-    };
-
-    // ---- Render scheduler
-    let renderQueued = false;
-    function scheduleRender(){
-      if (renderQueued) return;
-      renderQueued = true;
-      requestAnimationFrame(() => { renderQueued = false; render(); });
-    }
-
-    // Shortcuts (?screen=agenda|profile|classDetails)
-    const _params = new URLSearchParams(location.search);
-    const _screen = _params.get('screen');
-    if (_screen && ['agenda','profile','classDetails'].includes(_screen)) {
-      state.currentScreen = _screen;
-    }
-
-    // DOM refs
-    const mainContent   = document.getElementById('main-content');
-    const authContainer = document.getElementById('auth-container');
-    const appContainer  = document.getElementById('app-container');
-    const loadingSpinner= document.getElementById('loading-spinner');
-    const navBar        = document.getElementById('nav-bar');
-    const fabs          = document.getElementById('social-fabs');
-
-    // Listeners control
-    let unsubClasses = null;
-    let unsubMyBookings = null;
-    let listenersAttached = false;
-
-    function detachListeners(){
-      if (unsubClasses)   { try{unsubClasses();}catch{};   unsubClasses=null; }
-      if (unsubMyBookings){ try{unsubMyBookings();}catch{};unsubMyBookings=null; }
-      listenersAttached = false;
-    }
-
-    function attachAgendaListeners(){
-      if (listenersAttached || !state.currentUser) return;
-      const nowMinus5 = new Date(Date.now() - 5*60*1000); // tolerancia
-
-      // Clases futuras por startAt
-      unsubClasses = db.collection('classes')
-        .where('startAt','>=', nowMinus5)
-        .orderBy('startAt','asc')
-        .limit(100)
-        .onSnapshot(snap => {
-          state.classes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          scheduleRender();
-        }, err => console.error('Error clases:', err));
-
-      // Mis bookings: SOLO por userId
-      unsubMyBookings = db.collection('bookings')
-        .where('userId','==', state.currentUser.uid)
-        .onSnapshot(snap => {
-          state.myBookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          scheduleRender();
-        }, err => console.error('Error mis reservas:', err));
-
-      listenersAttached = true;
-    }
-
-    // --- Messaging setup (member app) ---
-    // window.messaging already set; keep a local alias if you prefer:
-    const messaging = window.messaging;
-
-    // Robust helper used by your button
-    async function ensurePushPermissionAndToken(user) {
-      if (!user) throw new Error('No user session');
-
-      // Some browsers/environments don’t support web push
-      if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
-        throw new Error('Push no soportado en este navegador');
-      }
-
-      // iOS requires a user gesture (your button provides it) + installed PWA
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') throw new Error('Permiso no concedido');
-
-      // Make sure we pass YOUR service worker registration (important on GH Pages)
-      if (!window._msgSW) {
-        window._msgSW = await navigator.serviceWorker.ready;
-      }
-
-      // Get / refresh the token (use your real VAPID public key)
-      const token = await messaging.getToken({
-        vapidKey: 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw',
-        serviceWorkerRegistration: window._msgSW
-      });
-      if (!token) throw new Error('No se obtuvo token FCM');
-
-      // Store under users/{uid}.fcmTokens[token]
-      await firebase.firestore().collection('users').doc(user.uid).set({
-        fcmTokens: {
-          [token]: {
-            platform: detectPlatform(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }
-        }
-      }, { merge: true });
-
-      // Optional: foreground handler (simple alert; replace with toast)
-      messaging.onMessage((payload) => {
-        const title = payload?.notification?.title || 'Notificación';
-        const body  = payload?.notification?.body  || '';
-        alert(`${title}\n${body}`);
-      });
-
-      return token;
-    }
-
-    // (Optional) helper to disable notifications & remove token
-    async function disablePushForThisDevice(user) {
-      if (!user) throw new Error('No user session');
-      if (!window._msgSW) window._msgSW = await navigator.serviceWorker.ready;
-
-      const token = await messaging.getToken({
-        vapidKey: 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw',
-        serviceWorkerRegistration: window._msgSW
-      });
-      if (!token) return;
-
-      // Remove from Firestore
-      const ref = firebase.firestore().collection('users').doc(user.uid);
-      await ref.set({ [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete() }, { merge: true });
-
-      // Delete from FCM (best effort)
-      try { await messaging.deleteToken(token); } catch {}
-    }
-
-    // Expose helper so you can call it from console:
-    //   await ensurePushPermissionAndToken(auth.currentUser)
-    window.ensurePushPermissionAndToken = ensurePushPermissionAndToken;
-
-    function detectPlatform(){
-      const ua = navigator.userAgent || '';
-      if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
-      if (/Android/.test(ua)) return 'Android';
-      if (/Win/.test(ua)) return 'Windows';
-      if (/Mac/.test(ua)) return 'macOS';
-      return 'Web';
-    }
-
-    // ---- Auth gate
-    auth.onAuthStateChanged(async user => {
-      loadingSpinner.classList.remove('hidden');
-      if (user) {
-        state.currentUser = user;
-        authContainer.style.display = 'none';
-        appContainer.style.display = 'flex';
-        if (state.currentScreen === 'agenda') attachAgendaListeners();
-        scheduleRender();
-      } else {
-        state.currentUser = null;
-        detachListeners();
-        appContainer.style.display = 'none';
-        authContainer.style.display = 'flex';
-        renderAuthScreen();
-      }
-      loadingSpinner.classList.add('hidden');
-    });
-
-    function renderAuthScreen(isLogin = true) {
-      authContainer.innerHTML = `
-        <div class="w-full max-w-md mx-auto">
-          <h1 class="text-4xl font-bold text-white mb-2">Madness - Reserva de clases</h1>
-          <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
-          <div class="space-y-4">
-            <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-            <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-          </div>
-          <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
-          <p class="text-center text-zinc-400 mt-6">${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'} <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a></p>
-        </div>`;
-      document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
-      document.getElementById('auth-toggle').onclick = (e) => { e.preventDefault(); renderAuthScreen(!isLogin); };
-      lucide.createIcons();
-    }
-
-    // ---- Rendering
-    function render() {
-      const screen = state.currentScreen;
-      let content = '';
-      if (screen === 'agenda') content = getAgendaScreenHTML();
-      else if (screen === 'profile') content = getProfileScreenHTML();
-      else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
-
-      mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
-      updateNavButtons();
-      lucide.createIcons();
-
-      // Wire the "enable notifications" button if present
-      // Wire the "enable notifications" button if present
-      const btn = document.getElementById('enablePush');
-      if (btn) {
-        btn.onclick = async () => {
-          try {
-            const user = firebase.auth().currentUser;
-            if (!user) return alert('Inicia sesión primero');
-
-            // Guard for unsupported environments (e.g., older Safari not in PWA)
-            if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
-              return alert('Este navegador no soporta notificaciones push.');
+          await firebase.firestore().collection('users').doc(user.uid).set({
+            fcmTokens: {
+              [token]: true 
             }
+          }, {
+            merge: true
+          });
+					// Optional: foreground handler (simple alert; replace with toast)
+					messaging.onMessage((payload) => {
+						const title = payload?.notification?.title || 'Notificación';
+						const body = payload?.notification?.body || '';
+						alert(`${title}\n${body}`);
+					});
+					return token;
+				}
+				// (Optional) helper to disable notifications & remove token
+				async function disablePushForThisDevice(user) {
+					if (!user) throw new Error('No user session');
+					if (!window._msgSW) window._msgSW = await navigator.serviceWorker.ready;
+					const token = await messaging.getToken({
+						vapidKey: 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw',
+						serviceWorkerRegistration: window._msgSW
+					});
+					if (!token) return;
+					// Remove from Firestore
+					const ref = firebase.firestore().collection('users').doc(user.uid);
+					await ref.set({
+						[`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
+					}, {
+						merge: true
+					});
+					// Delete from FCM (best effort)
+					try {
+						await messaging.deleteToken(token);
+					} catch {}
+				}
+				// Expose helper so you can call it from console:
+				//   await ensurePushPermissionAndToken(auth.currentUser)
+				window.ensurePushPermissionAndToken = ensurePushPermissionAndToken;
 
-            btn.disabled = true;
-            await ensurePushPermissionAndToken(user);
-            alert('Notificaciones activadas ✅');
-          } catch (e) {
-            console.error('Enable push failed:', e);
-            alert(e.message || 'No se pudo activar notificaciones');
-          } finally {
-            btn.disabled = false;
-          }
-        };
-      }
-    }
+				function detectPlatform() {
+					const ua = navigator.userAgent || '';
+					if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
+					if (/Android/.test(ua)) return 'Android';
+					if (/Win/.test(ua)) return 'Windows';
+					if (/Mac/.test(ua)) return 'macOS';
+					return 'Web';
+				}
+				// ---- Auth gate
+				auth.onAuthStateChanged(async user => {
+					loadingSpinner.classList.remove('hidden');
+					if (user) {
+						state.currentUser = user;
+						authContainer.style.display = 'none';
+						appContainer.style.display = 'flex';
+						if (state.currentScreen === 'agenda') attachAgendaListeners();
+						scheduleRender();
+					} else {
+						state.currentUser = null;
+						detachListeners();
+						appContainer.style.display = 'none';
+						authContainer.style.display = 'flex';
+						renderAuthScreen();
+					}
+					loadingSpinner.classList.add('hidden');
+				});
 
-    // -------- AGENDA --------
-    function getAgendaScreenHTML() {
-      // RESERVAS: filtramos futuras y ordenamos por fecha/hora real
-      const upcoming = state.myBookings
-        .filter(Boolean)
-        .filter(b => {
-          const startObj = b.startAt ? asDate(b.startAt)
-                                     : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
-          return Date.now() <= startObj.getTime() + 5*60*1000;
-        })
-        .sort((a,b) => {
-          const ta = a.startAt ? asDate(a.startAt).getTime()
-                               : new Date(`${a.classDate}T${a.time||'00:00'}:00`).getTime();
-          const tb = b.startAt ? asDate(b.startAt).getTime()
-                               : new Date(`${b.classDate}T${b.time||'00:00'}:00`).getTime();
-          return ta - tb;
-        });
-
-      const reservasHTML = upcoming.length
-        ? upcoming.map(b => {
-            const startObj = b.startAt ? asDate(b.startAt)
-                                       : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
-            const ymd  = b.classDate || dateHelper.getYYYYMMDD(startObj);
-            const hhmm = b.time || new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(startObj);
-
-            const dayText =
-              ymd === dateHelper.today ? 'Hoy' :
-              ymd === dateHelper.tomorrow ? 'Mañana' :
-              dateHelper.human(ymd);
-
-            const cover = coverHelper.forClassName(b.className, b.className);
-
-            return `
-              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <img src="${cover}" alt="${b.className}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-                  <div>
-                    <p class="font-bold text-lg">${b.className}</p>
-                    <p class="text-zinc-400 text-sm">${dayText} • ${hhmm}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
-                  </div>
-                </div>
-                <button data-action="cancel-booking" data-class-id="${b.classId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
-              </div>`;
-          }).join('')
-        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
-
-      // HORARIO
-      const targetYMD = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
-      const filtered = state.classes
-        .filter(cls => {
-          const ymd = dateHelper.getYYYYMMDD(cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt));
-          return ymd === targetYMD;
-        })
-        .filter(cls => {
-          if (state.scheduleFilter !== 'today') return true;
-          const start = (cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt)).getTime();
-          return Date.now() <= start + 5*60*1000;
-        });
-
-      const horarioHTML = filtered.length
-        ? filtered.map(cls => {
-            const enrolled = Number(cls.enrolledCount || 0);
-            const available = Number(cls.capacity || 0) - enrolled;
-            const isBooked = state.myBookings.some(b => b.classId === cls.id); // <- badge Reservada
-            let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
-            if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-            else if (available <= 0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
-
-            const ymd = cls.classDate || targetYMD;
-            const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
-
-            return `
-              <div data-action="navigate-details" data-class-id="${cls.id}"
+				function renderAuthScreen(isLogin = true) {
+					authContainer.innerHTML = `
+        
+										
+										<div class="w-full max-w-md mx-auto">
+											<h1 class="text-4xl font-bold text-white mb-2">Madness - Reserva de clases</h1>
+											<p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
+											<div class="space-y-4">
+												<input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+													<input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+													</div>
+													<button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
+													<p class="text-center text-zinc-400 mt-6">${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'} 
+														
+														<a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a>
+													</p>
+												</div>`;
+					document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
+					document.getElementById('auth-toggle').onclick = (e) => {
+						e.preventDefault();
+						renderAuthScreen(!isLogin);
+					};
+					lucide.createIcons();
+				}
+				// ---- Rendering
+				function render() {
+					const screen = state.currentScreen;
+					let content = '';
+					if (screen === 'agenda') content = getAgendaScreenHTML();
+					else if (screen === 'profile') content = getProfileScreenHTML();
+					else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
+					mainContent.innerHTML = `
+												
+												<div class="max-w-md mx-auto">${content}</div>`;
+					updateNavButtons();
+					lucide.createIcons();
+					// Wire the "enable notifications" button if present
+					// Wire the "enable notifications" button if present
+					const btn = document.getElementById('enablePush');
+					if (btn) {
+						btn.onclick = async () => {
+							try {
+								const user = firebase.auth().currentUser;
+								if (!user) return alert('Inicia sesión primero');
+								// Guard for unsupported environments (e.g., older Safari not in PWA)
+								if (!firebase.messaging.isSupported || !firebase.messaging.isSupported()) {
+									return alert('Este navegador no soporta notificaciones push.');
+								}
+								btn.disabled = true;
+								await ensurePushPermissionAndToken(user);
+								alert('Notificaciones activadas ✅');
+							} catch (e) {
+								console.error('Enable push failed:', e);
+								alert(e.message || 'No se pudo activar notificaciones');
+							} finally {
+								btn.disabled = false;
+							}
+						};
+					}
+				}
+				// -------- AGENDA --------
+				function getAgendaScreenHTML() {
+					// RESERVAS: filtramos futuras y ordenamos por fecha/hora real
+					const upcoming = state.myBookings.filter(Boolean).filter(b => {
+						const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
+						return Date.now() <= startObj.getTime() + 5 * 60 * 1000;
+					}).sort((a, b) => {
+						const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00`).getTime();
+						const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00`).getTime();
+						return ta - tb;
+					});
+					const reservasHTML = upcoming.length ? upcoming.map(b => {
+						const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
+						const ymd = b.classDate || dateHelper.getYYYYMMDD(startObj);
+						const hhmm = b.time || new Intl.DateTimeFormat('es-MX', {
+							hour: '2-digit',
+							minute: '2-digit',
+							hour12: false
+						}).format(startObj);
+						const dayText = ymd === dateHelper.today ? 'Hoy' : ymd === dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymd);
+						const cover = coverHelper.forClassName(b.className, b.className);
+						return `
+              
+												
+												<div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+													<div class="flex items-center gap-4">
+														<img src="${cover}" alt="${b.className}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+															<div>
+																<p class="font-bold text-lg">${b.className}</p>
+																<p class="text-zinc-400 text-sm">${dayText} • ${hhmm}</p>
+																<p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
+															</div>
+														</div>
+														<button data-action="cancel-booking" data-class-id="${b.classId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+													</div>`;
+					}).join('') : `
+													
+													<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
+					// HORARIO
+					const targetYMD = state.scheduleFilter === 'today' ? dateHelper.today : dateHelper.tomorrow;
+					const filtered = state.classes.filter(cls => {
+						const ymd = dateHelper.getYYYYMMDD(cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt));
+						return ymd === targetYMD;
+					}).filter(cls => {
+						if (state.scheduleFilter !== 'today') return true;
+						const start = (cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt)).getTime();
+						return Date.now() <= start + 5 * 60 * 1000;
+					});
+					const horarioHTML = filtered.length ? filtered.map(cls => {
+						const enrolled = Number(cls.enrolledCount || 0);
+						const available = Number(cls.capacity || 0) - enrolled;
+						const isBooked = state.myBookings.some(b => b.classId === cls.id); // <- badge Reservada
+						let badge = `
+													
+													<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+						if (isBooked) badge = `
+													
+													<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+						else if (available <= 0) badge = `
+													
+													<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
+						const ymd = cls.classDate || targetYMD;
+						const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX', {
+							hour: '2-digit',
+							minute: '2-digit',
+							hour12: false
+						});
+						return `
+              
+													
+													<div data-action="navigate-details" data-class-id="${cls.id}"
                    class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
-                <img src="${coverHelper.forClass(cls)}" alt="${cls.name}"
+														<img src="${coverHelper.forClass(cls)}" alt="${cls.name}"
                      class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-                <div class="flex-1">
-                  <p class="font-bold text-lg">${cls.name}</p>
-                  <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
-                  <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
-                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
-                </div>
-                <div class="text-right">${badge}</div>
-              </div>`;
-          }).join('')
-        : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter === 'today' ? 'hoy' : 'mañana'}.</div>`;
-
-      return `
-        <div class="p-6 space-y-8">
-          <header>
-            <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
-            <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
-          </header>
-
-          <section aria-labelledby="mis-reservas">
-            <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
-            <div class="space-y-3">
+															<div class="flex-1">
+																<p class="font-bold text-lg">${cls.name}</p>
+																<p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
+																<p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
+																<p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
+															</div>
+															<div class="text-right">${badge}</div>
+														</div>`;
+					}).join('') : `
+														
+														<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter === 'today' ? 'hoy' : 'mañana'}.</div>`;
+					return `
+        
+														
+														<div class="p-6 space-y-8">
+															<header>
+																<h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
+																<p class="text-zinc-400">Tus reservas próximas y el horario.</p>
+															</header>
+															<section aria-labelledby="mis-reservas">
+																<h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
+																<div class="space-y-3">
               ${reservasHTML}
             </div>
-          </section>
-
-          <section aria-labelledby="horario">
-            <div class="flex items-center justify-between mb-3">
-              <h2 id="horario" class="text-xl font-semibold">Horario</h2>
-              <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-                <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
-                <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
-              </div>
-            </div>
-            <div class="space-y-3">
+															</section>
+															<section aria-labelledby="horario">
+																<div class="flex items-center justify-between mb-3">
+																	<h2 id="horario" class="text-xl font-semibold">Horario</h2>
+																	<div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
+																		<button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'today' ? 'bg-indigo-600 text-white' : ''}">Hoy</button>
+																		<button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter === 'tomorrow' ? 'bg-indigo-600 text-white' : ''}">Mañana</button>
+																	</div>
+																</div>
+																<div class="space-y-3">
               ${horarioHTML}
             </div>
-          </section>
-        </div>`;
-    }
+															</section>
+														</div>`;
+				}
 
-    function getProfileScreenHTML() {
-      return `
-        <div class="p-6 space-y-6">
-          <header class="text-center space-y-4">
-            <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
-            <div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div>
-          </header>
-          <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
-            <a href="#" data-action="edit-name" class="flex items-center justify-between py-3"><span>Editar Nombre</span><i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i></a>
-            <button id="enablePush" class="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg">🔔 Activar notificaciones</button>
-            <a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400"><span>Cerrar Sesión</span><i data-lucide="log-out" class="w-5 h-5"></i></a>
-          </div>
-        </div>`;
-    }
+				function getProfileScreenHTML() {
+					return `
+        
+														
+														<div class="p-6 space-y-6">
+															<header class="text-center space-y-4">
+																<img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
+																	<div>
+																		<h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1>
+																	</div>
+																</header>
+																<div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
+																	<a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
+																		<span>Editar Nombre</span>
+																		<i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
+																	</a>
+																	<button id="enablePush" class="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg">🔔 Activar notificaciones</button>
+																	<a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400">
+																		<span>Cerrar Sesión</span>
+																		<i data-lucide="log-out" class="w-5 h-5"></i>
+																	</a>
+																</div>
+															</div>`;
+				}
 
-    function getClassDetailsScreenHTML(classId) {
-      const cls = state.classes.find(c => c.id === classId);
-      if (!cls) return getAgendaScreenHTML();
-
-      const enrolled       = Number(cls.enrolledCount || 0);
-      const availableSpots = Number(cls.capacity || 0) - enrolled;
-      const isBooked       = state.myBookings.some(b => b.classId === cls.id);
-      const durationMin    = Number(cls.duration || 60);
-      const ymd            = cls.classDate || dateHelper.getYYYYMMDD(cls.startAt.toDate());
-      const hhmm           = cls.time      || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
-      const timeRange      = timeHelper.range(ymd, hhmm, durationMin);
-
-      let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-      if (isBooked)        buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-      else if (availableSpots <= 0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-
-      return `
-        <div>
-          <div class="relative">
-            <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover">
-            <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
-              <i data-lucide="arrow-left" class="w-6 h-6"></i>
-            </button>
-          </div>
-
-          <div class="p-6 space-y-4 pb-40">
-            <h1 class="text-3xl font-bold">
+				function getClassDetailsScreenHTML(classId) {
+					const cls = state.classes.find(c => c.id === classId);
+					if (!cls) return getAgendaScreenHTML();
+					const enrolled = Number(cls.enrolledCount || 0);
+					const availableSpots = Number(cls.capacity || 0) - enrolled;
+					const isBooked = state.myBookings.some(b => b.classId === cls.id);
+					const durationMin = Number(cls.duration || 60);
+					const ymd = cls.classDate || dateHelper.getYYYYMMDD(cls.startAt.toDate());
+					const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX', {
+						hour: '2-digit',
+						minute: '2-digit',
+						hour12: false
+					});
+					const timeRange = timeHelper.range(ymd, hhmm, durationMin);
+					let buttonHTML = `
+															
+															<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+					if (isBooked) buttonHTML = `
+															
+															<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+					else if (availableSpots <= 0) buttonHTML = `
+															
+															<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
+					return `
+        
+															
+															<div>
+																<div class="relative">
+																	<img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover">
+																		<button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
+																			<i data-lucide="arrow-left" class="w-6 h-6"></i>
+																		</button>
+																	</div>
+																	<div class="p-6 space-y-4 pb-40">
+																		<h1 class="text-3xl font-bold">
               ${cls.name}
-              <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
-            </h1>
-
-            <p class="text-zinc-400 leading-relaxed">${cls.description || ''}</p>
-
-            <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-              <span class="font-semibold text-lg">Estado</span>
-              <span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">
+              
+																			
+																			<span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+																		</h1>
+																		<p class="text-zinc-400 leading-relaxed">${cls.description || ''}</p>
+																		<div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+																			<span class="font-semibold text-lg">Estado</span>
+																			<span class="text-2xl font-bold ${availableSpots > 0 ? 'text-emerald-400' : 'text-rose-400'}">
                 ${availableSpots > 0 ? '¡Hay cupo!' : 'Llena'}
               </span>
-            </div>
-          </div>
-
-          <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+																		</div>
+																	</div>
+																	<div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
             ${buttonHTML}
           </div>
-        </div>`;
-    }
+																</div>`;
+				}
+				// ---- App actions
+				const app = {
+					handleAuth: (isLogin) => {
+						const email = document.getElementById('email-input').value;
+						const pass = document.getElementById('password-input').value;
+						if (!email || !pass) {
+							alert("Por favor, ingresa correo y contraseña.");
+							return;
+						}
+						loadingSpinner.classList.remove('hidden');
+						const p = isLogin ? auth.signInWithEmailAndPassword(email, pass) : auth.createUserWithEmailAndPassword(email, pass);
+						p.catch(err => {
+							alert(err.message);
+							loadingSpinner.classList.add('hidden');
+						});
+					},
+					logout: () => auth.signOut(),
+					editUserName: (event) => {
+						event.preventDefault();
+						const newName = prompt("Ingresa tu nombre y apellido:", state.currentUser.displayName || "");
+						if (newName && newName.trim() !== "") {
+							loadingSpinner.classList.remove('hidden');
+							state.currentUser.updateProfile({
+								displayName: newName.trim()
+							}).then(() => {
+								scheduleRender();
+								loadingSpinner.classList.add('hidden');
+							}).catch(err => {
+								alert("Error: " + err.message);
+								loadingSpinner.classList.add('hidden');
+							});
+						}
+					},
+					navigateTo: (screen, data = {}) => {
+						if (screen === 'agenda') attachAgendaListeners();
+						else detachListeners();
+						state.currentScreen = screen;
+						if (data.classId) state.selectedClassId = data.classId;
+						render();
+					},
+					setScheduleFilter: (filter) => {
+						state.scheduleFilter = filter;
+						render();
+					},
+					// Reservar
+					confirmBooking: async (classId) => {
+						const uid = state.currentUser.uid;
+						const classRef = db.collection('classes').doc(classId);
+						const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
+						try {
+							await db.runTransaction(async (tx) => {
+								const [classSnap, bookingSnap] = await Promise.all([tx.get(classRef), tx.get(bookingRef)]);
+								if (!classSnap.exists) throw new Error('La clase ya no existe.');
+								if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
+								const cls = classSnap.data();
+								const enrolled = Number(cls.enrolledCount || 0);
+								const capacity = Number(cls.capacity || 0);
+								if (enrolled >= capacity) throw new Error('Clase llena.');
+								const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
+								const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
+								const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
+								const timeFmt = new Intl.DateTimeFormat('es-MX', {
+									hour: '2-digit',
+									minute: '2-digit',
+									hour12: false
+								});
+								const time = cls.time || timeFmt.format(startDateObj);
+								tx.set(bookingRef, {
+									classId,
+									userId: uid,
+									userName: state.currentUser.displayName || state.currentUser.email,
+									startAt: startAtTs,
+									classDate,
+									time,
+									className: cls.name,
+									createdAt: firebase.firestore.FieldValue.serverTimestamp()
+								});
+								tx.update(classRef, {
+									enrolledCount: firebase.firestore.FieldValue.increment(1)
+								});
+							});
+							showModal({
+								success: true,
+								title: '¡Reserva Exitosa!'
+							});
+						} catch (err) {
+							alert(`No se pudo reservar\n\n${err.message}`);
+						}
+					},
+					// Cancelar
+					cancelBooking: async (classId) => {
+						const uid = state.currentUser.uid;
+						const classRef = db.collection('classes').doc(classId);
+						const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
+						try {
+							await db.runTransaction(async (tx) => {
+								const [bookingSnap, classSnap] = await Promise.all([tx.get(bookingRef), tx.get(classRef)]);
+								if (!bookingSnap.exists) throw new Error('No tienes reserva para esta clase.');
+								tx.delete(bookingRef);
+								if (classSnap.exists) {
+									const enrolled = Number(classSnap.data().enrolledCount || 0);
+									if (enrolled > 0) tx.update(classRef, {
+										enrolledCount: firebase.firestore.FieldValue.increment(-1)
+									});
+								}
+							});
+							showModal({
+								success: false,
+								title: 'Cancelación Exitosa'
+							});
+						} catch (err) {
+							alert(`No se pudo cancelar\n\n${err.message}`);
+						}
+					}
+				};
+				// Delegación de eventos
+				function handleInteraction(e) {
+					const target = e.target.closest('[data-action]');
+					if (!target) return;
+					const {
+						action,
+						screen,
+						filter,
+						classId
+					} = target.dataset;
+					switch (action) {
+						case 'navigate':
+							app.navigateTo(screen);
+							break;
+						case 'navigate-details':
+							app.navigateTo('classDetails', {
+								classId
+							});
+							break;
+						case 'set-filter':
+							app.setScheduleFilter(filter);
+							break;
+						case 'edit-name':
+							app.editUserName(e);
+							break;
+						case 'logout':
+							app.logout();
+							break;
+						case 'confirm-booking':
+							target.disabled = true;
+							app.confirmBooking(classId).finally(() => target.disabled = false);
+							break;
+						case 'cancel-booking':
+							target.disabled = true;
+							app.cancelBooking(classId).finally(() => target.disabled = false);
+							break;
+					}
+				}
+				document.addEventListener('click', handleInteraction);
+				navBar.addEventListener('click', e => {
+					const target = e.target.closest('.nav-button');
+					if (target) app.navigateTo(target.dataset.screen);
+				});
+				// Modal
+				const genericModal = document.getElementById('generic-modal');
+				const modalContent = document.getElementById('modal-content');
 
-    // ---- App actions
-    const app = {
-      handleAuth: (isLogin) => {
-        const email = document.getElementById('email-input').value;
-        const pass  = document.getElementById('password-input').value;
-        if (!email || !pass) { alert("Por favor, ingresa correo y contraseña."); return; }
-        loadingSpinner.classList.remove('hidden');
-        const p = isLogin ? auth.signInWithEmailAndPassword(email, pass) : auth.createUserWithEmailAndPassword(email, pass);
-        p.catch(err => { alert(err.message); loadingSpinner.classList.add('hidden'); });
-      },
-      logout: () => auth.signOut(),
-      editUserName: (event) => {
-        event.preventDefault();
-        const newName = prompt("Ingresa tu nombre y apellido:", state.currentUser.displayName || "");
-        if (newName && newName.trim() !== "") {
-          loadingSpinner.classList.remove('hidden');
-          state.currentUser.updateProfile({ displayName: newName.trim() }).then(() => {
-            scheduleRender();
-            loadingSpinner.classList.add('hidden');
-          }).catch(err => { alert("Error: " + err.message); loadingSpinner.classList.add('hidden'); });
-        }
-      },
-      navigateTo: (screen, data = {}) => {
-        if (screen === 'agenda') attachAgendaListeners();
-        else detachListeners();
-        state.currentScreen = screen;
-        if (data.classId) state.selectedClassId = data.classId;
-        render();
-      },
-      setScheduleFilter: (filter) => {
-        state.scheduleFilter = filter;
-        render();
-      },
+				function showModal({
+					success,
+					title
+				}) {
+					const fabs = document.getElementById('social-fabs');
+					if (fabs) fabs.classList.add('opacity-0', 'pointer-events-none');
+					modalContent.innerHTML = `
+        
+																
+																<div class="w-16 h-16 ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
+																	<i data-lucide="${success ? 'check' : 'trash-2'}" class="w-10 h-10"></i>
+																</div>
+																<h2 class="text-2xl font-bold">${title}</h2>
+																<button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
+					genericModal.classList.remove('hidden');
+					setTimeout(() => modalContent.classList.remove('scale-95', 'opacity-0'), 10);
+					document.getElementById('modal-close-btn').onclick = hideModal;
+					lucide.createIcons();
+				}
 
-      // Reservar
-      confirmBooking: async (classId) => {
-        const uid = state.currentUser.uid;
-        const classRef   = db.collection('classes').doc(classId);
-        const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
-        try {
-          await db.runTransaction(async (tx) => {
-            const [classSnap, bookingSnap] = await Promise.all([ tx.get(classRef), tx.get(bookingRef) ]);
-            if (!classSnap.exists) throw new Error('La clase ya no existe.');
-            if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
-            const cls = classSnap.data();
-            const enrolled = Number(cls.enrolledCount || 0);
-            const capacity = Number(cls.capacity || 0);
-            if (enrolled >= capacity) throw new Error('Clase llena.');
+				function hideModal() {
+					const fabs = document.getElementById('social-fabs');
+					modalContent.classList.add('scale-95', 'opacity-0');
+					setTimeout(() => {
+						genericModal.classList.add('hidden');
+						if (fabs) fabs.classList.remove('opacity-0', 'pointer-events-none');
+						app.navigateTo(state.currentScreen === 'classDetails' ? 'agenda' : state.currentScreen);
+					}, 200);
+				}
 
-            const startAtTs = cls.startAt?.toDate
-              ? cls.startAt
-              : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
-            const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
-            const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
-            const timeFmt   = new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
-            const time      = cls.time || timeFmt.format(startDateObj);
-
-            tx.set(bookingRef, {
-              classId,
-              userId: uid,
-              userName: state.currentUser.displayName || state.currentUser.email,
-              startAt: startAtTs,
-              classDate,
-              time,
-              className: cls.name,
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
-          });
-          showModal({ success: true, title: '¡Reserva Exitosa!' });
-        } catch (err) {
-          alert(`No se pudo reservar\n\n${err.message}`);
-        }
-      },
-
-      // Cancelar
-      cancelBooking: async (classId) => {
-        const uid = state.currentUser.uid;
-        const classRef   = db.collection('classes').doc(classId);
-        const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
-        try {
-          await db.runTransaction(async (tx) => {
-            const [bookingSnap, classSnap] = await Promise.all([ tx.get(bookingRef), tx.get(classRef) ]);
-            if (!bookingSnap.exists) throw new Error('No tienes reserva para esta clase.');
-            tx.delete(bookingRef);
-            if (classSnap.exists) {
-              const enrolled = Number(classSnap.data().enrolledCount || 0);
-              if (enrolled > 0) tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(-1) });
-            }
-          });
-          showModal({ success: false, title: 'Cancelación Exitosa' });
-        } catch (err) {
-          alert(`No se pudo cancelar\n\n${err.message}`);
-        }
-      }
-    };
-
-    // Delegación de eventos
-    function handleInteraction(e) {
-      const target = e.target.closest('[data-action]');
-      if (!target) return;
-      const { action, screen, filter, classId } = target.dataset;
-
-      switch (action) {
-        case 'navigate': app.navigateTo(screen); break;
-        case 'navigate-details': app.navigateTo('classDetails', { classId }); break;
-        case 'set-filter': app.setScheduleFilter(filter); break;
-        case 'edit-name': app.editUserName(e); break;
-        case 'logout': app.logout(); break;
-        case 'confirm-booking':
-          target.disabled = true; app.confirmBooking(classId).finally(()=> target.disabled = false); break;
-        case 'cancel-booking':
-          target.disabled = true; app.cancelBooking(classId).finally(()=> target.disabled = false); break;
-      }
-    }
-    document.addEventListener('click', handleInteraction);
-    navBar.addEventListener('click', e => {
-      const target = e.target.closest('.nav-button');
-      if (target) app.navigateTo(target.dataset.screen);
-    });
-
-    // Modal
-    const genericModal = document.getElementById('generic-modal');
-    const modalContent = document.getElementById('modal-content');
-    function showModal({ success, title }) {
-      const fabs = document.getElementById('social-fabs');
-      if (fabs) fabs.classList.add('opacity-0','pointer-events-none');
-      modalContent.innerHTML = `
-        <div class="w-16 h-16 ${success ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
-          <i data-lucide="${success ? 'check' : 'trash-2'}" class="w-10 h-10"></i>
-        </div>
-        <h2 class="text-2xl font-bold">${title}</h2>
-        <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
-      genericModal.classList.remove('hidden');
-      setTimeout(() => modalContent.classList.remove('scale-95', 'opacity-0'), 10);
-      document.getElementById('modal-close-btn').onclick = hideModal;
-      lucide.createIcons();
-    }
-    function hideModal() {
-      const fabs = document.getElementById('social-fabs');
-      modalContent.classList.add('scale-95', 'opacity-0');
-      setTimeout(() => {
-        genericModal.classList.add('hidden');
-        if (fabs) fabs.classList.remove('opacity-0','pointer-events-none');
-        app.navigateTo(state.currentScreen === 'classDetails' ? 'agenda' : state.currentScreen);
-      }, 200);
-    }
-
-    function updateNavButtons() {
-      const navButtons = navBar.querySelectorAll('.nav-button');
-      navButtons.forEach(button => {
-        const isActive = button.dataset.screen === state.currentScreen;
-        button.classList.toggle('active-nav', isActive);
-        button.classList.toggle('text-indigo-400', isActive);
-        button.classList.toggle('text-zinc-400', !isActive);
-      });
-    }
-
-    // Íconos
-    lucide.createIcons();
-  });
-
-  //expose for console testing
-    window.messaging = firebase.messaging();              // so you can call messaging.getToken(...) in console
-    window.ensurePushPermissionAndToken = async (user) => {
-      // reuse your same logic, but minimal for console:
-      if (!user) user = firebase.auth().currentUser;
-      if (!user) { console.warn('Sign in first'); return; }
-
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') { console.warn('permission not granted'); return; }
-
-      const swReg = await navigator.serviceWorker.ready;
-      const token = await window.messaging.getToken({
-        vapidKey: 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw',
-        serviceWorkerRegistration: swReg
-      });
-      console.log('FCM token:', token);
-
-      // Write to Firestore (users/{uid}/fcmTokens)
-      const db = firebase.firestore();
-      await db.collection('users').doc(user.uid).set({
-        fcmTokens: {
-          [token]: {
-            platform: (()=>{
-              const ua = navigator.userAgent||'';
-              if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
-              if (/Android/.test(ua)) return 'Android';
-              if (/Win/.test(ua)) return 'Windows';
-              if (/Mac/.test(ua)) return 'macOS';
-              return 'Web';
-            })(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          }
-        }
-      }, { merge: true });
-
-      console.log('Saved token in Firestore');
-      return token;
-    };
-  </script>
-
-  <!-- Service worker registration (project-relative) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('./service-worker.js', { scope: './' })
-          .then(reg => { window._msgSW = reg; })
-          .catch(err => console.error('SW fail', err));
-      });
-    }
-  </script>
-
-</body>
+				function updateNavButtons() {
+					const navButtons = navBar.querySelectorAll('.nav-button');
+					navButtons.forEach(button => {
+						const isActive = button.dataset.screen === state.currentScreen;
+						button.classList.toggle('active-nav', isActive);
+						button.classList.toggle('text-indigo-400', isActive);
+						button.classList.toggle('text-zinc-400', !isActive);
+					});
+				}
+				// Íconos
+				lucide.createIcons();
+			});
+			//expose for console testing
+			window.messaging = firebase.messaging(); // so you can call messaging.getToken(...) in console
+			window.ensurePushPermissionAndToken = async (user) => {
+				// reuse your same logic, but minimal for console:
+				if (!user) user = firebase.auth().currentUser;
+				if (!user) {
+					console.warn('Sign in first');
+					return;
+				}
+				const permission = await Notification.requestPermission();
+				if (permission !== 'granted') {
+					console.warn('permission not granted');
+					return;
+				}
+				const swReg = await navigator.serviceWorker.ready;
+				const token = await window.messaging.getToken({
+					vapidKey: 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw',
+					serviceWorkerRegistration: swReg
+				});
+				console.log('FCM token:', token);
+				// Write to Firestore (users/{uid}/fcmTokens)
+				const db = firebase.firestore();
+				await db.collection('users').doc(user.uid).set({
+					fcmTokens: {
+						[token]: {
+							platform: (() => {
+								const ua = navigator.userAgent || '';
+								if (/iPad|iPhone|iPod/.test(ua)) return 'iOS';
+								if (/Android/.test(ua)) return 'Android';
+								if (/Win/.test(ua)) return 'Windows';
+								if (/Mac/.test(ua)) return 'macOS';
+								return 'Web';
+							})(),
+							updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+						}
+					}
+				}, {
+					merge: true
+				});
+				console.log('Saved token in Firestore');
+				return token;
+			};
+		</script>
+		<!-- Service worker registration (project-relative) -->
+		<script>
+			if ('serviceWorker' in navigator) {
+				window.addEventListener('load', () => {
+					navigator.serviceWorker.register('./service-worker.js', {
+						scope: './'
+					}).then(reg => {
+						window._msgSW = reg;
+					}).catch(err => console.error('SW fail', err));
+				});
+			}
+		</script>
+	</body>
 </html>
