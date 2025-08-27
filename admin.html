@@ -987,13 +987,18 @@
 					btn.textContent = 'Enviando...';
 
 					try {
+						// **THE FIX:** Force a refresh of the auth token before making the call.
+						if (this.auth.currentUser) {
+						await this.auth.currentUser.getIdToken(true);
+						}
+
 						const send = this.functions.httpsCallable('sendDirectNotification');
 						const result = await send({ token, title, body });
 
 						if (result.data.success) {
-							this.showToast({ title: 'Notificación Enviada', message: `Enviada al dispositivo seleccionado.` });
+						this.showToast({ title: 'Notificación Enviada', message: `Enviada al dispositivo seleccionado.` });
 						} else {
-							throw new Error(result.data.error || 'El servidor devolvió un error.');
+						throw new Error(result.data.error || 'El servidor devolvió un error.');
 						}
 					} catch (e) {
 						this.showToast({ title: 'Error al Enviar', message: e.message, variant: 'error' });
