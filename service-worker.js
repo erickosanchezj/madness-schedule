@@ -1,12 +1,16 @@
 // ===============================
-// service-worker.js (scope: "/madness-schedule/")
+// service-worker.js  (scope: "/madness-schedule/")
 // ===============================
 
-// Use same-origin imports (SW cannot import cross-origin)
+// SW doesn't have `window`—shim it so compat bundles don't explode.
+self.window = self;               // minimal shim for compat builds
+self.document = self.document || {}; // harmless stub
+
+// Load Firebase (same-origin only in SW)
 importScripts("/madness-schedule/vendor/firebase-app-compat-10.12.5.js");
 importScripts("/madness-schedule/vendor/firebase-messaging-compat-10.12.5.js");
 
-// Your Firebase config
+// Init Firebase (same config as your app)
 firebase.initializeApp({
   apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
   authDomain: "madnessscheds.firebaseapp.com",
@@ -18,13 +22,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Background notifications
+// Show background notifications (when page is closed/hidden)
 messaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
-  self.registration.showNotification(notification.title || "Recordatorio de clase", {
-    body: notification.body || "",
-    icon: "/madness-schedule/images/icon-192x192.png",
-    badge: "/madness-schedule/images/icon-192x192.png",
-    data: { url: data?.url || "/madness-schedule/" }
+  const title = notification.title || "Recordatorio de clase";
+  const body  = notification.body  || "";
+  const url   = data?.url || "/madness-schedule/";
+  const icon  = "/madness-schedule/images/icon-192x192.png";
+
+  self.registration.showNotification(title, {
+    body, icon, badge: icon, data: { url }
   });
 });
 
@@ -33,8 +39,8 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = event.notification?.data?.url || "/madness-schedule/";
   event.waitUntil((async () => {
-    const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
-    const existing = list.find(c => c.url.startsWith(self.registration.scope));
+    const clientsList = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = clientsList.find(c => c.url.startsWith(self.registration.scope));
     if (existing) return existing.focus();
     return clients.openWindow(targetUrl);
   })());
