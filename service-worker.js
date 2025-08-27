@@ -1,7 +1,4 @@
-// service-worker.js (sin offline / sin caché)
-// No hace precache ni runtime cache. Todo va siempre a la red.
-
-// --- FCM hooks (works inside your existing SW) ---
+// --- FCM hooks ---
 importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js');
 
@@ -16,35 +13,27 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-const swMessaging = firebase.messaging();
-swMessaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
+messaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
   self.registration.showNotification(notification.title || 'Recordatorio de clase', {
     body: notification.body || '',
-    icon: './images/icon-192x192.png',
-    badge: './images/icon-192x192.png',
-    data: { url: data.url || './' }
+    // Better use absolute paths on GH Pages to avoid scope surprises:
+    icon: '/madness-schedule/images/icon-192x192.png',
+    badge: '/madness-schedule/images/icon-192x192.png',
+    data: { url: data?.url || '/madness-schedule/' }
   });
 });
 
-// Handle clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || './';
-  event.waitUntil(clients.openWindow(targetUrl));
+  const targetUrl = event.notification?.data?.url || '/madness-schedule/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes(self.registration.scope));
+      return existing ? existing.focus() : clients.openWindow(targetUrl);
+    })
+  );
 });
 
-self.addEventListener('install', (event) => {
-  // Activación inmediata en nuevas cargas
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  // Reclama clientes para que el SW tome control sin recargar
-  event.waitUntil(self.clients.claim());
-});
-
-// Passthrough total: no interceptamos nada.
-// (Opcional) Si quieres ver el tráfico, descomenta el listener y deja fetch(event.request)
-// self.addEventListener('fetch', (event) => {
-//   event.respondWith(fetch(event.request));
-// });
+// No caching → passthrough
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
