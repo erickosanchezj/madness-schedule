@@ -886,22 +886,50 @@
         },
 
         async findUserByEmail() {
-          const input = document.getElementById('find-user-email-input');
-          const email = input.value.trim().toLowerCase();
-          const container = document.getElementById('user-details-container');
-          container.innerHTML = ''; container.classList.add('hidden');
-          if (!email) { this.showToast({ title:'Falta correo', variant:'warn' }); return; }
+			const input = document.getElementById('find-user-email-input');
+			const raw = (input.value || '').trim();
+			const emailLower = raw.toLowerCase();
+			const container = document.getElementById('user-details-container');
 
-          try {
-            const userSnap = await this.db.collection('users').where('email','==',email).limit(1).get();
-            if (userSnap.empty) {
-              this.showToast({ title:'Usuario no encontrado', message:`No se encontró un perfil para ${email}`, variant:'warn' });
-              return;
-            }
-            const userDoc = userSnap.docs[0];
-            this.renderUserDetails(userDoc);
-          } catch(e){ this.showToast({ title:'Error al buscar', message:e.message, variant:'error' }); }
-        },
+			container.innerHTML = '';
+			container.classList.add('hidden');
+
+			if (!raw) {
+				this.showToast({ title: 'Falta correo', variant: 'warn' });
+				return;
+			}
+
+			try {
+				// 1) Preferido: emailLower
+				let snap = await this.db.collection('users')
+				.where('emailLower', '==', emailLower)
+				.limit(1).get();
+
+				// 2) Fallback: email exacto (por si algún doc no está normalizado aún)
+				if (snap.empty) {
+				snap = await this.db.collection('users')
+					.where('email', '==', raw)
+					.limit(1).get();
+				}
+
+				// 3) Último recurso: lee una página y filtra en cliente
+				if (snap.empty) {
+				const page = await this.db.collection('users').limit(200).get();
+				const hit = page.docs.find(d => ((d.data().email || '').trim().toLowerCase()) === emailLower);
+				if (hit) snap = { empty: false, docs: [hit] };
+				}
+
+				if (snap.empty) {
+				this.showToast({ title: 'Usuario no encontrado', message: `No se encontró un perfil para ${raw}`, variant: 'warn' });
+				return;
+				}
+
+				const userDoc = snap.docs[0];
+				this.renderUserDetails(userDoc);
+			} catch (e) {
+				this.showToast({ title: 'Error al buscar', message: e.message, variant: 'error' });
+			}
+		},
 
         renderUserDetails(userDoc) {
           const userData = userDoc.data();
