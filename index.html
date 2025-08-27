@@ -668,6 +668,10 @@
     // Íconos
     lucide.createIcons();
   });
+
+  // expose push helper for console / button
+  window.ensurePushPermissionAndToken = ensurePushPermissionAndToken;
+  
   </script>
 
   <!-- Your app’s own (optional) service worker for caching/offline -->
@@ -680,5 +684,6 @@
       });
     }
   </script>
+
 </body>
 </html>
