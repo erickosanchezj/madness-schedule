@@ -1,12 +1,12 @@
 // ===============================
-// service-worker.js  (GitHub Pages: scope "/madness-schedule/")
+// service-worker.js (scope: "/madness-schedule/")
 // ===============================
 
-// --- Firebase Web Messaging (Compat) ---
-importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
+// Use same-origin imports (SW cannot import cross-origin)
+importScripts("/madness-schedule/vendor/firebase-app-compat-10.12.5.js");
+importScripts("/madness-schedule/vendor/firebase-messaging-compat-10.12.5.js");
 
-// Your Firebase config (same as your app)
+// Your Firebase config
 firebase.initializeApp({
   apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
   authDomain: "madnessscheds.firebaseapp.com",
@@ -18,48 +18,28 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Show background notifications when the page is closed or hidden.
-// Works when your FCM payload has a `notification` key OR you build one yourself.
+// Background notifications
 messaging.onBackgroundMessage(({ notification = {}, data = {} }) => {
-  const title = notification.title || "Recordatorio de clase";
-  const body  = notification.body  || "";
-  const icon  = "/madness-schedule/images/icon-192x192.png"; // adjust if needed
-  const url   = data?.url || "/madness-schedule/";           // you can set this in fcmOptions.link too
-
-  self.registration.showNotification(title, {
-    body,
-    icon,
-    badge: icon,
-    data: { url },
-    // Keep notifications quiet if you like:
-    // silent: true,
+  self.registration.showNotification(notification.title || "Recordatorio de clase", {
+    body: notification.body || "",
+    icon: "/madness-schedule/images/icon-192x192.png",
+    badge: "/madness-schedule/images/icon-192x192.png",
+    data: { url: data?.url || "/madness-schedule/" }
   });
 });
 
-// Focus an existing tab under this SW scope or open a new one on click
+// Click → focus existing tab or open one
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = event.notification?.data?.url || "/madness-schedule/";
-
   event.waitUntil((async () => {
-    const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
-    const scope = self.registration.scope; // e.g. https://erickosanchezj.github.io/madness-schedule/
-    const candidate = allClients.find(c => c.url.startsWith(scope));
-    if (candidate) {
-      await candidate.focus();
-      // Optionally navigate the existing tab:
-      // candidate.navigate(targetUrl);
-      return;
-    }
-    await clients.openWindow(targetUrl);
+    const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = list.find(c => c.url.startsWith(self.registration.scope));
+    if (existing) return existing.focus();
+    return clients.openWindow(targetUrl);
   })());
 });
 
-// --- Lifecycle: take control ASAP so updates ship fast ---
+// Fast activate
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
-
-// Optional: token rotation hook (usually not necessary to handle manually)
-self.addEventListener("pushsubscriptionchange", () => {
-  // No-op; the page can call messaging.getToken() again on next load.
-});
+self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
