@@ -16,6 +16,7 @@ const messaging = firebase.messaging();
 // Show notifications when the app is in the background
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'Clase próxima';
+  
   const options = {
     body: payload.notification?.body || 'Tu clase comienza pronto.',
     icon: '/images/icon-192x192.png',   // update if needed
@@ -28,6 +29,6 @@ messaging.onBackgroundMessage((payload) => {
 // Click → open deep link or home
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/';
+  const targetUrl = event.notification?.data?.url || './';
   event.waitUntil(clients.openWindow(targetUrl));
 });

@@ -99,7 +99,10 @@
 
     // 👉 Register messaging SW at ROOT (required by FCM)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(console.error);
+      navigator.serviceWorker
+        .register('./firebase-messaging-sw.js', { scope: './' })
+        .then(reg => { window._msgSW = reg; })
+        .catch(console.error);
     }
 
     const db   = firebase.firestore();
@@ -241,13 +244,20 @@
           return;
         }
 
-        // 🔑 Replace with your Firebase Web Push public key
+        // Make sure we pass the service worker registration to FCM
+        if (!window._msgSW) {
+          // fallback: wait for navigator.serviceWorker.ready
+          window._msgSW = await navigator.serviceWorker.ready;
+        }
+
         const currentToken = await messaging.getToken({
-          vapidKey: 'BMHxQ0qi8xl6omPHAPt0aQaOBo2PPz-zatdZN9XKuF8mPvPSUUtTbjcIhRf1N8oSfcd0BU7M4vOJ4g7YtOQvN-o'
+          vapidKey: 'BMHxQ0qi8xl6omPHAPt0aQaOBo2PPz-zatdZN9XKuF8mPvPSUUtTbjcIhRf1N8oSfcd0BU7M4vOJ4g7YtOQvN-o',
+          serviceWorkerRegistration: window._msgSW   // 👈 this line is the fix
         });
 
         if (!currentToken) return;
 
+        // Store token in Firestore (unchanged)
         const userRef = firebase.firestore().collection('users').doc(user.uid);
         await userRef.set({
           fcmTokens: {
@@ -258,7 +268,6 @@
           }
         }, { merge: true });
 
-        // Foreground messages (swap alert for your toast if desired)
         messaging.onMessage((payload) => {
           alert((payload.notification?.title || 'Notificación') + '\n' + (payload.notification?.body || ''));
         });
@@ -267,6 +276,7 @@
         console.error('Push setup error:', e);
       }
     }
+
 
     function detectPlatform(){
       const ua = navigator.userAgent || '';
