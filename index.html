@@ -97,14 +97,6 @@
       console.warn('Persistence not enabled:', e && e.code);
     }
 
-    // 👉 Register messaging SW at ROOT (required by FCM)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('./firebase-messaging-sw.js', { scope: './' })
-        .then(reg => { window._msgSW = reg; })
-        .catch(console.error);
-    }
-
     const db   = firebase.firestore();
     const auth = firebase.auth();
 
@@ -237,22 +229,17 @@
     const messaging = firebase.messaging();
 
     async function ensurePushPermissionAndToken(user) {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          console.warn('Notifications permission not granted');
-          return;
-        }
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
 
-        // Make sure we pass the service worker registration to FCM
-        if (!window._msgSW) {
-          // fallback: wait for navigator.serviceWorker.ready
-          window._msgSW = await navigator.serviceWorker.ready;
-        }
+      // Wait for the SW registration if not set yet
+      if (!window._msgSW) {
+        try { window._msgSW = await navigator.serviceWorker.ready; } catch {}
+      }
 
-        const currentToken = await messaging.getToken({
-          vapidKey: 'BMHxQ0qi8xl6omPHAPt0aQaOBo2PPz-zatdZN9XKuF8mPvPSUUtTbjcIhRf1N8oSfcd0BU7M4vOJ4g7YtOQvN-o',
-          serviceWorkerRegistration: window._msgSW   // 👈 this line is the fix
+      const currentToken = await messaging.getToken({
+        vapidKey: 'BMHxQ0qi8xl6omPHAPt0aQaOBo2PPz-zatdZN9XKuF8mPvPSUUtTbjcIhRf1N8oSfcd0BU7M4vOJ4g7YtOQvN-o',
+          serviceWorkerRegistration: window._msgSW
         });
 
         if (!currentToken) return;
