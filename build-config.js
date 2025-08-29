@@ -1,7 +1,4 @@
 const fs = require('fs');  
-const path = require('path');  
-  
-// Load environment variables  
 require('dotenv').config();  
   
 const config = {  
@@ -20,12 +17,12 @@ if (missing.length > 0) {
   process.exit(1);  
 }  
   
-// Generate config file for web app  
+// Generate config file for web app (root directory, not public/)  
 const webConfigJs = `window.firebaseConfig = ${JSON.stringify(config, null, 2)};`;  
-fs.writeFileSync('public/firebase-config.js', webConfigJs);  
+fs.writeFileSync('firebase-config.js', webConfigJs);  
   
-// Generate config file for service worker (can't access window)  
+// Generate config file for service worker  
 const swConfigJs = `const firebaseConfig = ${JSON.stringify(config, null, 2)};`;  
-fs.writeFileSync('public/sw-firebase-config.js', swConfigJs);  
+fs.writeFileSync('sw-firebase-config.js', swConfigJs);  
   
 console.log('✅ Firebase configuration files generated successfully');
