@@ -617,29 +617,39 @@
           return (start>=lower) && (start<=upper);
         },
 
-        showClassModal(cls){
-          this.state.currentAttendance = {};
-          document.getElementById('class-id').value = cls.id;
-          document.getElementById('class-name').value = cls.name || '';
-          document.getElementById('class-instructor').value = cls.instructor || '';
-          document.getElementById('class-time').value = cls.time || '';
-          document.getElementById('class-icon').value = cls.icon || '';
-          document.getElementById('class-description').value = cls.description || '';
-
-          const tabD = document.getElementById('tab-details');
-          const tabA = document.getElementById('tab-attendance');
-          this.switchTab('details');
-          tabD.onclick = () => this.switchTab('details');
-          if (this.isClassInProgressWindow(cls)){
-            tabA.classList.remove('hidden');
-            tabA.onclick = () => this.switchTab('attendance');
-            this.loadAttendeesForAttendance(cls);
-          } else {
-            tabA.classList.add('hidden'); tabA.onclick = null;
-          }
-          const modal = document.getElementById('class-modal');
-          modal.classList.remove('hidden');
-          document.getElementById('save-button').focus();
+        showClassModal(cls){  
+          this.state.currentAttendance = {};  
+          document.getElementById('class-id').value = cls.id;  
+          document.getElementById('class-name').value = cls.name || '';  
+          document.getElementById('class-instructor').value = cls.instructor || '';  
+          document.getElementById('class-time').value = cls.time || '';  
+          document.getElementById('class-icon').value = cls.icon || '';  
+          document.getElementById('class-description').value = cls.description || '';  
+          
+          const tabD = document.getElementById('tab-details');  
+          const tabA = document.getElementById('tab-attendance');  
+          this.switchTab('details');  
+          tabD.onclick = () => this.switchTab('details');  
+          if (this.isClassInProgressWindow(cls)){  
+            tabA.classList.remove('hidden');  
+            tabA.onclick = () => this.switchTab('attendance');  
+            this.loadAttendeesForAttendance(cls);  
+          } else {  
+            tabA.classList.add('hidden'); tabA.onclick = null;  
+          }  
+          
+          // ADD THESE MISSING EVENT HANDLERS:  
+          document.getElementById('delete-button').onclick = () => {  
+            if (confirm('¿Estás seguro de eliminar esta clase?')) {  
+              this.deleteClass();  
+            }  
+          };  
+          document.getElementById('cancel-button').onclick = () => this.hideClassModal();  
+          document.getElementById('save-button').onclick = () => this.saveClass();  
+          
+          const modal = document.getElementById('class-modal');  
+          modal.classList.remove('hidden');  
+          document.getElementById('save-button').focus();  
         },
 
         hideClassModal(){ document.getElementById('class-modal').classList.add('hidden'); },
