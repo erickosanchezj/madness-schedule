@@ -3,9 +3,11 @@
   "description": "Cloud Functions for Firebase",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
+    "build": "node build-config.js",
+    "dev": "node build-config.js && your-dev-server",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
+    "deploy": "firebase deploy --only functions && npm run build && firebase deploy",
     "logs": "firebase functions:log"
   },
   "engines": {
