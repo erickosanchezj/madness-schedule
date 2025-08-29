@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
     <!-- PWA -->
     <link rel="manifest" href="./manifest.json">
@@ -358,6 +359,7 @@
               <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <div class="cf-turnstile" data-sitekey="0x4AAAAAABwCDMFGoF_Z-wjY"></div>
               </div>
               <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
               <p class="text-center text-zinc-400 mt-6">
@@ -549,8 +551,13 @@
 
         const app = {
           handleAuth: (isLogin)=>{
+            const turnstileToken = turnstile.getResponse();
             const email = document.getElementById('email-input').value;
             const pass  = document.getElementById('password-input').value;
+            if (!turnstileToken) {
+              alert('Por favor, completa la verificación de seguridad.');  
+              return;  
+            }
             if (!email || !pass){ alert('Por favor, ingresa correo y contraseña.'); return; }
             loadingSpinner.classList.remove('hidden');
             const p = isLogin ? auth.signInWithEmailAndPassword(email,pass) : auth.createUserWithEmailAndPassword(email,pass);
