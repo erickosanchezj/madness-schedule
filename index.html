@@ -359,7 +359,9 @@
               <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                 <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                <div class="cf-turnstile" data-sitekey="0x4AAAAAABwCDMFGoF_Z-wjY"></div>
+                
+                <div id="turnstile-widget"></div>
+
               </div>
               <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
               <p class="text-center text-zinc-400 mt-6">
@@ -367,6 +369,13 @@
                 <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a>
               </p>
             </div>`;
+          
+          // 2. ADDED: Manually render the widget after the HTML is on the page
+          turnstile.render('#turnstile-widget', {
+            sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY',
+            // You can add other options here, like theme: 'dark'
+          });
+
           document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
           document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
           lucide.createIcons();
