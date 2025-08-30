@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body { font-family: 'Inter', sans-serif; }
@@ -25,6 +26,7 @@
         <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
         <input type="email" id="email-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin" autocomplete="email">
         <input type="password" id="password-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña" autocomplete="current-password">
+        <div class="cf-turnstile mb-4" data-sitekey="0x4AAAAAABwCDMFGoF_Z-wjY"></div>
         <button id="login-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md">Entrar</button>
         <p id="error-message" class="text-rose-400 text-center mt-4 hidden"></p>
       </div>
@@ -959,15 +961,29 @@
         },
 
         // ---- AUTH ----
-        login(){
-          const email = document.getElementById('email-input').value.trim();
-          const pass  = document.getElementById('password-input').value;
-          const errEl = document.getElementById('error-message');
-          errEl.classList.add('hidden');
-          this.auth.signInWithEmailAndPassword(email,pass).catch(err=>{
-            errEl.textContent = 'Error: ' + err.message;
-            errEl.classList.remove('hidden');
-          });
+        login() {
+            // 1. Get the Turnstile token from the widget
+            const turnstileToken = turnstile.getResponse();
+
+            const email = document.getElementById('email-input').value.trim();
+            const pass  = document.getElementById('password-input').value;
+            const errEl = document.getElementById('error-message');
+            errEl.classList.add('hidden');
+
+            // 2. Check if the token exists
+            if (!turnstileToken) {
+                errEl.textContent = 'Por favor, completa la verificación de seguridad.';
+                errEl.classList.remove('hidden');
+                return; // Stop the login attempt if no token
+            }
+
+            // 3. If token exists, proceed with Firebase auth
+            this.auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                errEl.textContent = 'Error: ' + err.message;
+                errEl.classList.remove('hidden');
+                // Reset the widget if login fails so the user can try again
+                turnstile.reset();
+            });
         },
         logout(){ this.auth.signOut(); this.showToast({ title:'Sesión cerrada' }); },
 
