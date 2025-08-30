@@ -216,7 +216,7 @@
 
         async function registerSW() {
           // Asegura scope correcto en GitHub Pages
-          const reg = await navigator.serviceWorker.register('/madness-schedule/service-worker.js', { scope: '/madness-schedule/' });
+          const reg = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
           try { await reg.update(); } catch {}
           // Guarda para getToken
           window._msgSW = reg;
@@ -704,7 +704,7 @@
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', async () => {
           try {
-            const reg = await navigator.serviceWorker.register('/madness-schedule/service-worker.js', { scope: '/madness-schedule/' });
+            const reg = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
             window._msgSW = reg;
           } catch (err) {
             console.error('SW fail', err);

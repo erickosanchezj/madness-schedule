@@ -1,13 +1,13 @@
-// service-worker.js  (scope: "/madness-schedule/")
+// service-worker.js (scope: "/")
 
 var window = self; // <- requerido por firebase-*-compat en SW
-// OJO: no crees self.document ni window.document aquí
 
 // Firebase libs desde tu origen (para evitar CSP/CORS en SW)
-importScripts("/madness-schedule/vendor/firebase-app-compat-10.12.5.js");
-importScripts("/madness-schedule/vendor/firebase-messaging-compat-10.12.5.js");
+// MODIFIED: Removed "/madness-schedule" from paths
+importScripts("/vendor/firebase-app-compat-10.12.5.js");
+importScripts("/vendor/firebase-messaging-compat-10.12.5.js");
 
-// Inicializa Firebase
+// Inicializa Firebase (no changes needed here)
 firebase.initializeApp({
   apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
   authDomain: "madnessscheds.firebaseapp.com",
@@ -27,8 +27,6 @@ const log = (...a) => { if (LOG) console.log("[SW]", ...a); };
 messaging.onBackgroundMessage((payload) => {
   log("onBackgroundMessage payload:", payload);
 
-  // Si el servidor manda "notification", el navegador ya muestra 1 (auto)
-  // → Evitamos mostrar una segunda.
   const hasNotification =
     !!payload?.notification &&
     (!!payload.notification.title || !!payload.notification.body);
@@ -38,12 +36,13 @@ messaging.onBackgroundMessage((payload) => {
     return;
   }
 
-  // Data-only → mostramos nosotros
   const data = payload?.data || {};
   const title = data.title || "Recordatorio de clase";
   const body  = data.body  || "";
-  const url   = data.url   || "/madness-schedule/";
-  const icon  = "/madness-schedule/images/icon-192x192.png";
+  // MODIFIED: Changed fallback URL to root
+  const url   = data.url   || "/";
+  // MODIFIED: Changed icon path to root
+  const icon  = "/images/icon-192x192.png";
 
   log("Mostrando notificación manual (data-only):", { title, body, url });
   self.registration.showNotification(title, {
@@ -57,7 +56,8 @@ messaging.onBackgroundMessage((payload) => {
 // Click → enfocamos pestaña existente del scope o abrimos una nueva
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || "/madness-schedule/";
+  // MODIFIED: Changed fallback URL to root
+  const targetUrl = event.notification?.data?.url || "/";
   event.waitUntil((async () => {
     const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
     const existing = list.find(c => c.url.startsWith(self.registration.scope));
@@ -70,7 +70,7 @@ self.addEventListener("notificationclick", (event) => {
   })());
 });
 
-// Activación rápida para que el SW nuevo tome control
+// Activación rápida para que el SW nuevo tome control (no changes needed)
 self.addEventListener("install", () => {
   log("SW install → skipWaiting()");
   self.skipWaiting();
