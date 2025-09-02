@@ -8,6 +8,7 @@
     <!-- Tailwind + Lucide + Fuente -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
@@ -428,17 +429,20 @@
             const hhmm = b.time || new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(startObj);
             const dayText = ymd===dateHelper.today ? 'Hoy' : ymd===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymd);
             const cover = coverHelper.forClassName(b.className, b.className);
+            const safeClassName = DOMPurify.sanitize(b.className || '');
+            const safeDayText = DOMPurify.sanitize(dayText);
+            const safeClassId = DOMPurify.sanitize(b.classId);
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                  <img src="${cover}" alt="${b.className}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                  <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                   <div>
-                    <p class="font-bold text-lg">${b.className}</p>
-                    <p class="text-zinc-400 text-sm">${dayText} • ${hhmm}</p>
+                    <p class="font-bold text-lg">${safeClassName}</p>
+                    <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
                     <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
                   </div>
                 </div>
-                <button data-action="cancel-booking" data-class-id="${b.classId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+                <button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
               </div>`;
           }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
 
@@ -463,12 +467,15 @@
             else if (available<=0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
             const ymd = cls.classDate || targetYMD;
             const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
+            const safeName = DOMPurify.sanitize(cls.name || '');
+            const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
+            const safeId = DOMPurify.sanitize(cls.id);
             return `
-              <div data-action="navigate-details" data-class-id="${cls.id}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
-                <img src="${coverHelper.forClass(cls)}" alt="${cls.name}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+              <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
+                <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                 <div class="flex-1">
-                  <p class="font-bold text-lg">${cls.name}</p>
-                  <p class="text-zinc-400 text-sm">con ${cls.instructor}</p>
+                  <p class="font-bold text-lg">${safeName}</p>
+                  <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
                   <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
                   <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
                 </div>
@@ -500,11 +507,15 @@
         }
 
         function getProfileScreenHTML(){
+          const safeDisplay = DOMPurify.sanitize(state.currentUser.displayName || '');
+          const safeEmail = DOMPurify.sanitize(state.currentUser.email || '');
+          const nameForText = safeDisplay || safeEmail;
+          const placeholder = (nameForText.charAt(0) || 'U').toUpperCase();
           return `
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
-                <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${(state.currentUser.displayName || state.currentUser.email).charAt(0).toUpperCase()}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
-                <div><h1 class="text-2xl font-bold">${state.currentUser.displayName || state.currentUser.email}</h1></div>
+                <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${placeholder}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
+                <div><h1 class="text-2xl font-bold">${nameForText}</h1></div>
               </header>
               <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
                 <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
@@ -530,23 +541,26 @@
           const ymd = cls.classDate || dateHelper.getYYYYMMDD(cls.startAt.toDate());
           const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
           const timeRange = timeHelper.range(ymd, hhmm, durationMin);
-          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${cls.id}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+          const safeName = DOMPurify.sanitize(cls.name || '');
+          const safeDesc = DOMPurify.sanitize(cls.description || '');
+          const safeId = DOMPurify.sanitize(cls.id);
+          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
           if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
           else if (availableSpots<=0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
           return `
             <div>
               <div class="relative">
-                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover">
+                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
                 <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
                   <i data-lucide="arrow-left" class="w-6 h-6"></i>
                 </button>
               </div>
               <div class="p-6 space-y-4 pb-40">
                 <h1 class="text-3xl font-bold">
-                  ${cls.name}
+                  ${safeName}
                   <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
                 </h1>
-                <p class="text-zinc-400 leading-relaxed">${cls.description || ''}</p>
+                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
                 <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
                   <span class="font-semibold text-lg">Estado</span>
                   <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
@@ -677,11 +691,12 @@
         function showModal({success, title}){
           const fabs = document.getElementById('social-fabs');
           if (fabs) fabs.classList.add('opacity-0','pointer-events-none');
+          const safeTitle = DOMPurify.sanitize(title);
           modalContent.innerHTML = `
             <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
               <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
             </div>
-            <h2 class="text-2xl font-bold">${title}</h2>
+            <h2 class="text-2xl font-bold">${safeTitle}</h2>
             <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
           genericModal.classList.remove('hidden');
           setTimeout(()=>modalContent.classList.remove('scale-95','opacity-0'),10);
