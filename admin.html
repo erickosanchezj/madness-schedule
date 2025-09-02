@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -195,13 +196,15 @@
           const wrap = document.getElementById('toast-container');
           const el = document.createElement('div');
           el.className = 'toast max-w-md mx-auto bg-zinc-800 border border-zinc-700 rounded-xl p-4 shadow-lg flex items-start gap-3';
+          const safeTitle = DOMPurify.sanitize(title);
+          const safeMessage = DOMPurify.sanitize(message);
           el.innerHTML = `
             <div class="w-10 h-10 rounded-lg bg-${color}-500/20 text-${color}-300 flex items-center justify-center shrink-0">
               <i data-lucide="${variant==='error'?'alert-triangle':variant==='warn'?'alert-circle':'check'}" class="w-6 h-6"></i>
             </div>
             <div class="flex-1">
-              <p class="font-semibold">${title}</p>
-              ${message?`<p class="text-sm text-zinc-400 mt-0.5">${message}</p>`:''}
+              <p class="font-semibold">${safeTitle}</p>
+              ${safeMessage?`<p class="text-sm text-zinc-400 mt-0.5">${safeMessage}</p>`:''}
             </div>
             <button class="shrink-0 text-zinc-400 hover:text-zinc-200" aria-label="Cerrar notificación">
               <i data-lucide="x" class="w-5 h-5"></i>
@@ -412,18 +415,22 @@
             const card = document.createElement('div');
             card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${style}`;
             card.setAttribute('role','button');
-            card.setAttribute('aria-label', `Editar ${cls.name} a las ${cls.time}`);
+            const safeName = DOMPurify.sanitize(cls.name || '');
+            const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
+            const safeIcon = DOMPurify.sanitize(cls.icon || '💪');
+            const safeTime = DOMPurify.sanitize(cls.time || '');
+            card.setAttribute('aria-label', `Editar ${safeName} a las ${safeTime}`);
             card.onclick = () => this.showClassModal(cls);
             card.innerHTML = `
               <div class="flex justify-between items-start">
                 <div>
-                  <p class="text-xl font-bold">${cls.name}</p>
-                  <p class="text-sm text-zinc-400">${cls.instructor}</p>
+                  <p class="text-xl font-bold">${safeName}</p>
+                  <p class="text-sm text-zinc-400">${safeInstructor}</p>
                 </div>
-                <span class="text-2xl">${cls.icon || '💪'}</span>
+                <span class="text-2xl">${safeIcon}</span>
               </div>
               <div class="mt-4 flex justify-between items-center text-sm">
-                <span class="font-semibold">a las ${cls.time}</span>
+                <span class="font-semibold">a las ${safeTime}</span>
                 <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
               </div>`;
             if (cls.classDate === this.dateHelper.today()) todayC.appendChild(card);
@@ -446,10 +453,12 @@
               const attendees = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
               const enrolled = Number(cls.enrolledCount||0);
               const cap = Number(cls.capacity||0);
-              const names = attendees.map(n=>`<li class="text-zinc-400 ml-4">- ${n}</li>`).join('');
+              const names = attendees.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
+              const safeTime = DOMPurify.sanitize(cls.time || '');
+              const safeName = DOMPurify.sanitize(cls.name || '');
               return `
                 <div class="mb-3">
-                  <p class="font-bold">${cls.time} - ${cls.name} (${enrolled} de ${cap})</p>
+                  <p class="font-bold">${safeTime} - ${safeName} (${enrolled} de ${cap})</p>
                   <ul class="list-none">${names}</ul>
                 </div>`;
             });
@@ -585,10 +594,13 @@
           const renderList = (obj)=>{
             const names = Object.keys(obj||{}).sort();
             if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
-            return names.map(n=>`
-              <div class="font-semibold text-zinc-300 mt-1">${n}:</div>
-              <ul class="list-disc list-inside text-zinc-400">${(obj[n]||[]).map(p=>`<li>${p}</li>`).join('')}</ul>
-            `).join('');
+            return names.map(n=>{
+              const safeName = DOMPurify.sanitize(n);
+              const people = (obj[n]||[]).map(p=>`<li>${DOMPurify.sanitize(p)}</li>`).join('');
+              return `
+              <div class="font-semibold text-zinc-300 mt-1">${safeName}:</div>
+              <ul class="list-disc list-inside text-zinc-400">${people}</ul>
+            `;}).join('');
           };
 
           details.innerHTML = keys.map(k=>{
@@ -596,14 +608,14 @@
             if (k!=='tomorrow'){
               return `
                 <div class="bg-zinc-900 p-3 rounded-md">
-                  <h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
+                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
                   <div class="font-semibold text-emerald-400">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
                   <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
                 </div>`;
             }
             return `
               <div class="bg-zinc-900 p-3 rounded-md">
-                <h4 class="font-bold text-lg mb-2">${dates[k].label}</h4>
+                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
                 <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
               </div>`;
           }).join('');
@@ -700,10 +712,12 @@
             const st = existing[b.userId];
             const selA = st==='attended' ? 'selected-attended':'';
             const selF = st==='absent'   ? 'selected-absent':'';
+            const safeName = DOMPurify.sanitize(b.userName || 'Anónimo');
+            const safeId = DOMPurify.sanitize(b.userId);
             return `
               <div class="flex items-center justify-between bg-zinc-900 p-2 rounded-md">
-                <span class="text-zinc-300">${b.userName||'Anónimo'}</span>
-                <div class="space-x-2" data-user-id="${b.userId}" data-user-name="${b.userName||'Anónimo'}">
+                <span class="text-zinc-300">${safeName}</span>
+                <div class="space-x-2" data-user-id="${safeId}" data-user-name="${safeName}">
                   <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selA}" data-status="attended">Asistió</button>
                   <button class="attendance-btn border border-zinc-600 px-3 py-1 text-xs rounded-md ${selF}" data-status="absent">Faltó</button>
                 </div>
@@ -852,33 +866,39 @@
         userCardHTML(userDoc, indexBase=0){
           const userData = userDoc.data() || {};
           const tokens = userData.fcmTokens ? Object.keys(userData.fcmTokens) : [];
+          const safeName = DOMPurify.sanitize(userData.displayName || 'Usuario sin nombre');
+          const safeEmail = DOMPurify.sanitize(userData.email || '');
           const head = `
             <div class="p-4 bg-zinc-700/50 rounded-lg">
-              <h4 class="font-bold">${userData.displayName || 'Usuario sin nombre'}</h4>
-              <p class="text-sm text-zinc-400">${userData.email || ''}</p>
+              <h4 class="font-bold">${safeName}</h4>
+              <p class="text-sm text-zinc-400">${safeEmail}</p>
           `;
           if (!tokens.length){
             return head + `<p class="text-sm text-zinc-400 mt-3">Sin dispositivos registrados.</p></div>`;
           }
-          const bodies = tokens.map((token,i)=>`
+          const bodies = tokens.map((token,i)=>{
+            const safeToken = DOMPurify.sanitize(token);
+            const displayToken = DOMPurify.sanitize(safeToken.substring(0,30));
+            const safeUid = DOMPurify.sanitize(userDoc.id);
+            return `
             <div class="p-3 bg-zinc-900 rounded-lg border border-zinc-700 mt-3">
-              <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${i+1}: ${token.substring(0,30)}...</p>
+              <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${i+1}: ${displayToken}...</p>
               <div class="mt-3 space-y-2">
                 <input type="text" id="noti-title-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
                 <textarea id="noti-body-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
                 <div class="flex gap-2">
-                  <button data-token="${token}" data-index="${indexBase}_${i}" data-uid="${userDoc.id}"
+                  <button data-token="${safeToken}" data-index="${indexBase}_${i}" data-uid="${safeUid}"
                           class="send-noti-btn flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md text-sm">
                     Enviar a este Dispositivo
                   </button>
-                  <button data-token="${token}" data-uid="${userDoc.id}"
+                  <button data-token="${safeToken}" data-uid="${safeUid}"
                           class="prune-token-btn px-3 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold rounded-md text-sm">
                     Prune
                   </button>
                 </div>
               </div>
             </div>
-          `).join('');
+          `;}).join('');
           return head + `<div class="mt-4 space-y-3">${bodies}</div></div>`;
         },
 
