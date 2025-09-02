@@ -553,19 +553,33 @@
           const keys = ['dayBefore','yesterday','today','tomorrow'];
           const labels = keys.map(k=>dates[k].label);
 
-          // "Reservas Mañana" desde bookings visibles
+          // Reservas de Hoy desde bookings visibles
+          const classesToday = this.state.classes.filter(c=>c.classDate===dates.today.date);
+          let bookedToday = 0; const bookedTodayDetails = {};
+          classesToday.forEach(c=>{
+            const arr = this.state.bookingsMap.get(c.id) || [];
+            if (arr.length){
+              bookedToday += arr.length;
+              const label = `${c.time} - ${c.name}`;
+              bookedTodayDetails[label] = arr.map(x=>x.userName||'Anónimo');
+            }
+          });
+          report[dates.today.date].booked = bookedToday;
+          report[dates.today.date].details.booked = bookedTodayDetails;
+
+          // Reservas Mañana desde bookings visibles
           const classesTomorrow = this.state.classes.filter(c=>c.classDate===dates.tomorrow.date);
-          let bookedTomorrow=0; const bookedDetails={};
+          let bookedTomorrow = 0; const bookedTomorrowDetails = {};
           classesTomorrow.forEach(c=>{
             const arr = this.state.bookingsMap.get(c.id) || [];
             if (arr.length){
               bookedTomorrow += arr.length;
               const label = `${c.time} - ${c.name}`;
-              bookedDetails[label] = arr.map(x=>x.userName||'Anónimo');
+              bookedTomorrowDetails[label] = arr.map(x=>x.userName||'Anónimo');
             }
           });
           report[dates.tomorrow.date].booked = bookedTomorrow;
-          report[dates.tomorrow.date].details.booked = bookedDetails;
+          report[dates.tomorrow.date].details.booked = bookedTomorrowDetails;
 
           const attendedData = keys.map(k=>report[dates[k].date].attended||0);
           const absentData   = keys.map(k=>report[dates[k].date].absent||0);
@@ -579,7 +593,7 @@
               datasets:[
                 { label:'Asistieron', data:attendedData, backgroundColor:'rgba(16,185,129,.6)' },
                 { label:'Faltaron', data:absentData, backgroundColor:'rgba(244,63,94,.6)' },
-                { label:'Reservas Mañana', data:bookedData, backgroundColor:'rgba(59,130,246,.6)' }
+                { label:'Reservaron', data:bookedData, backgroundColor:'rgba(59,130,246,.6)' }
               ]
             },
             options:{
@@ -605,19 +619,28 @@
 
           details.innerHTML = keys.map(k=>{
             const d = report[dates[k].date];
-            if (k!=='tomorrow'){
+            if (k==='tomorrow'){
               return `
+              <div class="bg-zinc-900 p-3 rounded-md">
+                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
+                <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
+              </div>`;
+            }
+            if (k==='today'){
+              return `
+                <div class="bg-zinc-900 p-3 rounded-md">
+                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
+                  <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
+                  <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
+                  <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
+                </div>`;
+            }
+            return `
                 <div class="bg-zinc-900 p-3 rounded-md">
                   <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
                   <div class="font-semibold text-emerald-400">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
                   <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
                 </div>`;
-            }
-            return `
-              <div class="bg-zinc-900 p-3 rounded-md">
-                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
-                <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
-              </div>`;
           }).join('');
         },
 
