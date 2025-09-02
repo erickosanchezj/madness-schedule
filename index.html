@@ -594,11 +594,18 @@
             const uid = state.currentUser.uid;
             const classRef = db.collection('classes').doc(classId);
             const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
+            const userRef = db.collection('users').doc(uid);
             try{
               await db.runTransaction(async tx=>{
-                const [classSnap, bookingSnap] = await Promise.all([tx.get(classRef), tx.get(bookingRef)]);
+                const [classSnap, bookingSnap, userSnap] = await Promise.all([
+                  tx.get(classRef), tx.get(bookingRef), tx.get(userRef)
+                ]);
                 if (!classSnap.exists) throw new Error('La clase ya no existe.');
                 if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
+                const lastCancelAt = userSnap.exists ? asDate(userSnap.data().lastCancelAt) : null;
+                if (lastCancelAt && Date.now() - lastCancelAt.getTime() < 15*60*1000) {
+                  throw new Error('Debes esperar 15 minutos después de cancelar para reservar de nuevo.');
+                }
                 const cls = classSnap.data();
                 const enrolled = Number(cls.enrolledCount||0);
                 const capacity = Number(cls.capacity||0);
@@ -620,18 +627,24 @@
             }catch(err){ alert(`No se pudo reservar\n\n${err.message}`); }
           },
           cancelBooking: async (classId)=>{
+            if (!confirm('Si cancelas deberás esperar 15 minutos para volver a reservar. ¿Deseas continuar?')) return;
             const uid = state.currentUser.uid;
             const classRef = db.collection('classes').doc(classId);
             const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
+            const userRef = db.collection('users').doc(uid);
             try{
               await db.runTransaction(async tx=>{
-                const [bookingSnap, classSnap] = await Promise.all([tx.get(bookingRef), tx.get(classRef)]);
+                const [bookingSnap, classSnap] = await Promise.all([
+                  tx.get(bookingRef), tx.get(classRef)
+                ]);
+                await tx.get(userRef);
                 if (!bookingSnap.exists) throw new Error('No tienes reserva para esta clase.');
                 tx.delete(bookingRef);
                 if (classSnap.exists){
                   const enrolled = Number(classSnap.data().enrolledCount||0);
                   if (enrolled>0) tx.update(classRef,{ enrolledCount: firebase.firestore.FieldValue.increment(-1) });
                 }
+                tx.set(userRef, { lastCancelAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
               });
               showModal({ success:false, title:'Cancelación Exitosa' });
             }catch(err){ alert(`No se pudo cancelar\n\n${err.message}`); }

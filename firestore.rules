@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token != null
+        && ('admin' in request.auth.token)
+        && request.auth.token.admin == true;
+    }
+    function cooldownOk(uid) {
+      let cancel = get(/databases/$(db)/documents/users/$(uid)).data.lastCancelAt;
+      return cancel == null || request.time.toMillis() - cancel.toMillis() >= 15 * 60 * 1000;
+    }
+
+    // ===== CLASSES =====
+    match /classes/{classId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
+        && (
+          request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
+          request.resource.data.enrolledCount == resource.data.enrolledCount - 1
+        );
+    }
+
+    // ===== BOOKINGS =====
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn();
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.classId is string
+        && request.resource.data.className is string
+        && request.resource.data.startAt is timestamp
+        && cooldownOk(request.auth.uid);
+      allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // ===== USERS (Final, Simpler Ruleset) =====
+    match /users/{userId} {
+      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+
+      // The CREATE rule is working perfectly, so we keep it.
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
+
+      // A more direct UPDATE rule that avoids diff().
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+        // This rule allows the update ONLY IF the critical fields are NOT changed.
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // ===== ATTENDANCE (admin-only) =====
+    match /attendance/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // ===== SCHEDULE TEMPLATE =====
+    match /schedule_template/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ===== Everything else locked =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
