@@ -82,6 +82,12 @@
             <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
           </button>
         </div>
+        <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
+          <label for="att-start-date">Desde:</label>
+          <input type="date" id="att-start-date" class="bg-zinc-700 text-white p-1 rounded-md" />
+          <label for="att-end-date">Hasta:</label>
+          <input type="date" id="att-end-date" class="bg-zinc-700 text-white p-1 rounded-md" />
+        </div>
         <div class="relative">
           <canvas id="attendanceChart"></canvas>
         </div>
@@ -180,6 +186,7 @@
         // --- Helpers ---
         timeFmt: new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit'}),
         dayFmt: new Intl.DateTimeFormat('es-MX',{weekday:'long',day:'2-digit',month:'short'}),
+        dayShortFmt: new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'short'}),
         dateHelper: {
           ymd(date){ const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; },
           today(){ return this.ymd(new Date()); },
@@ -237,6 +244,16 @@
           document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
           document.getElementById('send-reset-btn').onclick = () => this.sendPasswordReset();
           document.getElementById('att-refresh').onclick = () => this.fetchAttendanceData(true);
+
+          const range = this.getDefaultAttendanceRange();
+          const sEl = document.getElementById('att-start-date');
+          const eEl = document.getElementById('att-end-date');
+          if (sEl && eEl){
+            sEl.value = range.start;
+            eEl.value = range.end;
+            sEl.addEventListener('change',()=>this.fetchAttendanceData(true));
+            eEl.addEventListener('change',()=>this.fetchAttendanceData(true));
+          }
 
           // Users: find + list
           document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
@@ -469,19 +486,25 @@
         },
 
         // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
-        getAttendanceDateMap(){
-          const today = new Date();
-          const d1 = new Date(); d1.setDate(today.getDate()-2);
-          const d2 = new Date(); d2.setDate(today.getDate()-1);
-          const d3 = today;
-          const d4 = new Date(); d4.setDate(today.getDate()+1);
-          const ymd = (dt)=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-          return {
-            dayBefore: { date: ymd(d1), label:'Hace 2 días' },
-            yesterday: { date: ymd(d2), label:'Ayer' },
-            today    : { date: ymd(d3), label:'Hoy' },
-            tomorrow : { date: ymd(d4), label:'Mañana' }
-          };
+        getDefaultAttendanceRange(){
+          const end = new Date();
+          const start = new Date();
+          start.setDate(end.getDate()-29);
+          return { start: this.dateHelper.ymd(start), end: this.dateHelper.ymd(end) };
+        },
+        getSelectedAttendanceRange(){
+          const def = this.getDefaultAttendanceRange();
+          const sEl = document.getElementById('att-start-date');
+          const eEl = document.getElementById('att-end-date');
+          let start = sEl?.value;
+          let end = eEl?.value;
+          if (!start || !end || start > end){
+            start = def.start;
+            end = def.end;
+            if (sEl) sEl.value = start;
+            if (eEl) eEl.value = end;
+          }
+          return { start, end };
         },
 
         startAttendancePolling(){
@@ -498,14 +521,21 @@
         async fetchAttendanceData(force=false){
           const now = Date.now();
           if (!force && this.state.attendanceNextAt && now < this.state.attendanceNextAt) return;
-          const dates = this.getAttendanceDateMap();
-          const daysToRead = [dates.dayBefore.date, dates.yesterday.date, dates.today.date];
+          const { start, end } = this.getSelectedAttendanceRange();
+          const report = {};
+          const labels = [];
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+          for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate()+1)){
+            const d = this.dateHelper.ymd(dt);
+            report[d] = { attended:0, absent:0, details:{ attended:{}, absent:{} } };
+            labels.push({ date:d, label:this.dayShortFmt.format(new Date(dt)) });
+          }
           try {
-            const snap = await this.db.collection('attendance').where('classDate','in',daysToRead).get();
-            const report = {};
-            Object.values(dates).forEach(d=>{
-              report[d.date] = { attended:0, absent:0, booked:0, details:{ attended:{}, absent:{}, booked:{} } };
-            });
+            const snap = await this.db.collection('attendance')
+              .where('classDate','>=',start)
+              .where('classDate','<=',end)
+              .get();
             snap.forEach(doc=>{
               const r = doc.data();
               if (!report[r.classDate]) return;
@@ -515,7 +545,7 @@
               if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key] = [];
               report[r.classDate].details[cat][key].push(r.userName);
             });
-            this.state.attendanceData = { report, dates };
+            this.state.attendanceData = { report, labels };
             this.state.attendanceLastAt = now;
             this.state.attendanceNextAt = now + 15*60*1000;
             this.updateAttendanceLegend();
@@ -549,57 +579,25 @@
             details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
             return;
           }
-          const { report, dates } = dataCache;
-          const keys = ['dayBefore','yesterday','today','tomorrow'];
-          const labels = keys.map(k=>dates[k].label);
-
-          // Reservas de Hoy desde bookings visibles
-          const classesToday = this.state.classes.filter(c=>c.classDate===dates.today.date);
-          let bookedToday = 0; const bookedTodayDetails = {};
-          classesToday.forEach(c=>{
-            const arr = this.state.bookingsMap.get(c.id) || [];
-            if (arr.length){
-              bookedToday += arr.length;
-              const label = `${c.time} - ${c.name}`;
-              bookedTodayDetails[label] = arr.map(x=>x.userName||'Anónimo');
-            }
-          });
-          report[dates.today.date].booked = bookedToday;
-          report[dates.today.date].details.booked = bookedTodayDetails;
-
-          // Reservas Mañana desde bookings visibles
-          const classesTomorrow = this.state.classes.filter(c=>c.classDate===dates.tomorrow.date);
-          let bookedTomorrow = 0; const bookedTomorrowDetails = {};
-          classesTomorrow.forEach(c=>{
-            const arr = this.state.bookingsMap.get(c.id) || [];
-            if (arr.length){
-              bookedTomorrow += arr.length;
-              const label = `${c.time} - ${c.name}`;
-              bookedTomorrowDetails[label] = arr.map(x=>x.userName||'Anónimo');
-            }
-          });
-          report[dates.tomorrow.date].booked = bookedTomorrow;
-          report[dates.tomorrow.date].details.booked = bookedTomorrowDetails;
-
-          const attendedData = keys.map(k=>report[dates[k].date].attended||0);
-          const absentData   = keys.map(k=>report[dates[k].date].absent||0);
-          const bookedData   = keys.map(k=>report[dates[k].date].booked||0);
+          const { report, labels } = dataCache;
+          const lbls = labels.map(l=>l.label);
+          const attendedData = labels.map(l=>report[l.date].attended||0);
+          const absentData   = labels.map(l=>report[l.date].absent||0);
 
           if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
           this.state.attendanceChartInstance = new Chart(ctx,{
             type:'bar',
             data:{
-              labels,
+              labels: lbls,
               datasets:[
                 { label:'Asistieron', data:attendedData, backgroundColor:'rgba(16,185,129,.6)' },
-                { label:'Faltaron', data:absentData, backgroundColor:'rgba(244,63,94,.6)' },
-                { label:'Reservaron', data:bookedData, backgroundColor:'rgba(59,130,246,.6)' }
+                { label:'Faltaron', data:absentData, backgroundColor:'rgba(244,63,94,.6)' }
               ]
             },
             options:{
               scales:{
                 y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' } },
-                x:{ ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
+                x:{ ticks:{ color:'#a1a1aa', autoSkip:true, maxRotation:45 }, grid:{ color:'#3f3f46' } }
               },
               plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
             }
@@ -617,27 +615,11 @@
             `;}).join('');
           };
 
-          details.innerHTML = keys.map(k=>{
-            const d = report[dates[k].date];
-            if (k==='tomorrow'){
-              return `
-              <div class="bg-zinc-900 p-3 rounded-md">
-                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
-                <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
-              </div>`;
-            }
-            if (k==='today'){
-              return `
-                <div class="bg-zinc-900 p-3 rounded-md">
-                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
-                  <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
-                  <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
-                  <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
-                </div>`;
-            }
+          details.innerHTML = labels.map(l=>{
+            const d = report[l.date];
             return `
                 <div class="bg-zinc-900 p-3 rounded-md">
-                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(dates[k].label)}</h4>
+                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(l.label)}</h4>
                   <div class="font-semibold text-emerald-400">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
                   <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
                 </div>`;
