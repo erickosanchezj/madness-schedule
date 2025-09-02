@@ -95,6 +95,7 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
   for (let i = 0; i < docs.length; i += CHUNK) {
     const slice = docs.slice(i, i + CHUNK);
     const batch = db.batch();
+    let writes = 0;
 
     slice.forEach((doc) => {
       const d = doc.data() || {};
@@ -106,13 +107,12 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
       if (d.email !== email || d.emailLower !== emailLower) {
         batch.set(doc.ref, { email, emailLower }, { merge: true });
         updated++;
+        writes++;
       }
     });
 
-    // Commit this chunk if we scheduled any writes
-    if (updated % CHUNK !== 0) {
-      await batch.commit();
-    } else if (slice.length > 0) {
+    // Commit this chunk only if we scheduled writes
+    if (writes > 0) {
       await batch.commit();
     }
   }
