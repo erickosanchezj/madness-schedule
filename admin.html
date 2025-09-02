@@ -107,7 +107,7 @@
 
         <hr class="border-zinc-700 my-6">
 
-        <!-- NUEVA UI: buscar por nombre/correo + listar -->
+        <!-- Buscar por nombre/correo + listar -->
         <div>
           <label for="find-user-query-input" class="block text-sm font-medium text-zinc-300 mb-2">
             Buscar usuario (nombre o correo)
@@ -528,6 +528,7 @@
           const endDate = new Date(end);
           for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate()+1)){
             const d = this.dateHelper.ymd(dt);
+            // initializer (merged)
             report[d] = { attended:0, absent:0, booked:0, details:{ attended:{}, absent:{}, booked:{} } };
             labels.push({ date:d, label:this.dayShortFmt.format(new Date(dt)) });
           }
@@ -546,6 +547,7 @@
               report[r.classDate].details[cat][key].push(r.userName);
             });
 
+            // compute booked for today/tomorrow (merged)
             const todayStr = this.dateHelper.today();
             const tomorrowStr = this.dateHelper.tomorrow();
 
@@ -576,6 +578,7 @@
               report[tomorrowStr].booked = booked;
               report[tomorrowStr].details.booked = det;
             }
+
             this.state.attendanceData = { report, labels };
             this.state.attendanceLastAt = now;
             this.state.attendanceNextAt = now + 15*60*1000;
@@ -614,10 +617,9 @@
           const lbls = labels.map(l=>l.label);
           const attendedData = labels.map(l=>report[l.date].attended||0);
           const absentData   = labels.map(l=>report[l.date].absent||0);
-          const todayStr = this.dateHelper.today();
-          const tomorrowStr = this.dateHelper.tomorrow();
-          const includeBooked = !!(report[todayStr] || report[tomorrowStr]);
           const bookedData   = labels.map(l=>report[l.date].booked||0);
+
+          const includeBooked = bookedData.some(v => v > 0);
           const datasets = [
             { label:'Asistieron', data:attendedData, backgroundColor:'rgba(16,185,129,.6)' },
             { label:'Faltaron', data:absentData, backgroundColor:'rgba(244,63,94,.6)' }
@@ -651,26 +653,29 @@
             `;}).join('');
           };
 
+          const todayStr = this.dateHelper.today();
+          const tomorrowStr = this.dateHelper.tomorrow();
+
           details.innerHTML = labels.map(l=>{
             const d = report[l.date];
-            if (l.date === tomorrowStr){
-              return `
-                <div class="bg-zinc-900 p-3 rounded-md">
-                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(l.label)}</h4>
-                  <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}
-                </div>`;
-            }
+            // Card header
             let html = `
-                <div class="bg-zinc-900 p-3 rounded-md">
-                  <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(l.label)}</h4>`;
-            if (l.date === todayStr){
+              <div class="bg-zinc-900 p-3 rounded-md">
+                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(l.label)}</h4>`;
+
+            // Show booked for today/tomorrow if present
+            if (d.booked && (l.date === todayStr || l.date === tomorrowStr)) {
               html += `
-                  <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>${renderList(d.details.booked)}`;
+                <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>
+                ${renderList(d.details.booked)}`;
             }
+
             html += `
-                  <div class="font-semibold text-emerald-400${l.date===todayStr?' mt-2':''}">Asistieron (${d.attended||0})</div>${renderList(d.details.attended)}
-                  <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>${renderList(d.details.absent)}
-                </div>`;
+                <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended||0})</div>
+                ${renderList(d.details.attended)}
+                <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>
+                ${renderList(d.details.absent)}
+              </div>`;
             return html;
           }).join('');
         },
@@ -685,39 +690,39 @@
           return (start>=lower) && (start<=upper);
         },
 
-        showClassModal(cls){  
-          this.state.currentAttendance = {};  
-          document.getElementById('class-id').value = cls.id;  
-          document.getElementById('class-name').value = cls.name || '';  
-          document.getElementById('class-instructor').value = cls.instructor || '';  
-          document.getElementById('class-time').value = cls.time || '';  
-          document.getElementById('class-icon').value = cls.icon || '';  
-          document.getElementById('class-description').value = cls.description || '';  
-          
-          const tabD = document.getElementById('tab-details');  
-          const tabA = document.getElementById('tab-attendance');  
-          this.switchTab('details');  
-          tabD.onclick = () => this.switchTab('details');  
-          if (this.isClassInProgressWindow(cls)){  
-            tabA.classList.remove('hidden');  
-            tabA.onclick = () => this.switchTab('attendance');  
-            this.loadAttendeesForAttendance(cls);  
-          } else {  
-            tabA.classList.add('hidden'); tabA.onclick = null;  
-          }  
-          
-          // ADD THESE MISSING EVENT HANDLERS:  
-          document.getElementById('delete-button').onclick = () => {  
-            if (confirm('¿Estás seguro de eliminar esta clase?')) {  
-              this.deleteClass();  
-            }  
-          };  
-          document.getElementById('cancel-button').onclick = () => this.hideClassModal();  
-          document.getElementById('save-button').onclick = () => this.saveClass();  
-          
-          const modal = document.getElementById('class-modal');  
-          modal.classList.remove('hidden');  
-          document.getElementById('save-button').focus();  
+        showClassModal(cls){
+          this.state.currentAttendance = {};
+          document.getElementById('class-id').value = cls.id;
+          document.getElementById('class-name').value = cls.name || '';
+          document.getElementById('class-instructor').value = cls.instructor || '';
+          document.getElementById('class-time').value = cls.time || '';
+          document.getElementById('class-icon').value = cls.icon || '';
+          document.getElementById('class-description').value = cls.description || '';
+
+          const tabD = document.getElementById('tab-details');
+          const tabA = document.getElementById('tab-attendance');
+          this.switchTab('details');
+          tabD.onclick = () => this.switchTab('details');
+          if (this.isClassInProgressWindow(cls)){
+            tabA.classList.remove('hidden');
+            tabA.onclick = () => this.switchTab('attendance');
+            this.loadAttendeesForAttendance(cls);
+          } else {
+            tabA.classList.add('hidden'); tabA.onclick = null;
+          }
+
+          // Event handlers for modal buttons
+          document.getElementById('delete-button').onclick = () => {
+            if (confirm('¿Estás seguro de eliminar esta clase?')) {
+              this.deleteClass();
+            }
+          };
+          document.getElementById('cancel-button').onclick = () => this.hideClassModal();
+          document.getElementById('save-button').onclick = () => this.saveClass();
+
+          const modal = document.getElementById('class-modal');
+          modal.classList.remove('hidden');
+          document.getElementById('save-button').focus();
         },
 
         hideClassModal(){ document.getElementById('class-modal').classList.add('hidden'); },
