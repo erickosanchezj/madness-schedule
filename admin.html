@@ -488,8 +488,9 @@
         // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
         getDefaultAttendanceRange(){
           const end = new Date();
-          const start = new Date();
-          start.setDate(end.getDate()-29);
+          end.setDate(end.getDate()+1);
+          const start = new Date(end);
+          start.setDate(start.getDate()-3);
           return { start: this.dateHelper.ymd(start), end: this.dateHelper.ymd(end) };
         },
         getSelectedAttendanceRange(){
