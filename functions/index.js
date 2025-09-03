@@ -119,3 +119,5 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
 
   return { ok: true, total: snap.size, updated };
 });
+
+exports.reminders = require("./src/reminders").reminders;
