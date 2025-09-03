@@ -1,4 +1,3 @@
-// functions/index.js
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
@@ -7,7 +6,7 @@ const db = admin.firestore();
 
 /**
  * Small helper: remove a bad FCM token from any user doc that has it as:
- *   users/{uid}.fcmTokens.<token> == true
+ * users/{uid}.fcmTokens.<token> == true
  */
 async function pruneTokenInUsers(token) {
   try {
@@ -31,11 +30,16 @@ async function pruneTokenInUsers(token) {
   }
 }
 
+const CALLABLE_OPTS = {
+  region: "us-central1",
+  invoker: "public"
+};
+
 /**
  * Admin-only: send a direct push notification to a provided FCM token.
  * Auto-prunes token if FCM responds with "not registered" or "invalid".
  */
-exports.sendDirectNotification = onCall({ region: "us-central1" }, async (request) => {
+exports.sendDirectNotification = onCall(CALLABLE_OPTS, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -80,7 +84,7 @@ exports.sendDirectNotification = onCall({ region: "us-central1" }, async (reques
  * - Writes `emailLower` = email.toLowerCase()
  * Returns counts.
  */
-exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) => {
+exports.backfillEmailLower = onCall(CALLABLE_OPTS, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -118,4 +122,123 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
   }
 
   return { ok: true, total: snap.size, updated };
+});
+
+/**
+ * Admin-only: send a push reminder for the next upcoming class.
+ * Optionally pass `overrideClassId` to target a specific class.
+ * Returns success/failure counts and prunes invalid FCM tokens.
+ */
+exports.sendManualClassReminder = onCall(CALLABLE_OPTS, async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+  if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
+
+  const overrideClassId = request.data?.overrideClassId || null;
+  const targetUid = request.data?.uid || null;
+
+  // --- Find class
+  let clsDoc;
+  if (overrideClassId) {
+    const snap = await db.collection("classes").doc(overrideClassId).get();
+    if (!snap.exists) throw new HttpsError("not-found", "Class not found.");
+    clsDoc = { id: snap.id, ...snap.data() };
+  } else {
+    const now = new Date();
+    const snap = await db
+      .collection("classes")
+      .where("startAt", ">=", now)
+      .orderBy("startAt", "asc")
+      .limit(1)
+      .get();
+    if (snap.empty) throw new HttpsError("not-found", "No upcoming classes.");
+    const doc = snap.docs[0];
+    clsDoc = { id: doc.id, ...doc.data() };
+  }
+
+  const classId = clsDoc.id;
+
+  let tokenArr = [];
+  if (targetUid) {
+    const userSnap = await db.collection("users").doc(targetUid).get();
+    if (!userSnap.exists) throw new HttpsError("not-found", "User not found.");
+    const data = userSnap.data() || {};
+    tokenArr = Object.keys(data.fcmTokens || {});
+  } else {
+    // --- Collect tokens from users booked in this class
+    const bookingsSnap = await db
+      .collection("bookings")
+      .where("classId", "==", classId)
+      .get();
+    const userIds = Array.from(
+      new Set(bookingsSnap.docs.map((d) => d.data().userId).filter(Boolean))
+    );
+
+    const userSnaps = await Promise.all(
+      userIds.map((uid) => db.collection("users").doc(uid).get())
+    );
+
+    const tokens = new Set();
+    userSnaps.forEach((snap) => {
+      const data = snap.data() || {};
+      Object.keys(data.fcmTokens || {}).forEach((t) => tokens.add(t));
+    });
+    tokenArr = Array.from(tokens);
+  }
+
+  if (tokenArr.length === 0) {
+    return { ok: true, classId, tokens: 0, successCount: 0, failureCount: 0 };
+  }
+
+  // --- Build notification
+  const startDate = clsDoc.startAt?.toDate
+    ? clsDoc.startAt.toDate()
+    : new Date(clsDoc.startAt);
+  const timeFmt = new Intl.DateTimeFormat("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const timeStr = timeFmt.format(startDate);
+  const notif = {
+    title: "Recordatorio de clase",
+    body: `${clsDoc.name || "Clase"} a las ${timeStr}`,
+  };
+
+  // --- Send in batches of 500 tokens
+  const BATCH = 500;
+  let successCount = 0;
+  let failureCount = 0;
+  let pruned = 0;
+
+  for (let i = 0; i < tokenArr.length; i += BATCH) {
+    const slice = tokenArr.slice(i, i + BATCH);
+    const res = await admin.messaging().sendEachForMulticast({
+      tokens: slice,
+      notification: notif,
+    });
+
+    successCount += res.successCount;
+    failureCount += res.failureCount;
+
+    const invalid = [];
+    res.responses.forEach((r, idx) => {
+      if (!r.success) {
+        const code = r.error?.errorInfo?.code || r.error?.code || "";
+        if (
+          code === "messaging/invalid-registration-token" ||
+          code === "messaging/registration-token-not-registered"
+        ) {
+          invalid.push(slice[idx]);
+        }
+      }
+    });
+
+    if (invalid.length) {
+      await Promise.all(invalid.map((t) => pruneTokenInUsers(t)));
+      pruned += invalid.length;
+    }
+  }
+
+  return { ok: true, classId, tokens: tokenArr.length, successCount, failureCount, pruned };
 });

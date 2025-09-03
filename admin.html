@@ -120,6 +120,7 @@
 
           <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
           <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
+          <div id="user-reminder-container" class="mt-8 hidden space-y-4"></div>
         </div>
       </section>
     </div>
@@ -161,12 +162,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"></script>
 
     <script>
       const AdminPanel = {
         db: null,
         auth: null,
         functions: null,
+        messaging: null,
         state: {
           classes: [],
           bookingsMap: new Map(),
@@ -236,6 +239,7 @@
           this.db = firebase.firestore();
           this.auth = firebase.auth();
           this.functions = firebase.app().functions('us-central1');
+          this.messaging = firebase.messaging();
 
           // Top buttons
           document.getElementById('login-btn').onclick = () => this.login();
@@ -265,6 +269,7 @@
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 try {
+                  await this.setupPush();
                   await this.loadWeeklyScheduleTemplate();
                   this.listenClassesTodayTomorrow();
                   this.startAttendancePolling();
@@ -285,6 +290,44 @@
           });
 
           lucide.createIcons();
+        },
+
+        async setupPush(){
+          if (typeof firebase.messaging.isSupported === 'function' && !firebase.messaging.isSupported()) return;
+          const uid = this.auth.currentUser?.uid;
+          if (!uid) return;
+          const VAPID_KEY = 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw';
+          const LS_KEY = 'fcm:lastToken';
+          try{
+            let perm = Notification.permission;
+            if (perm === 'default') perm = await Notification.requestPermission();
+            if (perm !== 'granted'){
+              const prev = localStorage.getItem(LS_KEY);
+              if (prev){
+                await this.db.collection('users').doc(uid).set({
+                  [`fcmTokens.${prev}`]: firebase.firestore.FieldValue.delete(),
+                  fcmUpdatedAt: new Date()
+                }, { merge:true });
+                localStorage.removeItem(LS_KEY);
+              }
+              return;
+            }
+            const reg = await navigator.serviceWorker.register('/service-worker.js', { scope:'/' });
+            const token = await this.messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+            if (!token) return;
+            const prev = localStorage.getItem(LS_KEY);
+            const update = { fcmTokens: { [token]: true }, fcmUpdatedAt: new Date() };
+            if (prev && prev !== token) update.fcmTokens[prev] = firebase.firestore.FieldValue.delete();
+            await this.db.collection('users').doc(uid).set(update, { merge:true });
+            localStorage.setItem(LS_KEY, token);
+            this.messaging.onMessage((payload)=>{
+              const title = payload.notification?.title || payload.data?.title || 'Notificación';
+              const body  = payload.notification?.body  || payload.data?.body  || '';
+              this.showToast({ title, message: body });
+            });
+          }catch(e){
+            console.error('setupPush failed', e);
+          }
         },
 
         async loadWeeklyScheduleTemplate(){
@@ -899,23 +942,44 @@
         async listUsersPage(){
           const container = document.getElementById('user-details-container');
           const hint = document.getElementById('user-results-hint');
-          container.innerHTML=''; container.classList.add('hidden'); hint.classList.add('hidden');
+          const remindContainer = document.getElementById('user-reminder-container');
+          container.innerHTML=''; container.classList.add('hidden');
+          remindContainer.innerHTML=''; remindContainer.classList.add('hidden');
+          hint.classList.add('hidden');
 
           try{
             let snap;
+            const col = this.db.collection('users');
+
             try{
-              snap = await this.db.collection('users').orderBy('displayNameLower').limit(50).get();
+              snap = await col.orderBy('displayNameLower').get();
             }catch{
-              snap = await this.db.collection('users').orderBy('emailLower').limit(50).get();
+              snap = null;
+            }
+
+            if (!snap || snap.empty){
+              try{
+                snap = await col.orderBy('emailLower').get();
+              }catch{
+                snap = null;
+              }
+            }
+
+            if (!snap || snap.empty){
+              snap = await col.get();
             }
 
             if (snap.empty){ this.showToast({ title:'Sin usuarios', variant:'warn' }); return; }
 
-            container.innerHTML = snap.docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
+            const docs = snap.docs;
+            container.innerHTML = docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
             container.classList.remove('hidden');
-            hint.textContent = `Mostrando ${snap.size} usuarios (primera página).`;
+            remindContainer.innerHTML = docs.map((doc)=> this.userReminderCardHTML(doc)).join('');
+            remindContainer.classList.remove('hidden');
+            hint.textContent = `Mostrando ${snap.size} usuarios.`;
             hint.classList.remove('hidden');
             this.wireUserCardButtons();
+            this.wireReminderButtons();
           }catch(e){
             this.showToast({ title:'Error listando', message:e.message, variant:'error' });
           }
@@ -961,6 +1025,21 @@
           return head + `<div class="mt-4 space-y-3">${bodies}</div></div>`;
         },
 
+        userReminderCardHTML(userDoc){
+          const data = userDoc.data() || {};
+          const safeName = DOMPurify.sanitize(data.displayName || 'Usuario sin nombre');
+          const safeEmail = DOMPurify.sanitize(data.email || '');
+          const uid = DOMPurify.sanitize(userDoc.id);
+          return `
+            <div class="p-4 bg-zinc-700/50 rounded-lg flex items-center justify-between">
+              <div>
+                <h4 class="font-bold">${safeName}</h4>
+                <p class="text-sm text-zinc-400">${safeEmail}</p>
+              </div>
+              <button data-uid="${uid}" class="send-reminder-btn bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md text-sm">Enviar notificación de prueba</button>
+            </div>`;
+        },
+
         wireUserCardButtons(){
           document.querySelectorAll('.send-noti-btn').forEach(btn=>{
             btn.onclick = (event)=> this.sendDirectNotification(event);
@@ -968,6 +1047,36 @@
           document.querySelectorAll('.prune-token-btn').forEach(btn=>{
             btn.onclick = (event)=> this.pruneTokenManually(event);
           });
+        },
+
+        wireReminderButtons(){
+          document.querySelectorAll('.send-reminder-btn').forEach(btn=>{
+            btn.onclick = (event)=> this.sendManualReminder(event);
+          });
+        },
+
+        async sendManualReminder(event){
+          const btn = event.target;
+          const { uid } = btn.dataset || {};
+          if (!uid) return;
+          btn.disabled = true;
+          const origText = btn.textContent;
+          btn.textContent = 'Enviando...';
+          try{
+            if (this.auth.currentUser) await this.auth.currentUser.getIdToken(true);
+            const send = this.functions.httpsCallable('sendManualClassReminder');
+            const result = await send({ uid });
+            if (result.data?.ok){
+              this.showToast({ title:'Notificación enviada' });
+            } else {
+              throw new Error(result.data?.error || 'El servidor devolvió un error.');
+            }
+          }catch(e){
+            this.showToast({ title:'Error al enviar', message:e.message, variant:'error' });
+          }finally{
+            btn.disabled = false;
+            btn.textContent = origText || 'Enviar notificación de prueba';
+          }
         },
 
         // ---- USERS: Envío + AUTOPRUNE ----
