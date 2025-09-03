@@ -121,6 +121,7 @@
 
           <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
           <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
+          <div id="user-reminder-container" class="mt-8 hidden space-y-4"></div>
         </div>
       </section>
     </div>
@@ -900,7 +901,10 @@
         async listUsersPage(){
           const container = document.getElementById('user-details-container');
           const hint = document.getElementById('user-results-hint');
-          container.innerHTML=''; container.classList.add('hidden'); hint.classList.add('hidden');
+          const remindContainer = document.getElementById('user-reminder-container');
+          container.innerHTML=''; container.classList.add('hidden');
+          remindContainer.innerHTML=''; remindContainer.classList.add('hidden');
+          hint.classList.add('hidden');
 
           try{
             let snap;
@@ -914,9 +918,12 @@
 
             container.innerHTML = snap.docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
             container.classList.remove('hidden');
+            remindContainer.innerHTML = snap.docs.map((doc)=> this.userReminderCardHTML(doc)).join('');
+            remindContainer.classList.remove('hidden');
             hint.textContent = `Mostrando ${snap.size} usuarios (primera página).`;
             hint.classList.remove('hidden');
             this.wireUserCardButtons();
+            this.wireReminderButtons();
           }catch(e){
             this.showToast({ title:'Error listando', message:e.message, variant:'error' });
           }
@@ -962,6 +969,21 @@
           return head + `<div class="mt-4 space-y-3">${bodies}</div></div>`;
         },
 
+        userReminderCardHTML(userDoc){
+          const data = userDoc.data() || {};
+          const safeName = DOMPurify.sanitize(data.displayName || 'Usuario sin nombre');
+          const safeEmail = DOMPurify.sanitize(data.email || '');
+          const uid = DOMPurify.sanitize(userDoc.id);
+          return `
+            <div class="p-4 bg-zinc-700/50 rounded-lg flex items-center justify-between">
+              <div>
+                <h4 class="font-bold">${safeName}</h4>
+                <p class="text-sm text-zinc-400">${safeEmail}</p>
+              </div>
+              <button data-uid="${uid}" class="send-reminder-btn bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md text-sm">Enviar notificación de prueba</button>
+            </div>`;
+        },
+
         wireUserCardButtons(){
           document.querySelectorAll('.send-noti-btn').forEach(btn=>{
             btn.onclick = (event)=> this.sendDirectNotification(event);
@@ -969,6 +991,36 @@
           document.querySelectorAll('.prune-token-btn').forEach(btn=>{
             btn.onclick = (event)=> this.pruneTokenManually(event);
           });
+        },
+
+        wireReminderButtons(){
+          document.querySelectorAll('.send-reminder-btn').forEach(btn=>{
+            btn.onclick = (event)=> this.sendManualReminder(event);
+          });
+        },
+
+        async sendManualReminder(event){
+          const btn = event.target;
+          const { uid } = btn.dataset || {};
+          if (!uid) return;
+          btn.disabled = true;
+          const origText = btn.textContent;
+          btn.textContent = 'Enviando...';
+          try{
+            if (this.auth.currentUser) await this.auth.currentUser.getIdToken(true);
+            const send = this.functions.httpsCallable('sendManualClassReminder');
+            const result = await send({ uid });
+            if (result.data?.ok){
+              this.showToast({ title:'Notificación enviada' });
+            } else {
+              throw new Error(result.data?.error || 'El servidor devolvió un error.');
+            }
+          }catch(e){
+            this.showToast({ title:'Error al enviar', message:e.message, variant:'error' });
+          }finally{
+            btn.disabled = false;
+            btn.textContent = origText || 'Enviar notificación de prueba';
+          }
         },
 
         // ---- USERS: Envío + AUTOPRUNE ----
