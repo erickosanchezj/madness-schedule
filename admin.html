@@ -950,14 +950,24 @@
 
           try{
             let snap;
+            const col = this.db.collection('users');
+
             try{
-              snap = await this.db.collection('users').orderBy('displayNameLower').get();
+              snap = await col.orderBy('displayNameLower').get();
             }catch{
+              snap = null;
+            }
+
+            if (!snap || snap.empty){
               try{
-                snap = await this.db.collection('users').orderBy('emailLower').get();
+                snap = await col.orderBy('emailLower').get();
               }catch{
-                snap = await this.db.collection('users').get();
+                snap = null;
               }
+            }
+
+            if (!snap || snap.empty){
+              snap = await col.get();
             }
 
             if (snap.empty){ this.showToast({ title:'Sin usuarios', variant:'warn' }); return; }
