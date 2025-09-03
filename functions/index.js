@@ -32,8 +32,7 @@ async function pruneTokenInUsers(token) {
 
 const CALLABLE_OPTS = {
   region: "us-central1",
-  invoker: "public",
-  cors: ['https://madness.chinito.cc']
+  invoker: "public"
 };
 
 /**
