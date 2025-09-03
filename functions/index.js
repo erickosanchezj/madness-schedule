@@ -34,8 +34,12 @@ const CALLABLE_OPTS = {
   region: "us-central1",
   invoker: "public",
   cors: {
+    // Allow requests from any origin and let the platform reflect
+    // the headers requested by the client. Restricting the
+    // allowed headers caused preflight checks to fail when the
+    // Firebase SDK sent additional headers, resulting in CORS
+    // errors in the admin panel.
     origin: true,
-    allowedHeaders: ["Authorization", "Content-Type", "Firebase-Instance-ID-Token"],
   },
 };
 
