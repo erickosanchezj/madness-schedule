@@ -131,6 +131,7 @@ exports.sendManualClassReminder = onCall({ region: "us-central1" }, async (reque
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
 
   const overrideClassId = request.data?.overrideClassId || null;
+  const targetUid = request.data?.uid || null;
 
   // --- Find class
   let clsDoc;
@@ -153,23 +154,34 @@ exports.sendManualClassReminder = onCall({ region: "us-central1" }, async (reque
 
   const classId = clsDoc.id;
 
-  // --- Collect tokens from users booked in this class
-  const bookingsSnap = await db.collection("bookings").where("classId", "==", classId).get();
-  const userIds = Array.from(
-    new Set(bookingsSnap.docs.map((d) => d.data().userId).filter(Boolean))
-  );
+  let tokenArr = [];
+  if (targetUid) {
+    const userSnap = await db.collection("users").doc(targetUid).get();
+    if (!userSnap.exists) throw new HttpsError("not-found", "User not found.");
+    const data = userSnap.data() || {};
+    tokenArr = Object.keys(data.fcmTokens || {});
+  } else {
+    // --- Collect tokens from users booked in this class
+    const bookingsSnap = await db
+      .collection("bookings")
+      .where("classId", "==", classId)
+      .get();
+    const userIds = Array.from(
+      new Set(bookingsSnap.docs.map((d) => d.data().userId).filter(Boolean))
+    );
 
-  const userSnaps = await Promise.all(
-    userIds.map((uid) => db.collection("users").doc(uid).get())
-  );
+    const userSnaps = await Promise.all(
+      userIds.map((uid) => db.collection("users").doc(uid).get())
+    );
 
-  const tokens = new Set();
-  userSnaps.forEach((snap) => {
-    const data = snap.data() || {};
-    Object.keys(data.fcmTokens || {}).forEach((t) => tokens.add(t));
-  });
+    const tokens = new Set();
+    userSnaps.forEach((snap) => {
+      const data = snap.data() || {};
+      Object.keys(data.fcmTokens || {}).forEach((t) => tokens.add(t));
+    });
+    tokenArr = Array.from(tokens);
+  }
 
-  const tokenArr = Array.from(tokens);
   if (tokenArr.length === 0) {
     return { ok: true, classId, tokens: 0, successCount: 0, failureCount: 0 };
   }
