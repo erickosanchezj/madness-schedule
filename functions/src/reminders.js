@@ -42,7 +42,6 @@ async function pruneTokenInUsers(token) {
 /**
  * Scheduled reminders for upcoming classes.
  * This function runs every 15 minutes at specified hours on weekdays and Saturday.
- * Cron schedule: '*/15 7,9,17,18,19,20 * * 1,2,3,4,5,6'
  */
 exports.reminders = functions
   .pubsub.schedule('*/15 7,9,17,18,19,20 * * 1,2,3,4,5,6')
