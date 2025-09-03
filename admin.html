@@ -951,18 +951,23 @@
           try{
             let snap;
             try{
-              snap = await this.db.collection('users').orderBy('displayNameLower').limit(50).get();
+              snap = await this.db.collection('users').orderBy('displayNameLower').get();
             }catch{
-              snap = await this.db.collection('users').orderBy('emailLower').limit(50).get();
+              try{
+                snap = await this.db.collection('users').orderBy('emailLower').get();
+              }catch{
+                snap = await this.db.collection('users').get();
+              }
             }
 
             if (snap.empty){ this.showToast({ title:'Sin usuarios', variant:'warn' }); return; }
 
-            container.innerHTML = snap.docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
+            const docs = snap.docs;
+            container.innerHTML = docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
             container.classList.remove('hidden');
-            remindContainer.innerHTML = snap.docs.map((doc)=> this.userReminderCardHTML(doc)).join('');
+            remindContainer.innerHTML = docs.map((doc)=> this.userReminderCardHTML(doc)).join('');
             remindContainer.classList.remove('hidden');
-            hint.textContent = `Mostrando ${snap.size} usuarios (primera página).`;
+            hint.textContent = `Mostrando ${snap.size} usuarios.`;
             hint.classList.remove('hidden');
             this.wireUserCardButtons();
             this.wireReminderButtons();
