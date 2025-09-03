@@ -900,23 +900,30 @@
         async listUsersPage(){
           const container = document.getElementById('user-details-container');
           const hint = document.getElementById('user-results-hint');
-          container.innerHTML=''; container.classList.add('hidden'); hint.classList.add('hidden');
+          container.innerHTML='';
+          container.classList.add('hidden');
+          hint.classList.add('hidden');
 
           try{
-            let snap;
-            try{
-              snap = await this.db.collection('users').orderBy('displayNameLower').limit(50).get();
-            }catch{
-              snap = await this.db.collection('users').orderBy('emailLower').limit(50).get();
+            const snap = await this.db.collection('users').get();
+            if (snap.empty){
+              this.showToast({ title:'Sin usuarios', variant:'warn' });
+              return;
             }
 
-            if (snap.empty){ this.showToast({ title:'Sin usuarios', variant:'warn' }); return; }
-
-            container.innerHTML = snap.docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
+            container.innerHTML = snap.docs.map(doc => {
+              const data = doc.data() || {};
+              const safeName = DOMPurify.sanitize(data.displayName || 'Usuario sin nombre');
+              const safeEmail = DOMPurify.sanitize(data.email || '');
+              return `
+            <div class="p-4 bg-zinc-700/50 rounded-lg">
+              <h4 class="font-bold">${safeName}</h4>
+              <p class="text-sm text-zinc-400">${safeEmail}</p>
+            </div>`;
+            }).join('');
             container.classList.remove('hidden');
-            hint.textContent = `Mostrando ${snap.size} usuarios (primera página).`;
+            hint.textContent = `Mostrando ${snap.size} usuarios.`;
             hint.classList.remove('hidden');
-            this.wireUserCardButtons();
           }catch(e){
             this.showToast({ title:'Error listando', message:e.message, variant:'error' });
           }
