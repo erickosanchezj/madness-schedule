@@ -163,12 +163,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"></script>
 
     <script>
       const AdminPanel = {
         db: null,
         auth: null,
         functions: null,
+        messaging: null,
         state: {
           classes: [],
           bookingsMap: new Map(),
@@ -238,6 +240,7 @@
           this.db = firebase.firestore();
           this.auth = firebase.auth();
           this.functions = firebase.app().functions('us-central1');
+          this.messaging = firebase.messaging();
 
           // Top buttons
           document.getElementById('login-btn').onclick = () => this.login();
@@ -267,6 +270,7 @@
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 try {
+                  await this.setupPush();
                   await this.loadWeeklyScheduleTemplate();
                   this.listenClassesTodayTomorrow();
                   this.startAttendancePolling();
@@ -287,6 +291,44 @@
           });
 
           lucide.createIcons();
+        },
+
+        async setupPush(){
+          if (typeof firebase.messaging.isSupported === 'function' && !firebase.messaging.isSupported()) return;
+          const uid = this.auth.currentUser?.uid;
+          if (!uid) return;
+          const VAPID_KEY = 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw';
+          const LS_KEY = 'fcm:lastToken';
+          try{
+            let perm = Notification.permission;
+            if (perm === 'default') perm = await Notification.requestPermission();
+            if (perm !== 'granted'){
+              const prev = localStorage.getItem(LS_KEY);
+              if (prev){
+                await this.db.collection('users').doc(uid).set({
+                  [`fcmTokens.${prev}`]: firebase.firestore.FieldValue.delete(),
+                  fcmUpdatedAt: new Date()
+                }, { merge:true });
+                localStorage.removeItem(LS_KEY);
+              }
+              return;
+            }
+            const reg = await navigator.serviceWorker.register('/service-worker.js', { scope:'/' });
+            const token = await this.messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+            if (!token) return;
+            const prev = localStorage.getItem(LS_KEY);
+            const update = { fcmTokens: { [token]: true }, fcmUpdatedAt: new Date() };
+            if (prev && prev !== token) update.fcmTokens[prev] = firebase.firestore.FieldValue.delete();
+            await this.db.collection('users').doc(uid).set(update, { merge:true });
+            localStorage.setItem(LS_KEY, token);
+            this.messaging.onMessage((payload)=>{
+              const title = payload.notification?.title || payload.data?.title || 'Notificación';
+              const body  = payload.notification?.body  || payload.data?.body  || '';
+              this.showToast({ title, message: body });
+            });
+          }catch(e){
+            console.error('setupPush failed', e);
+          }
         },
 
         async loadWeeklyScheduleTemplate(){
