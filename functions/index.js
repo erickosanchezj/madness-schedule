@@ -1,4 +1,3 @@
-// functions/index.js
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
@@ -7,7 +6,7 @@ const db = admin.firestore();
 
 /**
  * Small helper: remove a bad FCM token from any user doc that has it as:
- *   users/{uid}.fcmTokens.<token> == true
+ * users/{uid}.fcmTokens.<token> == true
  */
 async function pruneTokenInUsers(token) {
   try {
@@ -31,10 +30,6 @@ async function pruneTokenInUsers(token) {
   }
 }
 
-/**
- * Admin-only: send a direct push notification to a provided FCM token.
- * Auto-prunes token if FCM responds with "not registered" or "invalid".
- */
 const CALLABLE_OPTS = {
   region: "us-central1",
   invoker: "public",
@@ -44,6 +39,10 @@ const CALLABLE_OPTS = {
   },
 };
 
+/**
+ * Admin-only: send a direct push notification to a provided FCM token.
+ * Auto-prunes token if FCM responds with "not registered" or "invalid".
+ */
 exports.sendDirectNotification = onCall(CALLABLE_OPTS, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
