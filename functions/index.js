@@ -1,4 +1,3 @@
-// functions/index.js
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
@@ -7,7 +6,7 @@ const db = admin.firestore();
 
 /**
  * Small helper: remove a bad FCM token from any user doc that has it as:
- *   users/{uid}.fcmTokens.<token> == true
+ * users/{uid}.fcmTokens.<token> == true
  */
 async function pruneTokenInUsers(token) {
   try {
@@ -31,11 +30,20 @@ async function pruneTokenInUsers(token) {
   }
 }
 
+const CALLABLE_OPTS = {
+  region: "us-central1",
+  invoker: "public",
+  cors: {
+    origin: true,
+    allowedHeaders: ["Authorization", "Content-Type", "Firebase-Instance-ID-Token"],
+  },
+};
+
 /**
  * Admin-only: send a direct push notification to a provided FCM token.
  * Auto-prunes token if FCM responds with "not registered" or "invalid".
  */
-exports.sendDirectNotification = onCall({ region: "us-central1", cors: true }, async (request) => {
+exports.sendDirectNotification = onCall(CALLABLE_OPTS, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -80,7 +88,7 @@ exports.sendDirectNotification = onCall({ region: "us-central1", cors: true }, a
  * - Writes `emailLower` = email.toLowerCase()
  * Returns counts.
  */
-exports.backfillEmailLower = onCall({ region: "us-central1", cors: true }, async (request) => {
+exports.backfillEmailLower = onCall(CALLABLE_OPTS, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -125,7 +133,7 @@ exports.backfillEmailLower = onCall({ region: "us-central1", cors: true }, async
  * Optionally pass `overrideClassId` to target a specific class.
  * Returns success/failure counts and prunes invalid FCM tokens.
  */
-exports.sendManualClassReminder = onCall({ region: "us-central1", cors: true }, async (request) => {
+exports.sendManualClassReminder = onCall(CALLABLE_OPTS, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
