@@ -35,7 +35,7 @@ async function pruneTokenInUsers(token) {
  * Admin-only: send a direct push notification to a provided FCM token.
  * Auto-prunes token if FCM responds with "not registered" or "invalid".
  */
-exports.sendDirectNotification = onCall({ region: "us-central1" }, async (request) => {
+exports.sendDirectNotification = onCall({ region: "us-central1", cors: true }, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -80,7 +80,7 @@ exports.sendDirectNotification = onCall({ region: "us-central1" }, async (reques
  * - Writes `emailLower` = email.toLowerCase()
  * Returns counts.
  */
-exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) => {
+exports.backfillEmailLower = onCall({ region: "us-central1", cors: true }, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
@@ -125,7 +125,7 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
  * Optionally pass `overrideClassId` to target a specific class.
  * Returns success/failure counts and prunes invalid FCM tokens.
  */
-exports.sendManualClassReminder = onCall({ region: "us-central1" }, async (request) => {
+exports.sendManualClassReminder = onCall({ region: "us-central1", cors: true }, async (request) => {
   const auth = request.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
   if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
