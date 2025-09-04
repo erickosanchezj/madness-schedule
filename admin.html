@@ -122,6 +122,10 @@
           <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
         </div>
       </section>
+      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="notifs-title">
+        <h2 id="notifs-title" class="text-2xl font-bold mb-4">Últimas notificaciones</h2>
+        <ul id="recent-notifs" class="space-y-2 text-sm"></ul>
+      </section>
     </div>
 
     <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
@@ -171,10 +175,12 @@
           classes: [],
           bookingsMap: new Map(),
           weeklySchedule: {},
+          recentNotifications: [],
           currentAttendance: {},
           attendanceChartInstance: null,
           unsubClasses: null,
           unsubBookings: [],
+          unsubRecentNotifs: null,
           attendanceData: null,
           attendanceNextAt: 0,
           attendanceLastAt: 0,
@@ -268,6 +274,7 @@
                   await this.loadWeeklyScheduleTemplate();
                   this.listenClassesTodayTomorrow();
                   this.startAttendancePolling();
+                  this.listenRecentNotifications();
                 } catch(e){
                   this.showToast({ title:'Error al iniciar', message:e.message, variant:'error' });
                 }
@@ -281,6 +288,9 @@
               this.teardownBookingsListeners();
               if (this.state.unsubClasses) this.state.unsubClasses();
               this.stopAttendancePolling();
+              if (this.state.unsubRecentNotifs) this.state.unsubRecentNotifs();
+              this.state.recentNotifications = [];
+              this.renderRecentNotifications();
             }
           });
 
@@ -340,6 +350,34 @@
               });
             this.state.unsubBookings.push(unsub);
           }
+        },
+
+        // --- NOTIFICATIONS ---
+        listenRecentNotifications(){
+          if (this.state.unsubRecentNotifs) this.state.unsubRecentNotifs();
+          this.state.unsubRecentNotifs = this.db.collection('notifications')
+            .orderBy('sentAt','desc').limit(10)
+            .onSnapshot((snap)=>{
+              this.state.recentNotifications = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+              this.renderRecentNotifications();
+            }, err=>{
+              console.error(err);
+              this.showToast({ title:'Error cargando notificaciones', message:err.message, variant:'error' });
+            });
+        },
+
+        renderRecentNotifications(){
+          const list = document.getElementById('recent-notifs');
+          if (!list) return;
+          list.innerHTML = this.state.recentNotifications.map(n=>{
+            const sent = n.sentAt?.toDate ? n.sentAt.toDate() : null;
+            const when = sent ? `${this.dayShortFmt.format(sent)} ${this.timeFmt.format(sent)}` : '—';
+            const safeWhen = DOMPurify.sanitize(when);
+            const safeClass = DOMPurify.sanitize(n.classId || '');
+            const safeUser = DOMPurify.sanitize(n.userId || '');
+            const safeInterval = DOMPurify.sanitize(n.interval || '');
+            return `<li>${safeWhen} - ${safeClass} - ${safeUser} - ${safeInterval}</li>`;
+          }).join('') || '<li class="text-zinc-500">No hay notificaciones.</li>';
         },
 
         // --- GENERACIÓN (startAt/endAt) ---
