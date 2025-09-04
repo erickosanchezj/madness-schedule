@@ -985,7 +985,7 @@
             const displayToken = DOMPurify.sanitize(safeToken.substring(0,30));
             const safeUid = DOMPurify.sanitize(userDoc.id);
             return `
-            <div class="p-3 bg-zinc-900 rounded-lg border border-zinc-700 mt-3">
+            <div class="token-row p-3 bg-zinc-900 rounded-lg border border-zinc-700 mt-3">
               <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${i+1}: ${displayToken}...</p>
               <div class="mt-3 space-y-2">
                 <input type="text" id="noti-title-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
@@ -1077,6 +1077,18 @@
               [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
             }, { merge:true });
             this.showToast({ title:'Token eliminado' });
+
+            const row = btn.closest('.token-row');
+            if (row){
+              const parent = row.parentElement;
+              row.remove();
+              if (!parent.querySelector('.token-row')){
+                const msg = document.createElement('p');
+                msg.className = 'text-sm text-zinc-400 mt-3';
+                msg.textContent = 'Sin dispositivos registrados.';
+                parent.appendChild(msg);
+              }
+            }
           }catch(e){
             this.showToast({ title:'No se pudo eliminar', message:e.message, variant:'error' });
           }finally{
