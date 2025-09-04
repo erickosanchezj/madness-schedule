@@ -96,4 +96,6 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
   return { ok: true, total: snap.size, updated };
 });
 
-exports.reminders = require("./src/reminders").reminders;
+const bookingReminders = require("./src/bookingReminders");
+exports.onBookingCreate = bookingReminders.onBookingCreate;
+exports.sendBookingReminder = bookingReminders.sendBookingReminder;
