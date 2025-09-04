@@ -38,18 +38,23 @@ messaging.onBackgroundMessage((payload) => {
 
   const data = payload?.data || {};
   const title = data.title || "Recordatorio de clase";
-  const body  = data.body  || "";
+  const body = data.body || "";
   // MODIFIED: Changed fallback URL to root
-  const url   = data.url   || "/";
+  const url = data.url || "/";
+  // NEW: Extract classId for tagging notifications
+  const classId = data.classId || "";
+  const tag = classId ? `class-${classId}` : undefined;
   // MODIFIED: Changed icon path to root
-  const icon  = "/images/icon-192x192.png";
+  const icon = "/images/icon-192x192.png";
 
-  log("Mostrando notificación manual (data-only):", { title, body, url });
+  log("Mostrando notificación manual (data-only):", { title, body, url, classId });
   self.registration.showNotification(title, {
     body,
     icon,
     badge: icon,
-    data: { url }
+    data: { url, classId },
+    tag,
+    renotify: true,
   });
 });
 
