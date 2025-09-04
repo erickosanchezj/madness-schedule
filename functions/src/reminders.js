@@ -1,10 +1,5 @@
-const functions = require('firebase-functions');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
-
-// Initialize admin if not already initialized
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
 
 const db = admin.firestore();
 
@@ -43,9 +38,9 @@ async function pruneTokenInUsers(token) {
  * Scheduled reminders for upcoming classes.
  * This function runs every 15 minutes at specified hours on weekdays and Saturday.
  */
-exports.reminders = functions
-  .pubsub.schedule('*/15 7,9,17,18,19,20 * * 1,2,3,4,5,6')
-  .onRun(async () => {
+exports.reminders = onSchedule(
+  { region: 'us-central1', schedule: '*/15 7,9,17,18,19,20 * * 1-6' },
+  async (event) => {
     const now = admin.firestore.Timestamp.now().toDate();
 
     for (const interval of REMINDER_INTERVALS) {
@@ -113,4 +108,5 @@ exports.reminders = functions
       }
     }
     return null;
-  });
+  }
+);
