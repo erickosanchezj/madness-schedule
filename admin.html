@@ -185,7 +185,8 @@
           attendanceNextAt: 0,
           attendanceLastAt: 0,
           attendancePollTimer: null,
-          attendanceTickTimer: null
+          attendanceTickTimer: null,
+          userSearchResults: []
         },
 
         // --- Helpers ---
@@ -925,6 +926,7 @@
               return;
             }
 
+            this.state.userSearchResults = results;
             container.innerHTML = results.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
             container.classList.remove('hidden');
             this.wireUserCardButtons();
@@ -1077,17 +1079,13 @@
               [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
             }, { merge:true });
             this.showToast({ title:'Token eliminado' });
-
-            const row = btn.closest('.token-row');
-            if (row){
-              const parent = row.parentElement;
-              row.remove();
-              if (!parent.querySelector('.token-row')){
-                const msg = document.createElement('p');
-                msg.className = 'text-sm text-zinc-400 mt-3';
-                msg.textContent = 'Sin dispositivos registrados.';
-                parent.appendChild(msg);
-              }
+            const freshDoc = await this.db.collection('users').doc(uid).get();
+            const idx = this.state.userSearchResults.findIndex(d=>d.id===uid);
+            if (idx !== -1) this.state.userSearchResults[idx] = freshDoc;
+            const card = btn.closest('.p-4');
+            if (card){
+              card.outerHTML = this.userCardHTML(freshDoc, idx === -1 ? 0 : idx);
+              this.wireUserCardButtons();
             }
           }catch(e){
             this.showToast({ title:'No se pudo eliminar', message:e.message, variant:'error' });
