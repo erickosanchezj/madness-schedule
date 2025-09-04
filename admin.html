@@ -1053,7 +1053,7 @@
               if (ok){
                 try{
                   await this.db.collection('users').doc(uid).set({
-                    [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
+                    fcmTokens: { [token]: firebase.firestore.FieldValue.delete() }
                   }, { merge:true });
                   this.showToast({ title:'Token eliminado', message:'Se removió el token inválido.' });
                 }catch(pruneErr){
@@ -1076,7 +1076,7 @@
           btn.disabled = true;
           try{
             await this.db.collection('users').doc(uid).set({
-              [`fcmTokens.${token}`]: firebase.firestore.FieldValue.delete()
+              fcmTokens: { [token]: firebase.firestore.FieldValue.delete() }
             }, { merge:true });
             this.showToast({ title:'Token eliminado' });
             const freshDoc = await this.db.collection('users').doc(uid).get();
