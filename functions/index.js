@@ -5,31 +5,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 admin.initializeApp();
 const db = admin.firestore();
 
-/**
- * Small helper: remove a bad FCM token from any user doc that has it as:
- *   users/{uid}.fcmTokens.<token> == true
- */
-async function pruneTokenInUsers(token) {
-  try {
-    const fieldPath = `fcmTokens.${token}`;
-    const snap = await db.collection("users").where(fieldPath, "==", true).get();
-    if (snap.empty) return { prunedDocs: 0 };
-
-    const batch = db.batch();
-    snap.forEach(doc => {
-      batch.set(
-        doc.ref,
-        { [fieldPath]: admin.firestore.FieldValue.delete() },
-        { merge: true }
-      );
-    });
-    await batch.commit();
-    return { prunedDocs: snap.size };
-  } catch (e) {
-    console.error("Failed pruning token in users:", e);
-    return { prunedDocs: 0, error: e?.message };
-  }
-}
+const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
 /**
  * Admin-only: send a direct push notification to a provided FCM token.
