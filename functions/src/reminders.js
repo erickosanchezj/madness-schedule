@@ -1,38 +1,12 @@
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
+const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
 
 const db = admin.firestore();
 
 // Minutes before class to send reminders
 const REMINDER_INTERVALS = [60, 30, 15];
 const TOLERANCE_MIN = 5;
-
-/**
- * Prunes a bad FCM token from any user document.
- * @param {string} token The FCM token to remove.
- */
-async function pruneTokenInUsers(token) {
-  try {
-    const fieldPath = `fcmTokens.${token}`;
-    const snap = await db
-      .collection('users')
-      .where(fieldPath, '==', true)
-      .get();
-    if (snap.empty) return;
-
-    const batch = db.batch();
-    snap.forEach((doc) => {
-      batch.set(
-        doc.ref,
-        { [fieldPath]: admin.firestore.FieldValue.delete() },
-        { merge: true }
-      );
-    });
-    await batch.commit();
-  } catch (e) {
-    console.error('Failed pruning token in users:', e);
-  }
-}
 
 /**
  * Scheduled reminders for upcoming classes.
@@ -98,7 +72,11 @@ exports.reminders = onSchedule(
                 code === 'messaging/registration-token-not-registered';
 
               if (invalid) {
-                await pruneTokenInUsers(token);
+                const prune = await pruneTokenInUsers(token);
+                console.warn(
+                  `Pruned invalid token ${token}; prunedDocs=${prune.prunedDocs || 0}` +
+                    (prune.error ? `; error=${prune.error}` : '')
+                );
               } else {
                 console.error('Failed to send to token', token, err);
               }
