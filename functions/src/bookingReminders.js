@@ -52,11 +52,12 @@ exports.sendBookingReminder = onTaskDispatched(
 
     const res = await admin.messaging().sendEachForMulticast({
       tokens,
-      notification: {
+      // Use data-only payload so the SW can handle tagging/renotify
+      data: {
         title: classData.title || 'Class Reminder',
         body: `Your class starts in ${interval} minutes`,
+        classId,
       },
-      data: { classId },
     });
 
     const prunePromises = [];
