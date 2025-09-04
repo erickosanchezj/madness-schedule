@@ -190,9 +190,10 @@
         const navBar = document.getElementById('nav-bar');
         const toastEl = document.getElementById('toast');
         let toastTimeout;
-        function showToast(message, type = 'info') {
+        function showToast(message, type = 'info', opts = {}) {
           if (!toastEl) return;
-          toastEl.textContent = message;
+          const { html = false } = opts;
+          if (html) toastEl.innerHTML = message; else toastEl.textContent = message;
           toastEl.classList.remove('opacity-0', 'bg-green-600', 'bg-red-600', 'bg-zinc-800');
           const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-800';
           toastEl.classList.add(color, 'opacity-100');
@@ -316,6 +317,16 @@
                 const uid = auth.currentUser?.uid;
                 const prev = localStorage.getItem(LS_KEY);
                 if (uid && prev) await removeToken(uid, prev);
+                showToast('Notificaciones desactivadas. <a href="#" class="underline" id="re-enable-notifs">Permitir de nuevo</a>', 'error', { html: true });
+                document.getElementById('re-enable-notifs')?.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  const ua = navigator.userAgent.toLowerCase();
+                  let url = 'chrome://settings/content/notifications';
+                  if (ua.includes('firefox')) url = 'about:preferences#privacy';
+                  else if (ua.includes('edg')) url = 'edge://settings/content/notifications';
+                  window.open(url, '_blank');
+                });
+                try{ gtag('event', 'notification_permission_disabled'); }catch{ console.log('notification_permission_disabled'); }
               }
             };
           }catch{}
