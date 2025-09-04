@@ -75,5 +75,11 @@ exports.sendBookingReminder = onTaskDispatched(
       }
     });
     await Promise.all(prunePromises);
+    await db.collection('notifications').add({
+      classId,
+      userId,
+      interval,
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
   }
 );
