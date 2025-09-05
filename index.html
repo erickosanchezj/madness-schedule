@@ -105,30 +105,30 @@
         }
 
         // ---- Helpers (fechas, UI, etc.)
+        const MX_TZ = 'America/Mexico_City';
+        const ymdFmt = new Intl.DateTimeFormat('en-CA',{ timeZone: MX_TZ, year:'numeric', month:'2-digit', day:'2-digit' });
+        const timeFmt = new Intl.DateTimeFormat('es-MX',{ timeZone: MX_TZ, hour:'2-digit', minute:'2-digit', hour12:false });
         const dateHelper = {
-          pad(n){ return String(n).padStart(2,'0'); },
-          getYYYYMMDD(date){ return `${date.getFullYear()}-${this.pad(date.getMonth()+1)}-${this.pad(date.getDate())}`; },
+          getYYYYMMDD(date){ return ymdFmt.format(date); },
           get today(){ return this.getYYYYMMDD(new Date()); },
-          get tomorrow(){ const d=new Date(); d.setDate(d.getDate()+1); return this.getYYYYMMDD(d); },
+          get tomorrow(){ return this.getYYYYMMDD(new Date(Date.now()+86400000)); },
           human(ymd){
-            const [y,m,d]=ymd.split('-').map(n=>parseInt(n,10));
-            const dt=new Date(y,m-1,d);
-            return dt.toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'short'});
+            const dt=new Date(`${ymd}T00:00:00Z`);
+            return dt.toLocaleDateString('es-MX',{ timeZone: MX_TZ, weekday:'long',day:'2-digit',month:'short' });
           }
         };
         const timeHelper = {
           range(ymd, hhmm, durationMin=60){
-            const start=new Date(`${ymd}T${hhmm}:00`);
+            const start=new Date(`${ymd}T${hhmm}:00Z`);
             const end=new Date(start.getTime()+Number(durationMin||60)*60000);
-            const fmt=new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
-            return `${fmt.format(start)}–${fmt.format(end)}`;
+            return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
           }
         };
         const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
 
         function timeUntilLabel(ymd, hhmm){
           if(!ymd||!hhmm) return '';
-          const start=new Date(`${ymd}T${hhmm}:00`).getTime();
+          const start=new Date(`${ymd}T${hhmm}:00Z`).getTime();
           const now=Date.now();
           const diff=start-now;
           if (diff>4*60*60*1000) return '';
@@ -446,18 +446,20 @@
         // --- AGENDA (igual que tu implementación, con mínimos cambios)
         function getAgendaScreenHTML(){
           const upcoming = state.myBookings.filter(Boolean).filter(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
             return Date.now() <= startObj.getTime()+5*60*1000;
           }).sort((a,b)=>{
-            const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00`).getTime();
-            const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00`).getTime();
+            const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
+            const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
             return ta - tb;
           });
           const reservasHTML = upcoming.length ? upcoming.map(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00`);
-            const ymd = b.classDate || dateHelper.getYYYYMMDD(startObj);
-            const hhmm = b.time || new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}).format(startObj);
-            const dayText = ymd===dateHelper.today ? 'Hoy' : ymd===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymd);
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+            const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
+            const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
+            const hhmm = timeFmt.format(startObj);
+            const ymdLocal = dateHelper.getYYYYMMDD(startObj);
+            const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
             const cover = coverHelper.forClassName(b.className, b.className);
             const safeClassName = DOMPurify.sanitize(b.className || '');
             const safeDayText = DOMPurify.sanitize(dayText);
@@ -469,7 +471,7 @@
                   <div>
                     <p class="font-bold text-lg">${safeClassName}</p>
                     <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                   </div>
                 </div>
                 <button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
@@ -479,13 +481,14 @@
           const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
           const filtered = state.classes
             .filter(cls=>{
-              const ymd = dateHelper.getYYYYMMDD(cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt));
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
+              const ymd = dateHelper.getYYYYMMDD(start);
               return ymd===targetYMD;
             })
             .filter(cls=>{
               if (state.scheduleFilter!=='today') return true;
-              const start = (cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt)).getTime();
-              return Date.now() <= start + 5*60*1000;
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
+              return Date.now() <= start.getTime() + 5*60*1000;
             });
 
           const horarioHTML = filtered.length ? filtered.map(cls=>{
@@ -495,8 +498,9 @@
             let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
             if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
             else if (available<=0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
-            const ymd = cls.classDate || targetYMD;
-            const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
+            const ymdUTC = cls.classDate || targetYMD;
+            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+            const hhmm = timeFmt.format(new Date(`${ymdUTC}T${hhmmUTC}:00Z`));
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
             const safeId = DOMPurify.sanitize(cls.id);
@@ -507,7 +511,7 @@
                   <p class="font-bold text-lg">${safeName}</p>
                   <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
                   <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
-                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymd, hhmm)}</p>
+                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                 </div>
                 <div class="text-right">${badge}</div>
               </div>`;
@@ -568,9 +572,9 @@
           const availableSpots = Number(cls.capacity||0)-enrolled;
           const isBooked = state.myBookings.some(b=>b.classId===cls.id);
           const durationMin = Number(cls.duration||60);
-          const ymd = cls.classDate || dateHelper.getYYYYMMDD(cls.startAt.toDate());
-          const hhmm = cls.time || new Date(cls.startAt.toDate()).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
-          const timeRange = timeHelper.range(ymd, hhmm, durationMin);
+          const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
+          const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+          const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
           const safeName = DOMPurify.sanitize(cls.name || '');
           const safeDesc = DOMPurify.sanitize(cls.description || '');
           const safeId = DOMPurify.sanitize(cls.id);
@@ -657,7 +661,6 @@
                 const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
                 const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
                 const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
-                const timeFmt = new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
                 const time = cls.time || timeFmt.format(startDateObj);
                 tx.set(bookingRef, {
                   classId, userId: uid,
