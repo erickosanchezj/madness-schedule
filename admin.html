@@ -309,10 +309,11 @@
           const yesterday = this.dateHelper.yesterday();
           const today = this.dateHelper.today();
           const tomorrow = this.dateHelper.tomorrow();
+          const dayAfterTomorrow = this.dateHelper.ymd(new Date(Date.now()+172800000));
 
           if (this.state.unsubClasses) this.state.unsubClasses();
           this.state.unsubClasses = this.db.collection('classes')
-            .where('classDate', 'in', [yesterday, today, tomorrow])
+            .where('classDate', 'in', [yesterday, today, tomorrow, dayAfterTomorrow])
             .orderBy('classDate','asc').orderBy('time','asc')
             .onSnapshot((snap)=>{
               this.state.classes = snap.docs.map(d=>{
@@ -419,8 +420,15 @@
           for (const d of days){
             const tpl = this.state.weeklySchedule[String(d.dow)] || [];
             if (!tpl.length) continue;
-            const existingSnap = await this.db.collection('classes').where('classDate','==',d.dateStr).get();
-            const existingTimes = new Set(existingSnap.docs.map(x=> this.timeFmt.format(new Date(`${d.dateStr}T${x.data().time}:00Z`)) ));
+            const base = new Date(`${d.dateStr}T00:00:00-06:00`);
+            const storedDate = base.toISOString().slice(0,10);
+            const storedNext = new Date(base.getTime()+86400000).toISOString().slice(0,10);
+            const existingSnap = await this.db.collection('classes').where('classDate','in',[storedDate, storedNext]).get();
+            const existingTimes = new Set(existingSnap.docs.map(x=>{
+              const data = x.data();
+              const start = new Date(`${data.classDate}T${data.time}:00Z`);
+              return this.timeFmt.format(start);
+            }));
             for (const c of tpl){
               if (!existingTimes.has(c.time)){
                 const ref = this.db.collection('classes').doc();
