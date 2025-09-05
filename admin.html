@@ -414,6 +414,7 @@
           ];
           const batch = this.db.batch();
           let created = 0;
+          const createdList = [];
 
           for (const d of days){
             const tpl = this.state.weeklySchedule[String(d.dow)] || [];
@@ -440,6 +441,7 @@
                   icon:'💪',
                   image:`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
                 });
+                createdList.push({ date: d.dateStr, time: c.time, name: c.name });
                 created++;
               }
             }
@@ -447,6 +449,7 @@
 
           if (created>0){
             await batch.commit();
+            console.log('Clases generadas:', createdList);
             this.showToast({ title:'Clases generadas', message:`Se crearon ${created} clases` });
           } else {
             this.showToast({ title:'Horario al día', message:'No hay clases nuevas por crear', variant:'warn' });
