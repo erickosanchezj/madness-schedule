@@ -190,14 +190,14 @@
         },
 
         // --- Helpers ---
-        timeFmt: new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit'}),
-        dayFmt: new Intl.DateTimeFormat('es-MX',{weekday:'long',day:'2-digit',month:'short'}),
-        dayShortFmt: new Intl.DateTimeFormat('es-MX',{day:'2-digit',month:'short'}),
+        timeFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', hour:'2-digit',minute:'2-digit',hour12:false }),
+        dayFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long',day:'2-digit',month:'short' }),
+        dayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', day:'2-digit',month:'short' }),
         dateHelper: {
-          ymd(date){ const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; },
+          ymd(date){ return new Intl.DateTimeFormat('en-CA',{ timeZone: 'America/Mexico_City', year:'numeric', month:'2-digit', day:'2-digit' }).format(date); },
           today(){ return this.ymd(new Date()); },
-          tomorrow(){ const t=new Date(); t.setDate(t.getDate()+1); return this.ymd(t); },
-          yesterday(){ const t=new Date(); t.setDate(t.getDate()-1); return this.ymd(t); }
+          tomorrow(){ return this.ymd(new Date(Date.now()+86400000)); },
+          yesterday(){ return this.ymd(new Date(Date.now()-86400000)); }
         },
         normalizeStr(s=''){
           return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -315,7 +315,15 @@
             .where('classDate', 'in', [yesterday, today, tomorrow])
             .orderBy('classDate','asc').orderBy('time','asc')
             .onSnapshot((snap)=>{
-              this.state.classes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+              this.state.classes = snap.docs.map(d=>{
+                const data = { id:d.id, ...d.data() };
+                if (data.classDate && data.time){
+                  const start = new Date(`${data.classDate}T${data.time}:00Z`);
+                  data.localDate = this.dateHelper.ymd(start);
+                  data.localTime = this.timeFmt.format(start);
+                }
+                return data;
+              });
               this.mountBookingsListenersForVisibleClasses();
               this.renderAll();
               this.renderAttendanceChartFromCache();
@@ -383,11 +391,13 @@
 
         // --- GENERACIÓN (startAt/endAt) ---
         _buildStartEnd(dateStr, timeStr, duration=60){
-          const start = new Date(`${dateStr}T${timeStr}:00`);
+          const start = new Date(`${dateStr}T${timeStr}:00-06:00`);
           const end = new Date(start.getTime() + (Number(duration||60)*60000));
           return {
             startAt: firebase.firestore.Timestamp.fromDate(start),
-            endAt: firebase.firestore.Timestamp.fromDate(end)
+            endAt: firebase.firestore.Timestamp.fromDate(end),
+            classDate: start.toISOString().slice(0,10),
+            timeUTC: start.toISOString().slice(11,16)
           };
         },
 
@@ -409,19 +419,19 @@
             const tpl = this.state.weeklySchedule[String(d.dow)] || [];
             if (!tpl.length) continue;
             const existingSnap = await this.db.collection('classes').where('classDate','==',d.dateStr).get();
-            const existingTimes = new Set(existingSnap.docs.map(x=>x.data().time));
+            const existingTimes = new Set(existingSnap.docs.map(x=> this.timeFmt.format(new Date(`${d.dateStr}T${x.data().time}:00Z`)) ));
             for (const c of tpl){
               if (!existingTimes.has(c.time)){
                 const ref = this.db.collection('classes').doc();
-                const { startAt, endAt } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
+                const { startAt, endAt, classDate, timeUTC } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
                 const isTRX = /trx/i.test(c.name || "");
                 const capacity = (typeof c.capacity === "number") ? c.capacity : (isTRX ? 13 : 15);
                 batch.set(ref,{
                   name: c.name,
-                  time: c.time,
+                  time: timeUTC,
                   instructor: c.instructor || 'Por Asignar',
                   duration: c.duration || 60,
-                  classDate: d.dateStr,
+                  classDate,
                   capacity,
                   enrolledCount: 0,
                   startAt,
@@ -447,10 +457,10 @@
         renderAll(){ this.renderClassCards(); this.renderDailyBookings(); },
 
         isClassRunningNow(cls){
-          if (!cls || !cls.classDate) return false;
+          if (!cls || !cls.classDate || !cls.time) return false;
           const todayStr = this.dateHelper.today();
-          if (cls.classDate !== todayStr) return false;
-          const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+          if (cls.localDate !== todayStr) return false;
+          const start = new Date(`${cls.classDate}T${cls.time}:00Z`).getTime();
           const end   = start + (Number(cls.duration||60)*60000);
           const now = Date.now();
           return now>=start && now<=end;
@@ -461,7 +471,11 @@
           const tomorrowC = document.getElementById('tomorrow-classes-container');
           todayC.innerHTML=''; tomorrowC.innerHTML='';
 
-          const sorted = [...this.state.classes].sort((a,b)=>(a.classDate+a.time).localeCompare(b.classDate+b.time));
+          const sorted = [...this.state.classes].sort((a,b)=>{
+            const sa = new Date(`${a.classDate}T${a.time}:00Z`).getTime();
+            const sb = new Date(`${b.classDate}T${b.time}:00Z`).getTime();
+            return sa - sb;
+          });
           for (const cls of sorted){
             const isRunning = this.isClassRunningNow(cls);
             const style = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
@@ -473,7 +487,7 @@
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
             const safeIcon = DOMPurify.sanitize(cls.icon || '💪');
-            const safeTime = DOMPurify.sanitize(cls.time || '');
+            const safeTime = DOMPurify.sanitize(cls.localTime || cls.time || '');
             card.setAttribute('aria-label', `Editar ${safeName} a las ${safeTime}`);
             card.onclick = () => this.showClassModal(cls);
             card.innerHTML = `
@@ -488,8 +502,8 @@
                 <span class="font-semibold">a las ${safeTime}</span>
                 <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
               </div>`;
-            if (cls.classDate === this.dateHelper.today()) todayC.appendChild(card);
-            else if (cls.classDate === this.dateHelper.tomorrow()) tomorrowC.appendChild(card);
+            if (cls.localDate === this.dateHelper.today()) todayC.appendChild(card);
+            else if (cls.localDate === this.dateHelper.tomorrow()) tomorrowC.appendChild(card);
           }
           if (!todayC.children.length) todayC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
           if (!tomorrowC.children.length) tomorrowC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
@@ -501,7 +515,7 @@
           todayList.innerHTML=''; tomList.innerHTML='';
 
           const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
-          this.state.classes.forEach(c=>{ if(byDate[c.classDate]) byDate[c.classDate].push(c); });
+          this.state.classes.forEach(c=>{ if(byDate[c.localDate]) byDate[c.localDate].push(c); });
 
           const buildHTML = (classesArr)=>{
             const blocks = classesArr.map(cls=>{
@@ -509,7 +523,7 @@
               const enrolled = Number(cls.enrolledCount||0);
               const cap = Number(cls.capacity||0);
               const names = attendees.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
-              const safeTime = DOMPurify.sanitize(cls.time || '');
+              const safeTime = DOMPurify.sanitize(cls.localTime || cls.time || '');
               const safeName = DOMPurify.sanitize(cls.name || '');
               return `
                 <div class="mb-3">
@@ -722,7 +736,7 @@
         // --- MODAL / Asistencia ---
         isClassInProgressWindow(cls){
           if (!cls || !cls.classDate || !cls.time) return false;
-          const start = new Date(`${cls.classDate}T${cls.time}:00`).getTime();
+          const start = new Date(`${cls.classDate}T${cls.time}:00Z`).getTime();
           const now = Date.now();
           const lower = now - (15*60*60*1000);
           const upper = now + (30*60*1000);
@@ -734,7 +748,7 @@
           document.getElementById('class-id').value = cls.id;
           document.getElementById('class-name').value = cls.name || '';
           document.getElementById('class-instructor').value = cls.instructor || '';
-          document.getElementById('class-time').value = cls.time || '';
+          document.getElementById('class-time').value = cls.localTime || cls.time || '';
           document.getElementById('class-icon').value = cls.icon || '';
           document.getElementById('class-description').value = cls.description || '';
 
@@ -1133,9 +1147,13 @@
           };
           try{
             const cls = this.state.classes.find(c=>c.id===id);
-            if (cls && data.time && data.time !== cls.time){
-              const { startAt, endAt } = this._buildStartEnd(cls.classDate, data.time, cls.duration||60);
-              data.startAt = startAt; data.endAt = endAt;
+            if (cls && data.time && data.time !== (cls.localTime || cls.time)){
+              const start = new Date(`${cls.localDate||cls.classDate}T${data.time}:00-06:00`);
+              const end = new Date(start.getTime() + (Number(cls.duration||60)*60000));
+              data.startAt = firebase.firestore.Timestamp.fromDate(start);
+              data.endAt = firebase.firestore.Timestamp.fromDate(end);
+              data.classDate = start.toISOString().slice(0,10);
+              data.time = start.toISOString().slice(11,16);
             }
             await this.db.collection('classes').doc(id).set(data,{ merge:true });
             this.showToast({ title:'Clase actualizada' });
