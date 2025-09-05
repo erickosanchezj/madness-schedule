@@ -99,6 +99,3 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
 const bookingReminders = require("./src/bookingReminders");
 exports.onBookingCreate = bookingReminders.onBookingCreate;
 exports.sendBookingReminder = bookingReminders.sendBookingReminder;
-
-const upcomingClassesReminder = require("./src/upcomingClassesReminder");
-exports.remindUpcomingClasses = upcomingClassesReminder.remindUpcomingClasses;
