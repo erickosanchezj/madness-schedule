@@ -367,8 +367,21 @@
           if (this.state.unsubRecentNotifs) this.state.unsubRecentNotifs();
           this.state.unsubRecentNotifs = this.db.collection('notifications')
             .orderBy('sentAt','desc').limit(10)
-            .onSnapshot((snap)=>{
-              this.state.recentNotifications = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+            .onSnapshot(async (snap)=>{
+              const notifs = await Promise.all(snap.docs.map(async d=>{
+                const data = d.data();
+                const [cls, usr] = await Promise.all([
+                  data.classId ? this.db.collection('classes').doc(data.classId).get() : Promise.resolve(null),
+                  data.userId ? this.db.collection('users').doc(data.userId).get() : Promise.resolve(null)
+                ]);
+                return {
+                  id: d.id,
+                  ...data,
+                  className: cls?.data()?.name || cls?.data()?.title || data.classId || '',
+                  userName: usr?.data()?.displayName || usr?.data()?.email || data.userId || ''
+                };
+              }));
+              this.state.recentNotifications = notifs;
               this.renderRecentNotifications();
             }, err=>{
               console.error(err);
@@ -383,9 +396,9 @@
             const sent = n.sentAt?.toDate ? n.sentAt.toDate() : null;
             const when = sent ? `${this.dayShortFmt.format(sent)} ${this.timeFmt.format(sent)}` : '—';
             const safeWhen = DOMPurify.sanitize(when);
-            const safeClass = DOMPurify.sanitize(n.classId || '');
-            const safeUser = DOMPurify.sanitize(n.userId || '');
-            const safeInterval = DOMPurify.sanitize(n.interval || '');
+            const safeClass = DOMPurify.sanitize(n.className || n.classId || '');
+            const safeUser = DOMPurify.sanitize(n.userName || n.userId || '');
+            const safeInterval = DOMPurify.sanitize(n.interval ? `${n.interval}m` : '');
             return `<li>${safeWhen} - ${safeClass} - ${safeUser} - ${safeInterval}</li>`;
           }).join('') || '<li class="text-zinc-500">No hay notificaciones.</li>';
         },
