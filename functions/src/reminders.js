@@ -9,7 +9,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // Minutes before class to send reminders
-const REMINDER_INTERVALS = [60, 30, 15];
+const REMINDER_INTERVALS = [60, 45, 30];
 const TOLERANCE_MIN = 5;
 
 /**
@@ -44,7 +44,7 @@ async function pruneTokenInUsers(token) {
  * This function runs every 15 minutes at specified hours on weekdays and Saturday.
  */
 exports.reminders = functions
-  .pubsub.schedule('*/15 7,9,17,18,19,20 * * 1,2,3,4,5,6')
+  .pubsub.schedule('*/15 0,1,2,13,15,23 * * *')
   .onRun(async () => {
     const now = admin.firestore.Timestamp.now().toDate();
 
@@ -83,8 +83,8 @@ exports.reminders = functions
               await admin.messaging().send({
                 token,
                 notification: {
-                  title: classData.title || 'Class Reminder',
-                  body: `Your class starts in ${interval} minutes`,
+                  title: classData.title || 'Madness Crosstraining',
+                  body: `Tu clase empieza en ${interval} minutos`,
                 },
                 data: { classId },
               });
