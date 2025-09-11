@@ -29,7 +29,7 @@ exports.onBookingCreate = onDocumentCreated(
     const classSnap = await db.collection('classes').doc(classId).get();
     console.log('Class document exists:', classSnap.exists);
     console.log('Class data:', classSnap.data());
-    const start = classSnap.get('start');
+    const start = classSnap.get('startAt');
     console.log('Start field:', start);
     if (!start) {
       console.log('Missing start field, exiting.');
