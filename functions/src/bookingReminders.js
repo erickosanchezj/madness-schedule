@@ -22,7 +22,14 @@ exports.onBookingCreate = onDocumentCreated(
     const startDate = start.toDate();
 
     const functions = getFunctions();
-    const queue = functions.taskQueue('sendBookingReminder', 'us-central1');
+    // Explicitly target the reminder queue in the correct region. Passing a
+    // second argument here was mistakenly interpreted as an extension ID and
+    // resulted in tasks being enqueued to a non-existent queue. Instead, embed
+    // the region in the function path so tasks land in
+    // `sendBookingReminder` in `us-central1`.
+    const queue = functions.taskQueue(
+      'locations/us-central1/functions/sendBookingReminder'
+    );
     const now = new Date();
 
     await Promise.all(
