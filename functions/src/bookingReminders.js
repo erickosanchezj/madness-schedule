@@ -50,6 +50,9 @@ exports.sendBookingReminder = onTaskDispatched(
     const tokens = Object.keys(userSnap.get('fcmTokens') || {});
     if (tokens.length === 0) return;
 
+    const title = classData.title || 'Class Reminder';
+    const body = `Your class starts in ${interval} minutes`;
+
     const tokenChunks = [];
     for (let i = 0; i < tokens.length; i += 500) {
       tokenChunks.push(tokens.slice(i, i + 500));
@@ -59,12 +62,10 @@ exports.sendBookingReminder = onTaskDispatched(
     for (const chunk of tokenChunks) {
       const chunkRes = await admin.messaging().sendEachForMulticast({
         tokens: chunk,
-        // Use data-only payload so the SW can handle tagging/renotify
-        data: {
-          title: classData.title || 'Class Reminder',
-          body: `Your class starts in ${interval} minutes`,
-          classId,
-        },
+        // Include a notification payload so FCM can display it on devices
+        notification: { title, body },
+        // Also send data so the service worker can handle tagging/renotify
+        data: { title, body, classId },
       });
       res.responses.push(...chunkRes.responses);
       res.successCount += chunkRes.successCount;
