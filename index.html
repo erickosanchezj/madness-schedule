@@ -683,6 +683,8 @@
             const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
             const userRef = db.collection('users').doc(uid);
             const waitRef = db.collection('waitlists').doc(`${classId}_${uid}`);
+            const waitEntry = state.waitlistEntries.find(w=>w.classId===classId); // user's waitlist entry
+            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // valid notification
             try{
               await db.runTransaction(async tx=>{
                 const [classSnap, bookingSnap, userSnap, waitSnap] = await Promise.all([
@@ -697,11 +699,7 @@
                 const cls = classSnap.data();
                 const enrolled = Number(cls.enrolledCount||0);
                 const capacity = Number(cls.capacity||0);
-                const wData = waitSnap.exists ? waitSnap.data() : null; // waitlist info
-                const expiresAt = wData?.expiresAt ? asDate(wData.expiresAt) : null;
-                const notifiedAt = wData?.notifiedAt ? asDate(wData.notifiedAt) : null;
-                const hasNotif = notifiedAt && (!expiresAt || expiresAt.getTime()>Date.now()); // true if user has valid notification
-                if (enrolled>=capacity && !hasNotif) throw new Error('Clase llena.');
+                if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
                 const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
                 const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
                 const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
@@ -715,6 +713,15 @@
                 tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
                 if (waitSnap.exists) tx.delete(waitRef);
               });
+              if (waitEntry){
+                const q = await db.collection('waitlists')
+                  .where('classId','==',classId)
+                  .where('position','>',waitEntry.position||0)
+                  .get(); // entries behind user
+                const batch = db.batch();
+                q.forEach(doc=> batch.update(doc.ref,{ position: (doc.data().position||1)-1 })); // shift positions up
+                await batch.commit();
+              }
               showModal({ success:true, title:'¡Reserva Exitosa!' });
             }catch(err){ alert(`No se pudo reservar\n\n${err.message}`); }
           },
@@ -731,13 +738,13 @@
                 ]);
                 await tx.get(userRef);
                 if (!bookingSnap.exists) throw new Error('No tienes reserva para esta clase.');
-                tx.delete(bookingRef);
                 if (classSnap.exists){
                   const enrolled = Number(classSnap.data().enrolledCount||0);
                   if (enrolled>0) tx.update(classRef,{ enrolledCount: firebase.firestore.FieldValue.increment(-1) });
                 }
                 tx.set(userRef, { lastCancelAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
               });
+              await bookingRef.delete(); // triggers waitlist notification
               showModal({ success:false, title:'Cancelación Exitosa' });
             }catch(err){ alert(`No se pudo cancelar\n\n${err.message}`); }
           },
