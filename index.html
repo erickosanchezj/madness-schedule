@@ -507,15 +507,29 @@
             const enrolled = Number(cls.enrolledCount||0);
             const available = Number(cls.capacity||0)-enrolled;
             const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
+            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
+            const safeId = DOMPurify.sanitize(cls.id);
             let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
-            if (isBooked) badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-            else if (available<=0) badge = `<span class="text-xs bg-rose-500/50 text-rose-300 px-2 py-1 rounded-md">Llena</span>`;
+            if (isBooked) {
+              badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+            } else if (available<=0 && !notified) {
+              // class full: show join or leave waitlist options
+              if (waitEntry) {
+                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+                badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
+              } else {
+                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md\">Unirse a lista de espera</button>`;
+              }
+            } else if (available<=0 && notified) {
+              // user has been notified of a free spot
+              badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
+            }
             const ymdUTC = cls.classDate || targetYMD;
             const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
             const hhmm = timeFmt.format(new Date(`${ymdUTC}T${hhmmUTC}:00Z`));
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
-            const safeId = DOMPurify.sanitize(cls.id);
             return `
               <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
                 <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
@@ -577,46 +591,59 @@
             </div>`;
         }
 
-        function getClassDetailsScreenHTML(classId){
-          const cls = state.classes.find(c=>c.id===classId);
-          if (!cls) return getAgendaScreenHTML();
-          const enrolled = Number(cls.enrolledCount||0);
-          const availableSpots = Number(cls.capacity||0)-enrolled;
-          const isBooked = state.myBookings.some(b=>b.classId===cls.id);
-          const durationMin = Number(cls.duration||60);
-          const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
-          const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-          const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
-          const safeName = DOMPurify.sanitize(cls.name || '');
-          const safeDesc = DOMPurify.sanitize(cls.description || '');
-          const safeId = DOMPurify.sanitize(cls.id);
-          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-          if (isBooked) buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-          else if (availableSpots<=0) buttonHTML = `<button class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl" disabled>Clase Llena</button>`;
-          return `
-            <div>
-              <div class="relative">
-                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
-                <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
-                  <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                </button>
-              </div>
-              <div class="p-6 space-y-4 pb-40">
-                <h1 class="text-3xl font-bold">
-                  ${safeName}
-                  <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
-                </h1>
-                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
-                <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                  <span class="font-semibold text-lg">Estado</span>
-                  <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
+          function getClassDetailsScreenHTML(classId){
+            const cls = state.classes.find(c=>c.id===classId);
+            if (!cls) return getAgendaScreenHTML();
+            const enrolled = Number(cls.enrolledCount||0);
+            const availableSpots = Number(cls.capacity||0)-enrolled;
+            const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
+            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
+            const durationMin = Number(cls.duration||60);
+            const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
+            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+            const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
+            const safeName = DOMPurify.sanitize(cls.name || '');
+            const safeDesc = DOMPurify.sanitize(cls.description || '');
+            const safeId = DOMPurify.sanitize(cls.id);
+            // default booking button
+            let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+            if (isBooked) {
+              // already have a booking
+              buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+            } else if (availableSpots<=0 && !notified) {
+              // class is full: either join waitlist or allow leaving
+              if (waitEntry) {
+                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+                buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
+              } else {
+                buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
+              }
+            }
+            return `
+              <div>
+                <div class="relative">
+                  <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
+                  <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                  </button>
                 </div>
-              </div>
-              <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
-                ${buttonHTML}
-              </div>
-            </div>`;
-        }
+                <div class="p-6 space-y-4 pb-40">
+                  <h1 class="text-3xl font-bold">
+                    ${safeName}
+                    <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+                  </h1>
+                  <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
+                  <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+                    <span class="font-semibold text-lg">Estado</span>
+                    <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
+                  </div>
+                </div>
+                <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+                  ${buttonHTML}
+                </div>
+              </div>`;
+          }
 
         const app = {
           handleAuth: (isLogin)=>{
@@ -655,10 +682,11 @@
             const classRef = db.collection('classes').doc(classId);
             const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
             const userRef = db.collection('users').doc(uid);
+            const waitRef = db.collection('waitlists').doc(`${classId}_${uid}`);
             try{
               await db.runTransaction(async tx=>{
-                const [classSnap, bookingSnap, userSnap] = await Promise.all([
-                  tx.get(classRef), tx.get(bookingRef), tx.get(userRef)
+                const [classSnap, bookingSnap, userSnap, waitSnap] = await Promise.all([
+                  tx.get(classRef), tx.get(bookingRef), tx.get(userRef), tx.get(waitRef)
                 ]);
                 if (!classSnap.exists) throw new Error('La clase ya no existe.');
                 if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
@@ -669,7 +697,11 @@
                 const cls = classSnap.data();
                 const enrolled = Number(cls.enrolledCount||0);
                 const capacity = Number(cls.capacity||0);
-                if (enrolled>=capacity) throw new Error('Clase llena.');
+                const wData = waitSnap.exists ? waitSnap.data() : null; // waitlist info
+                const expiresAt = wData?.expiresAt ? asDate(wData.expiresAt) : null;
+                const notifiedAt = wData?.notifiedAt ? asDate(wData.notifiedAt) : null;
+                const hasNotif = notifiedAt && (!expiresAt || expiresAt.getTime()>Date.now()); // true if user has valid notification
+                if (enrolled>=capacity && !hasNotif) throw new Error('Clase llena.');
                 const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
                 const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
                 const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
@@ -681,6 +713,7 @@
                   createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
+                if (waitSnap.exists) tx.delete(waitRef);
               });
               showModal({ success:true, title:'¡Reserva Exitosa!' });
             }catch(err){ alert(`No se pudo reservar\n\n${err.message}`); }
