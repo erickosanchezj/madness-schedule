@@ -1,0 +1,24 @@
+// FILE: firestore.indexes.json
+// Firestore index definitions for the Madness Schedule app.
+// Supports waitlist lookups by class and user.
+// RELEVANT FILES: firebase.json, firestore.rules, functions/index.js
+{
+  "indexes": [
+    {
+      "collectionGroup": "waitlists",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classId", "order": "ASCENDING" },
+        { "fieldPath": "position", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "waitlists",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
