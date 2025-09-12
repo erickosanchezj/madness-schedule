@@ -7,7 +7,6 @@ const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
 const db = admin.firestore();
 const REMINDER_INTERVALS = [60, 30, 15];
 
-// ✅ keep export name EXACTLY as used below in the fqfn
 const REMINDER_FUNCTION_FQFN =
   'projects/madnessscheds/locations/us-central1/functions/sendBookingReminder';
 
@@ -46,13 +45,9 @@ exports.onBookingCreate = onDocumentCreated(
     const startDate = start.toDate();
     console.log('Start date:', startDate);
 
-    // ✅ avoid name collisions and force the unambiguous overload below
     const functionsAdmin = getFunctions();
 
     try {
-      // ❌ DO NOT pass /queues/ (that’s Cloud Tasks, not Functions)
-      // ❌ Avoid the 2-arg overload if your admin SDK version routes to "extensions"
-      // ✅ Use fully-qualified FUNCTION resource to force correct overload:
       console.log('taskQueue target:', REMINDER_FUNCTION_FQFN);
       const queue = functionsAdmin.taskQueue(REMINDER_FUNCTION_FQFN);
 
@@ -72,7 +67,6 @@ exports.onBookingCreate = onDocumentCreated(
           .map((interval) => {
             const scheduleTime = new Date(startDate.getTime() - interval * 60000);
             if (scheduleTime <= now) return null;
-            // ✅ Admin SDK accepts JS Date for scheduleTime
             return queue.enqueue({ classId, userId, interval }, { scheduleTime });
           })
           .filter(Boolean)
@@ -86,7 +80,6 @@ exports.onBookingCreate = onDocumentCreated(
   }
 );
 
-// ⚠️ Export name MUST match the fqfn above ("sendBookingReminder")
 exports.sendBookingReminder = onTaskDispatched(
   { region: 'us-central1', rateLimits: { maxConcurrentDispatches: 5 } },
   async (request) => {
@@ -102,9 +95,8 @@ exports.sendBookingReminder = onTaskDispatched(
     const tokens = Object.keys(userSnap.get('fcmTokens') || {});
     if (tokens.length === 0) return;
 
-    // ✅ small nicety: fall back to name if title is absent
-    const title = classData.title || classData.name || 'Class Reminder';
-    const body = `Your class starts in ${interval} minutes`;
+    const title = classData.title || classData.name || 'Recordatorio de clase';
+    const body = `Tu clase empieza en ${interval} minutos`;
 
     const tokenChunks = [];
     for (let i = 0; i < tokens.length; i += 500) tokenChunks.push(tokens.slice(i, i + 500));
