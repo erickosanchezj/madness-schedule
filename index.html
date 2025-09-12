@@ -1,3 +1,7 @@
+<!-- /index.html -->
+<!-- Main PWA interface for class booking and profile management -->
+<!-- Bootstraps the app and loads all client-side logic -->
+<!-- RELEVANT FILES: firebase-config.js, service-worker.js, admin.html -->
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -164,6 +168,7 @@
           currentUser: null,
           classes: [],
           myBookings: [],
+          waitlistEntries: [],
           currentScreen: 'agenda',
           scheduleFilter: 'today',
           selectedClassId: null
@@ -207,10 +212,11 @@
         window.showToast = showToast;
 
         // Firestore listeners
-        let unsubClasses=null, unsubMyBookings=null, listenersAttached=false;
+        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, listenersAttached=false;
         function detachListeners(){
           if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
           if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
+          if (unsubWaitlist){ try{unsubWaitlist();}catch{}; unsubWaitlist=null; }
           listenersAttached=false;
         }
         function attachAgendaListeners(){
@@ -226,6 +232,12 @@
               state.myBookings = snap.docs.map(d=>({id:d.id,...d.data()}));
               scheduleRender();
             }, err=>console.error('Error mis reservas:', err));
+          unsubWaitlist = db.collection('waitlists')
+            .where('userId', '==', state.currentUser.uid)
+            .onSnapshot(snap => {
+              state.waitlistEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleRender();
+            });
           listenersAttached=true;
         }
 
@@ -695,6 +707,23 @@
               });
               showModal({ success:false, title:'Cancelación Exitosa' });
             }catch(err){ alert(`No se pudo cancelar\n\n${err.message}`); }
+          },
+          joinWaitlist: async (classId)=>{
+            const uid = state.currentUser.uid;
+            try{
+              await db.collection('waitlists').doc(`${classId}_${uid}`).set({
+                classId, userId: uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              showToast('Unido a la lista de espera', 'success');
+            }catch(err){ alert(`No se pudo unir a la lista de espera\n\n${err.message}`); }
+          },
+          leaveWaitlist: async (classId)=>{
+            const uid = state.currentUser.uid;
+            try{
+              await db.collection('waitlists').doc(`${classId}_${uid}`).delete();
+              showToast('Saliste de la lista de espera');
+            }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
           }
         };
 
@@ -710,6 +739,8 @@
             case 'logout': app.logout(); break;
             case 'confirm-booking': target.disabled=true; app.confirmBooking(classId).finally(()=>target.disabled=false); break;
             case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
+            case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
+            case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
           }
         }
         document.addEventListener('click', handleInteraction);
