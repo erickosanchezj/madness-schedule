@@ -1,3 +1,7 @@
+// FILE: firebase.json
+// Firebase configuration for the Madness Schedule app.
+// Connects functions and Firestore settings used by the project.
+// RELEVANT FILES: firestore.rules, firestore.indexes.json, build-config.js
 {
   "functions": [
     {
@@ -13,6 +17,7 @@
     }
   ],
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }

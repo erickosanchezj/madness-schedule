@@ -1,3 +1,8 @@
+// FILE: firestore.rules
+// Firestore security rules for the Madness Schedule app.
+// Guards database access so only allowed users can read or write.
+// RELEVANT FILES: firebase.json, firestore.indexes.json, functions/index.js
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
@@ -40,6 +45,16 @@ service cloud.firestore {
         && request.resource.data.startAt is timestamp
         && cooldownOk(request.auth.uid);
       allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // ===== WAITLISTS =====
+    match /waitlists/{waitlistId} {
+      // classId (string), userId (string)
+      // position (number), joinedAt (timestamp)
+      // notifiedAt (timestamp | null), expiresAt (timestamp | null)
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow get, list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
     // ===== USERS (Final, Simpler Ruleset) =====
