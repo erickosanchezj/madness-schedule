@@ -39,9 +39,11 @@ exports.onBookingCreate = onDocumentCreated(
     console.log('Start date:', startDate);
 
     const functions = getFunctions();
+    
     try {
       //const queue = functions.taskQueue('sendBookingReminder', 'us-central1');
-      const queue = functions.taskQueue(`projects/madnessscheds/locations/us-central1/queues/sendBookingReminder`);
+      //const queue = functions.taskQueue(`projects/madnessscheds/locations/us-central1/queues/sendBookingReminder`);
+      const queue = functions.taskQueue('sendBookingReminder', { location: 'us-central1' });
       console.log('Queue created successfully');
       const now = new Date();
       console.log('Current time:', now);
