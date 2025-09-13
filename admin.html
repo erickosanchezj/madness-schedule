@@ -635,7 +635,8 @@
 
         // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
         getDefaultAttendanceRange(){
-          const end = new Date();
+          const today = this.dateHelper.today();
+          const end = new Date(`${today}T00:00:00-06:00`);
           end.setDate(end.getDate()+1);
           const start = new Date(end);
           start.setDate(start.getDate()-3);
@@ -737,7 +738,7 @@
           const nextEl = document.getElementById('att-next');
           if (!lastEl || !nextEl) return;
           if (this.state.attendanceLastAt){
-            const fmt = new Intl.DateTimeFormat('es-MX',{hour:'2-digit',minute:'2-digit'});
+            const fmt = new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit'});
             lastEl.textContent = `Última actualización: ${fmt.format(new Date(this.state.attendanceLastAt))}`;
           } else lastEl.textContent = 'Última actualización: —';
           nextEl.textContent = 'Actualización en vivo';
