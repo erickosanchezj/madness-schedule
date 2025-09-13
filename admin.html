@@ -1,3 +1,7 @@
+<!-- /admin.html -->
+<!-- Admin panel for managing classes, bookings and waitlists -->
+<!-- Allows staff to supervise daily operations and user management -->
+<!-- RELEVANT FILES: index.html, firebase-config.js, service-worker.js -->
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -585,15 +589,24 @@
           const buildHTML = (classesArr)=>{
             const blocks = classesArr.map(cls=>{
               const attendees = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
+              const waiters = (this.state.waitlistsMap.get(cls.id)||[])
+                .sort((a,b)=>(a.position||0)-(b.position||0))
+                .map(w=>w.userName||w.userId||'Anónimo');
               const enrolled = Number(cls.enrolledCount||0);
               const cap = Number(cls.capacity||0);
               const names = attendees.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
+              const waitNames = waiters.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
               const safeTime = DOMPurify.sanitize(cls.localTime || cls.time || '');
               const safeName = DOMPurify.sanitize(cls.name || '');
+              const waitHTML = waiters.length ? `
+                  <p class="text-sm text-amber-400 mt-2">Lista de espera (${waiters.length})</p>
+                  <ul class="list-none">${waitNames}</ul>
+              ` : '';
               return `
                 <div class="mb-3">
                   <p class="font-bold">${safeTime} - ${safeName} (${enrolled} de ${cap})</p>
                   <ul class="list-none">${names}</ul>
+                  ${waitHTML}
                 </div>`;
             });
             return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
