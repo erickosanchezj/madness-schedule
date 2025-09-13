@@ -1,4 +1,7 @@
-// service-worker.js (scope: "/")
+// /service-worker.js (scope: "/")
+// Service Worker for push notifications and offline support.
+// Needed so the app works offline and shows notifications.
+// Relevant files: sw-firebase-config.js, index.html, vendor/firebase-messaging-compat-10.12.5.js
 
 var window = self; // <- requerido por firebase-*-compat en SW
 
@@ -37,8 +40,15 @@ messaging.onBackgroundMessage((payload) => {
   }
 
   const data = payload?.data || {};
-  const title = data.title || "Recordatorio de clase";
-  const body = data.body || "";
+  let title = data.title || "Recordatorio de clase";
+  let body = data.body || "";
+
+  // Override title and body for waitlist spots
+  if (data.type === "waitlist_opportunity") {
+    title = "¡Lugar disponible!";
+    body = "Tienes 5 minutos para reservar";
+  }
+
   // MODIFIED: Changed fallback URL to root
   const url = data.url || "/";
   // NEW: Extract classId for tagging notifications
@@ -61,13 +71,19 @@ messaging.onBackgroundMessage((payload) => {
 // Click → enfocamos pestaña existente del scope o abrimos una nueva
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  // MODIFIED: Changed fallback URL to root
-  const targetUrl = event.notification?.data?.url || "/";
+
+  // If we have a classId, go straight to its details screen
+  const classId = event.notification?.data?.classId;
+  const targetUrl = classId
+    ? `/?screen=classDetails&classId=${classId}`
+    : event.notification?.data?.url || "/";
+
   event.waitUntil((async () => {
     const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
     const existing = list.find(c => c.url.startsWith(self.registration.scope));
     if (existing) {
       log("Focus a tab existente:", existing.url);
+      await existing.navigate(targetUrl);
       return existing.focus();
     }
     log("Abriendo nueva ventana:", targetUrl);
