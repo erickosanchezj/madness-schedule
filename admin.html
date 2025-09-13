@@ -674,8 +674,9 @@
           const { start, end } = this.getSelectedAttendanceRange();
           const report = {};
           const labels = [];
-          const startDate = new Date(start);
-          const endDate = new Date(end);
+          // Parse selected range in Mexico City time to avoid UTC date shifts
+          const startDate = new Date(`${start}T00:00:00-06:00`);
+          const endDate = new Date(`${end}T00:00:00-06:00`);
           for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate()+1)){
             const d = this.dateHelper.ymd(dt);
             report[d] = { attended:0, absent:0, booked:0, totalCapacity:0, utilizationRate:0, warning:'', details:{ attended:{}, absent:{}, booked:{} } };
@@ -698,7 +699,8 @@
 
             const dayStats = {};
             this.state.classes.forEach(c=>{
-              const day = c.classDate;
+              // Use local date so bookings align with America/Mexico_City
+              const day = c.localDate || c.classDate;
               if (!report[day]) return;
               const arr = this.state.bookingsMap.get(c.id)||[];
               const cap = Number(c.capacity||0);
