@@ -1,4 +1,7 @@
 // functions/index.js
+// Entry point for Firebase Cloud Functions.
+// Exposes callable APIs and triggered functions.
+// RELEVANT FILES: functions/src/bookingReminders.js, functions/src/waitlistNotifications.js
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
@@ -99,3 +102,7 @@ exports.backfillEmailLower = onCall({ region: "us-central1" }, async (request) =
 const bookingReminders = require("./src/bookingReminders");
 exports.onBookingCreate = bookingReminders.onBookingCreate;
 exports.sendBookingReminder = bookingReminders.sendBookingReminder;
+
+const waitlistNotifications = require("./src/waitlistNotifications");
+exports.onBookingDelete = waitlistNotifications.onBookingDelete;
+exports.onWaitlistExpiration = waitlistNotifications.onWaitlistExpiration;
