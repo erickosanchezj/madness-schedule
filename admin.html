@@ -174,12 +174,14 @@
         state: {
           classes: [],
           bookingsMap: new Map(),
+          waitlistsMap: new Map(),
           weeklySchedule: {},
           recentNotifications: [],
           currentAttendance: {},
           attendanceChartInstance: null,
           unsubClasses: null,
           unsubBookings: [],
+          unsubWaitlists: [],
           unsubRecentNotifs: null,
           attendanceData: null,
           attendanceNextAt: 0,
@@ -326,6 +328,7 @@
                 return data;
               });
               this.mountBookingsListenersForVisibleClasses();
+              this.mountWaitlistListenersForVisibleClasses();
               this.renderAll();
               this.renderAttendanceChartFromCache();
             }, err=>{
@@ -338,6 +341,13 @@
           this.state.unsubBookings.forEach(fn=>{ try{ fn&&fn(); }catch{} });
           this.state.unsubBookings = [];
           this.state.bookingsMap.clear();
+          this.teardownWaitlistListeners();
+        },
+
+        teardownWaitlistListeners(){
+          this.state.unsubWaitlists.forEach(fn=>{ try{ fn&&fn(); }catch{} });
+          this.state.unsubWaitlists = [];
+          this.state.waitlistsMap.clear();
         },
 
         mountBookingsListenersForVisibleClasses(){
@@ -359,6 +369,37 @@
                 this.renderAttendanceChartFromCache();
               });
             this.state.unsubBookings.push(unsub);
+          }
+        },
+
+        mountWaitlistListenersForVisibleClasses(){
+          this.teardownWaitlistListeners();
+          const classIds = this.state.classes.map(c=>c.id);
+          for (let i=0;i<classIds.length;i+=10){
+            const batch = classIds.slice(i,i+10);
+            const unsub = this.db.collection('waitlists')
+              .where('classId','in',batch)
+              .onSnapshot(async (snap)=>{
+                batch.forEach(cid=>this.state.waitlistsMap.delete(cid));
+                const items = await Promise.all(snap.docs.map(async doc=>{
+                  const w = doc.data();
+                  let userName = '';
+                  if (w.userId){
+                    try{
+                      const uSnap = await this.db.collection('users').doc(w.userId).get();
+                      userName = uSnap.data()?.displayName || uSnap.data()?.email || w.userId;
+                    }catch{}
+                  }
+                  return { id:doc.id, ...w, userName };
+                }));
+                items.forEach(w=>{
+                  const arr = this.state.waitlistsMap.get(w.classId) || [];
+                  arr.push(w);
+                  this.state.waitlistsMap.set(w.classId, arr);
+                });
+                this.renderAll();
+              });
+            this.state.unsubWaitlists.push(unsub);
           }
         },
 
