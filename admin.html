@@ -763,6 +763,27 @@
           return { averageUtilization: Math.round(avg), suggestion };
         },
 
+        // Update report with current bookings before rendering
+        injectBookingsIntoReport(){
+          const data = this.state.attendanceData;
+          if (!data) return;
+          const { report } = data;
+          Object.keys(report).forEach(day=>{
+            const classes = this.state.classes.filter(c=>c.localDate===day);
+            let total = 0;
+            const details = {};
+            classes.forEach(cls=>{
+              const arr = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
+              if (arr.length){
+                details[`${cls.time} - ${cls.name}`] = arr;
+                total += arr.length;
+              }
+            });
+            report[day].booked = total;
+            report[day].details.booked = details;
+          });
+        },
+
         exportCapacityReport(){
           const data = this.state.attendanceData;
           if (!data) return;
@@ -787,6 +808,7 @@
             details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
             return;
           }
+          this.injectBookingsIntoReport();
           const { report, labels } = dataCache;
           const lbls = labels.map(l=>l.label);
           const attendedData = labels.map(l=>report[l.date].attended||0);
