@@ -1305,18 +1305,18 @@
         // ---- CRUD Clase ----
         async saveClass(){
           const id = document.getElementById('class-id').value; if(!id) return;
-          const cls = this.state.classes.find(c=>c.id===id);
-          const timeInput = document.getElementById('class-time').value;
           const data = {
             name: document.getElementById('class-name').value,
             instructor: document.getElementById('class-instructor').value,
+            time: document.getElementById('class-time').value,
             icon: document.getElementById('class-icon').value,
             description: document.getElementById('class-description').value,
             guestSpots: Number(document.getElementById('class-guest-spots').value) || 0,
           };
           try{
-            if (cls && timeInput && timeInput !== (cls.localTime || cls.time)){
-              const start = new Date(`${cls.localDate||cls.classDate}T${timeInput}:00-06:00`);
+            const cls = this.state.classes.find(c=>c.id===id);
+            if (cls && data.time && data.time !== (cls.localTime || cls.time)){
+              const start = new Date(`${cls.localDate||cls.classDate}T${data.time}:00-06:00`);
               const end = new Date(start.getTime() + (Number(cls.duration||60)*60000));
               data.startAt = firebase.firestore.Timestamp.fromDate(start);
               data.endAt = firebase.firestore.Timestamp.fromDate(end);
