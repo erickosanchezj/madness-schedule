@@ -171,8 +171,40 @@
           waitlistEntries: [],
           currentScreen: 'agenda',
           scheduleFilter: 'today',
-          selectedClassId: null
+          selectedClassId: null,
+          isTotalPass: false
         };
+
+        const totalPassTimers = {};
+        function clearTotalPassTimers(){
+          Object.values(totalPassTimers).forEach(clearTimeout);
+          for (const k in totalPassTimers) delete totalPassTimers[k];
+        }
+        function scheduleTotalPassNotifications(){
+          if (!state.isTotalPass || Notification.permission !== 'granted'){
+            clearTotalPassTimers();
+            return;
+          }
+          state.myBookings.forEach(b=>{
+            if (totalPassTimers[b.id]) return;
+            const cls = state.classes.find(c=>c.id===b.classId);
+            if (!cls) return;
+            const start = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+            const duration = Number(cls.duration||60);
+            const end = start.getTime()+duration*60000;
+            const delay = end + (5+Math.random()*5)*60000 - Date.now();
+            if (delay<=0) return;
+            totalPassTimers[b.id] = setTimeout(()=>{
+              try{
+                const n = new Notification('TotalPass',{
+                  body:'Hey, please remember to send out your TotalPass token via WhatsApp for this class!'
+                });
+                n.onclick=()=>{ window.focus(); showToast('<a href="https://api.whatsapp.com/send?phone=5215539887713&text=Hola!%20Aqui%20te%20mando%20mi%20codigo%20de%20TotalPass%3A%20" target="_blank" class="underline">Enviar TotalPass por WhatsApp</a>','info',{html:true}); };
+              }catch(e){ console.warn('Notif fail',e); }
+              delete totalPassTimers[b.id];
+            }, delay);
+          });
+        }
 
         // ---- Render batching
         let renderQueued=false;
@@ -225,11 +257,13 @@
           unsubClasses = db.collection('classes').where('startAt','>=',nowMinus5).orderBy('startAt','asc').limit(100)
             .onSnapshot(snap=>{
               state.classes = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleTotalPassNotifications();
               scheduleRender();
             }, err=>console.error('Error clases:', err));
           unsubMyBookings = db.collection('bookings').where('userId','==',state.currentUser.uid)
             .onSnapshot(snap=>{
               state.myBookings = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleTotalPassNotifications();
               scheduleRender();
             }, err=>console.error('Error mis reservas:', err));
           unsubWaitlist = db.collection('waitlists')
@@ -367,7 +401,7 @@
                 return;
               }
             }
-
+            state.isTotalPass = !!docSnap.data()?.totalPass;
             state.currentUser = user;
             authContainer.style.display = 'none';
             appContainer.style.display = 'flex';
@@ -386,6 +420,7 @@
           } else {
             state.currentUser = null;
             detachListeners();
+            clearTotalPassTimers();
             appContainer.style.display = 'none';
             authContainer.style.display = 'flex';
             renderAuthScreen();
@@ -450,6 +485,22 @@
                 showToast(e.message || 'No se pudo activar notificaciones', 'error');
               }finally{
                 btn.disabled = false;
+              }
+            };
+          }
+
+          const tpToggle = document.getElementById('totalpass-toggle');
+          if (tpToggle){
+            tpToggle.onchange = async e => {
+              const checked = e.target.checked;
+              try{
+                await db.collection('users').doc(state.currentUser.uid).set({ totalPass: checked }, { merge: true });
+                state.isTotalPass = checked;
+                if (checked) scheduleTotalPassNotifications(); else clearTotalPassTimers();
+                showToast('Preferencia guardada', 'success');
+              }catch(err){
+                showToast('No se pudo guardar', 'error');
+                e.target.checked = !checked;
               }
             };
           }
@@ -582,6 +633,10 @@
                   <span>Editar Nombre</span>
                   <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
                 </a>
+                <div class="flex items-center justify-between py-3">
+                  <span>Usuario TotalPass</span>
+                  <input type="checkbox" id="totalpass-toggle" class="w-5 h-5 accent-indigo-600" ${state.isTotalPass?'checked':''}>
+                </div>
                 <button id="enablePush" class="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg">🔔 Activar notificaciones</button>
                 <a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400">
                   <span>Cerrar Sesión</span>
