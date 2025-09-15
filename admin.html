@@ -708,16 +708,13 @@
               const day = c.localDate || c.classDate;
               if (!report[day]) return;
               const arr = this.state.bookingsMap.get(c.id)||[];
-              const guests = Number(c.guestSpots||0);
               const cap = Number(c.capacity||0);
               if (!dayStats[day]) dayStats[day] = { booked:0, capacity:0, details:{} };
-              dayStats[day].booked += arr.length + guests;
+              dayStats[day].booked += arr.length;
               dayStats[day].capacity += cap;
-              if (arr.length || guests){
+              if (arr.length){
                 const label = `${c.time} - ${c.name}`;
-                const names = arr.map(x=>x.userName||'Anónimo');
-                for (let i=0;i<guests;i++) names.push('Invitado');
-                dayStats[day].details[label] = names;
+                dayStats[day].details[label] = arr.map(x=>x.userName||'Anónimo');
               }
             });
             Object.entries(dayStats).forEach(([day,st])=>{
@@ -784,8 +781,6 @@
             const details = {};
             classes.forEach(cls=>{
               const arr = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
-              const guests = Number(cls.guestSpots||0);
-              for (let i=0;i<guests;i++) arr.push('Invitado');
               if (arr.length){
                 details[`${cls.time} - ${cls.name}`] = arr;
                 total += arr.length;
