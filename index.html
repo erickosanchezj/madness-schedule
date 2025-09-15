@@ -480,6 +480,7 @@
                 btn.disabled = true;
                 await ensurePushPermissionAndToken(user);
                 showToast('Notificaciones activadas ✅', 'success');
+                scheduleRender();
               }catch(e){
                 console.error('Enable push failed:', e);
                 showToast(e.message || 'No se pudo activar notificaciones', 'error');
@@ -622,6 +623,8 @@
           const safeEmail = DOMPurify.sanitize(state.currentUser.email || '');
           const nameForText = safeDisplay || safeEmail;
           const placeholder = (nameForText.charAt(0) || 'U').toUpperCase();
+          // true if push notifications are allowed and token saved
+          const pushEnabled = Notification.permission==='granted' && localStorage.getItem(LS_KEY);
           return `
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
@@ -640,7 +643,13 @@
                   <span>Usuario TotalPass</span>
                   <input type="checkbox" id="totalpass-toggle" class="w-5 h-5 accent-indigo-600" ${state.isTotalPass?'checked':''}>
                 </label>
-                <button id="enablePush" class="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg">🔔 Activar notificaciones</button>
+                <button id="enablePush" class="flex items-center justify-between w-full py-3">
+                  <span>Notificaciones Push</span>
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="${pushEnabled?'bell-ring':'bell-off'}" class="w-5 h-5 ${pushEnabled?'text-emerald-400':'text-zinc-500'}"></i>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
+                  </div>
+                </button>
                 <a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400">
                   <span>Cerrar Sesión</span>
                   <i data-lucide="log-out" class="w-5 h-5"></i>
