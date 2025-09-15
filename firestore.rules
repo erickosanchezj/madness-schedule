@@ -7,7 +7,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
 
-    // --- Helpers ---
+    // ===== Helpers =====
     function isSignedIn() {
       return request.auth != null;
     }
@@ -17,21 +17,25 @@ service cloud.firestore {
         && ('admin' in request.auth.token)
         && request.auth.token.admin == true;
     }
+    
     function cooldownOk(uid) {
       let cancel = get(/databases/$(db)/documents/users/$(uid)).data.lastCancelAt;
       return cancel == null || request.time.toMillis() - cancel.toMillis() >= 15 * 60 * 1000;
     }
 
-    // ===== CLASSES =====
+    // ===== CLASSES (Refined) =====
     match /classes/{classId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
-      allow update: if isSignedIn()
+
+      allow update: if isAdmin() || (
+        isSignedIn()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
         && (
           request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
           request.resource.data.enrolledCount == resource.data.enrolledCount - 1
-        );
+        )
+      );
     }
 
     // ===== BOOKINGS =====
@@ -47,29 +51,19 @@ service cloud.firestore {
       allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
 
-    // ===== WAITLISTS =====
-    match /waitlists/{waitlistId} {
-      // classId (string), userId (string)
-      // position (number), joinedAt (timestamp)
-      // notifiedAt (timestamp | null), expiresAt (timestamp | null)
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-      allow get, list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-    }
-
     // ===== USERS (Final, Simpler Ruleset) =====
     match /users/{userId} {
       allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
-
-      // The CREATE rule is working perfectly, so we keep it.
       allow create: if isSignedIn() && request.auth.uid == userId &&
         request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
 
-      // A more direct UPDATE rule that avoids diff().
-      allow update: if isSignedIn() && request.auth.uid == userId &&
-        // This rule allows the update ONLY IF the critical fields are NOT changed.
-        request.resource.data.email == resource.data.email &&
-        request.resource.data.createdAt == resource.data.createdAt;
+      allow update: if (
+          isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['fcmTokens', 'displayName', 'photoURL', 'lastActivity'])
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.createdAt == resource.data.createdAt
+      ) || isAdmin();
     }
 
     // ===== ATTENDANCE (admin-only) =====
@@ -82,6 +76,18 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    
+    // ===== WAITLISTS =====
+    match /waitlists/{waitlistId} {
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow get, list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+    
+    // ===== NOTIFICATIONS (admin-only) =====
+    match /notifications/{notifId} {
+        allow read, write: if isAdmin();
+    }
 
     // ===== Everything else locked =====
     match /{document=**} {
@@ -89,4 +95,3 @@ service cloud.firestore {
     }
   }
 }
-
