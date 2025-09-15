@@ -156,8 +156,6 @@
             <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
           </div>
           <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24 mt-4"></textarea>
-          <input type="number" id="class-guest-spots" placeholder="Spots para invitados"
-                 class="w-full bg-zinc-700 p-2 rounded mt-4" min="0" value="0">
         </div>
         <div id="attendance-content" class="hidden">
           <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
@@ -569,8 +567,6 @@
             const isRunning = this.isClassRunningNow(cls);
             const style = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
             const enrolled = Number(cls.enrolledCount||0);
-            const guestSpots = Number(cls.guestSpots||0);
-            const totalUsed = enrolled + guestSpots;
             const capacity = Number(cls.capacity||0);
             const card = document.createElement('div');
             card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${style}`;
@@ -591,7 +587,7 @@
               </div>
               <div class="mt-4 flex justify-between items-center text-sm">
                 <span class="font-semibold">a las ${safeTime}</span>
-                <span class="font-bold ${totalUsed>=capacity?'text-rose-400':'text-white'}">${enrolled}+${guestSpots} / ${capacity}</span>
+                <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
               </div>`;
             if (cls.localDate === this.dateHelper.today()) todayC.appendChild(card);
             else if (cls.localDate === this.dateHelper.tomorrow()) tomorrowC.appendChild(card);
@@ -912,7 +908,6 @@
           document.getElementById('class-time').value = cls.localTime || cls.time || '';
           document.getElementById('class-icon').value = cls.icon || '';
           document.getElementById('class-description').value = cls.description || '';
-          document.getElementById('class-guest-spots').value = cls.guestSpots || 0;
 
           const tabD = document.getElementById('tab-details');
           const tabA = document.getElementById('tab-attendance');
@@ -1306,7 +1301,6 @@
             time: document.getElementById('class-time').value,
             icon: document.getElementById('class-icon').value,
             description: document.getElementById('class-description').value,
-            guestSpots: Number(document.getElementById('class-guest-spots').value) || 0,
           };
           try{
             const cls = this.state.classes.find(c=>c.id===id);

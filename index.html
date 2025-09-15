@@ -505,8 +505,7 @@
 
           const horarioHTML = filtered.length ? filtered.map(cls=>{
             const enrolled = Number(cls.enrolledCount||0);
-            const guestSpots = Number(cls.guestSpots||0);
-            const available = Number(cls.capacity||0)-enrolled-guestSpots;
+            const available = Number(cls.capacity||0)-enrolled;
             const isBooked = state.myBookings.some(b=>b.classId===cls.id);
             const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
             const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
@@ -596,8 +595,7 @@
             const cls = state.classes.find(c=>c.id===classId);
             if (!cls) return getAgendaScreenHTML();
             const enrolled = Number(cls.enrolledCount||0);
-            const guestSpots = Number(cls.guestSpots||0);
-            const availableSpots = Number(cls.capacity||0)-enrolled-guestSpots;
+            const availableSpots = Number(cls.capacity||0)-enrolled;
             const isBooked = state.myBookings.some(b=>b.classId===cls.id);
             const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
             const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
@@ -700,10 +698,8 @@
                 }
                 const cls = classSnap.data();
                 const enrolled = Number(cls.enrolledCount||0);
-                const guestSpots = Number(cls.guestSpots||0);
                 const capacity = Number(cls.capacity||0);
-                const availableForUsers = capacity - enrolled - guestSpots;
-                if (availableForUsers <= 0 && !notified) throw new Error('Clase llena.');
+                if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
                 const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
                 const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
                 const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
