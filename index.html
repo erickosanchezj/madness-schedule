@@ -626,7 +626,10 @@
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
                 <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${placeholder}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
-                <div><h1 class="text-2xl font-bold">${nameForText}</h1></div>
+                <div class="space-y-1">
+                  <h1 class="text-2xl font-bold">${nameForText}</h1>
+                  <p class="text-sm text-zinc-400">${safeEmail}</p>
+                </div>
               </header>
               <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
                 <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
