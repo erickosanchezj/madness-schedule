@@ -21,11 +21,15 @@ service cloud.firestore {
     function cooldownOk(uid) {
       let userDoc = get(/databases/$(db)/documents/users/$(uid));
 
-      // Only enforce the cooldown when we find a timestamp on the user record.
-      let hasLastCancel = userDoc != null && userDoc.data.lastCancelAt is timestamp;
+      // New users might not have a profile document yet, so skip the cooldown.
+      if (userDoc == null || userDoc.data == null) {
+        return true;
+      }
 
-      return hasLastCancel
-        ? request.time.toMillis() - userDoc.data.lastCancelAt.toMillis() >= 15 * 60 * 1000
+      let lastCancel = userDoc.data.lastCancelAt;
+
+      return lastCancel is timestamp
+        ? request.time.toMillis() - lastCancel.toMillis() >= 15 * 60 * 1000
         : true;
     }
 
