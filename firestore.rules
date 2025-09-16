@@ -19,13 +19,17 @@ service cloud.firestore {
     }
     
     function cooldownOk(uid) {
-      let userDoc = get(/databases/$(db)/documents/users/$(uid));
-
-      // New users might not have a profile document yet, so skip the cooldown.
-      let lastCancel = userDoc == null || userDoc.data == null
-        ? null
-        : userDoc.data.lastCancelAt;
-
+      let userPath = /databases/$(db)/documents/users/$(uid);
+      // For new users, the document might not exist yet. In that case, there's no cooldown.
+      if (!exists(userPath)) {
+        return true;
+      }
+      let userDoc = get(userPath);
+      // If the user exists but has never cancelled, there's no cooldown.
+      if (!('lastCancelAt' in userDoc.data)) {
+        return true;
+      }
+      let lastCancel = userDoc.data.lastCancelAt;
       return (lastCancel is timestamp)
         ? request.time.toMillis() - lastCancel.toMillis() >= 15 * 60 * 1000
         : true;
