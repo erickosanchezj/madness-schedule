@@ -20,10 +20,7 @@ service cloud.firestore {
     
     function cooldownOk(uid) {
       let userDoc = get(/databases/$(db)/documents/users/$(uid));
-      if (userDoc == null) {
-        return true;
-      }
-      let cancel = userDoc.data.lastCancelAt;
+      let cancel = userDoc == null ? null : userDoc.data.lastCancelAt;
       return cancel == null || request.time.toMillis() - cancel.toMillis() >= 15 * 60 * 1000;
     }
 
