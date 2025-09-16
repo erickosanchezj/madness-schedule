@@ -91,7 +91,11 @@ service cloud.firestore {
     // ===== WAITLISTS =====
     match /waitlists/{waitlistId} {
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-      allow get, list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+
+      // Transactions read missing docs before writes, so allow the null resource case.
+      allow get: if isAdmin() || (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
+
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
       allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
     }
     
