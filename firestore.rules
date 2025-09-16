@@ -1,7 +1,7 @@
-// FILE: firestore.rules
 // Firestore security rules for the Madness Schedule app.
 // Guards database access so only allowed users can read or write.
 // RELEVANT FILES: firebase.json, firestore.indexes.json, functions/index.js
+// FILE: firestore.rules
 
 rules_version = '2';
 service cloud.firestore {
@@ -19,20 +19,9 @@ service cloud.firestore {
     }
     
     function cooldownOk(uid) {
-      let userPath = /databases/$(db)/documents/users/$(uid);
-      // For new users, the document might not exist yet. In that case, there's no cooldown.
-      if (!exists(userPath)) {
-        return true;
-      }
-      let userDoc = get(userPath);
-      // If the user exists but has never cancelled, there's no cooldown.
-      if (!('lastCancelAt' in userDoc.data)) {
-        return true;
-      }
-      let lastCancel = userDoc.data.lastCancelAt;
-      return (lastCancel is timestamp)
-        ? request.time.toMillis() - lastCancel.toMillis() >= 15 * 60 * 1000
-        : true;
+      let userDoc = get(/databases/$(db)/documents/users/$(uid));
+      // Cooldown is okay if the user has no 'lastCancelAt' field OR if the time since last cancel is >= 15 minutes
+      return !('lastCancelAt' in userDoc.data) || (request.time.toMillis() - userDoc.data.lastCancelAt.toMillis() >= 15 * 60 * 1000);
     }
 
     // ===== CLASSES (Refined) =====
@@ -42,7 +31,8 @@ service cloud.firestore {
 
       // Members can nudge the enrollment count by one.
       // First booking initializes the count when it is missing.
-      allow update: if isAdmin() || (
+      allow update: if isAdmin() ||
+      (
         isSignedIn()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
         && (
@@ -76,17 +66,18 @@ service cloud.firestore {
 
     // ===== USERS (Final, Simpler Ruleset) =====
     match /users/{userId} {
-      allow read: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow read: if (isSignedIn() && request.auth.uid == userId) ||
+      isAdmin();
       allow create: if isSignedIn() && request.auth.uid == userId &&
         request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
-
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
           && request.resource.data.diff(resource.data).changedKeys().hasOnly(['fcmTokens', 'fcmUpdatedAt', 'displayName', 'photoURL', 'lastActivity', 'lastCancelAt', 'totalPass'])
           && request.resource.data.email == resource.data.email
           && request.resource.data.createdAt == resource.data.createdAt
-      ) || isAdmin();
+      ) ||
+      isAdmin();
     }
 
     // ===== ATTENDANCE (admin-only) =====
@@ -103,9 +94,9 @@ service cloud.firestore {
     // ===== WAITLISTS =====
     match /waitlists/{waitlistId} {
       allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-
       // Transactions read missing docs before writes, so allow the null resource case.
-      allow get: if isAdmin() || (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
+      allow get: if isAdmin() ||
+      (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
 
       allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
       allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();

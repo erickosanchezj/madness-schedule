@@ -1,7 +1,3 @@
-// FILE: firestore.indexes.json
-// Firestore index definitions for the Madness Schedule app.
-// Supports waitlist lookups by class and user.
-// RELEVANT FILES: firebase.json, firestore.rules, functions/index.js
 {
   "indexes": [
     {
