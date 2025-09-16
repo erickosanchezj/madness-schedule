@@ -28,12 +28,23 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if isAdmin();
 
+      // Members can nudge the enrollment count by one.
+      // First booking initializes the count when it is missing.
       allow update: if isAdmin() || (
         isSignedIn()
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
         && (
-          request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
-          request.resource.data.enrolledCount == resource.data.enrolledCount - 1
+          (
+            resource.data.enrolledCount == null
+            && request.resource.data.enrolledCount == 1
+          )
+          || (
+            resource.data.enrolledCount != null
+            && (
+              request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
+              request.resource.data.enrolledCount == resource.data.enrolledCount - 1
+            )
+          )
         )
       );
     }
