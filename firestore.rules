@@ -32,19 +32,17 @@ service cloud.firestore {
       // First booking initializes the count when it is missing.
       allow update: if isAdmin() || (
         isSignedIn()
-        && let before = resource.data;
-        && let after = getAfter(/databases/$(db)/documents/classes/$(classId)).data;
-        && after.diff(before).changedKeys().hasOnly(['enrolledCount'])
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
         && (
           (
-            before.enrolledCount == null
-            && after.enrolledCount == 1
+            resource.data.enrolledCount == null
+            && request.resource.data.enrolledCount == 1
           )
           || (
-            before.enrolledCount != null
+            resource.data.enrolledCount != null
             && (
-              after.enrolledCount == before.enrolledCount + 1 ||
-              after.enrolledCount == before.enrolledCount - 1
+              request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
+              request.resource.data.enrolledCount == resource.data.enrolledCount - 1
             )
           )
         )
