@@ -19,8 +19,14 @@ service cloud.firestore {
     }
     
     function cooldownOk(uid) {
-      let cancel = get(/databases/$(db)/documents/users/$(uid)).data.lastCancelAt;
-      return cancel == null || request.time.toMillis() - cancel.toMillis() >= 15 * 60 * 1000;
+      let userDoc = get(/databases/$(db)/documents/users/$(uid));
+      let cancel = userDoc == null ? null : userDoc.data.lastCancelAt;
+      let hasTimestamp = cancel is timestamp;
+      // Allow booking when there is no cancel record or the cooldown window has passed.
+      // We also allow bookings if the field has an unexpected type so we never block legitimate users.
+      return cancel == null
+        || !hasTimestamp
+        || (hasTimestamp && request.time.toMillis() - cancel.toMillis() >= 15 * 60 * 1000);
     }
 
     // ===== CLASSES (Refined) =====
