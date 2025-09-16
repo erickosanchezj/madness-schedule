@@ -26,7 +26,7 @@ service cloud.firestore {
         ? null
         : userDoc.data.lastCancelAt;
 
-      return lastCancel is timestamp
+      return (lastCancel is timestamp)
         ? request.time.toMillis() - lastCancel.toMillis() >= 15 * 60 * 1000
         : true;
     }
