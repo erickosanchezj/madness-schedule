@@ -21,14 +21,12 @@ service cloud.firestore {
     function cooldownOk(uid) {
       let userDoc = get(/databases/$(db)/documents/users/$(uid));
 
-      // Store the millisecond timestamp only when the last cancel is valid.
-      let cancelMillis = userDoc != null
-        && userDoc.data.lastCancelAt is timestamp
-        ? userDoc.data.lastCancelAt.toMillis()
-        : null;
+      // Only enforce the cooldown when we find a timestamp on the user record.
+      let hasLastCancel = userDoc != null && userDoc.data.lastCancelAt is timestamp;
 
-      return cancelMillis == null
-        || request.time.toMillis() - cancelMillis >= 15 * 60 * 1000;
+      return hasLastCancel
+        ? request.time.toMillis() - userDoc.data.lastCancelAt.toMillis() >= 15 * 60 * 1000
+        : true;
     }
 
     // ===== CLASSES (Refined) =====
