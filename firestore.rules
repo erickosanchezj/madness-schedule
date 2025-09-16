@@ -22,11 +22,9 @@ service cloud.firestore {
       let userDoc = get(/databases/$(db)/documents/users/$(uid));
 
       // New users might not have a profile document yet, so skip the cooldown.
-      if (userDoc == null || userDoc.data == null) {
-        return true;
-      }
-
-      let lastCancel = userDoc.data.lastCancelAt;
+      let lastCancel = userDoc == null || userDoc.data == null
+        ? null
+        : userDoc.data.lastCancelAt;
 
       return lastCancel is timestamp
         ? request.time.toMillis() - lastCancel.toMillis() >= 15 * 60 * 1000
