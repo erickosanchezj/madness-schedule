@@ -40,29 +40,54 @@ messaging.onBackgroundMessage((payload) => {
   }
 
   const data = payload?.data || {};
+  const type = data.type || "";
   let title = data.title || "Recordatorio de clase";
   let body = data.body || "";
 
-  // Override title and body for waitlist spots
-  if (data.type === "waitlist_opportunity") {
+  const isWaitlist = type === "waitlist_opportunity";
+  const isTotalPass = type === "totalpass";
+
+  if (isWaitlist) {
     title = "¡Lugar disponible!";
     body = "Tienes 5 minutos para reservar";
   }
 
-  // MODIFIED: Changed fallback URL to root
-  const url = data.url || "/";
-  // NEW: Extract classId for tagging notifications
+  if (isTotalPass) {
+    title = data.title || "TotalPass";
+    body = data.body || "Recuerda enviar tu token de TotalPass";
+  }
+
+  const whatsappUrl = isTotalPass ? data.whatsappUrl || data.url || "" : "";
+  const url = isTotalPass
+    ? whatsappUrl || "/"
+    : data.url || "/";
   const classId = data.classId || "";
-  const tag = classId ? `class-${classId}` : undefined;
+  const tag = classId
+    ? `class-${classId}`
+    : isTotalPass
+      ? "totalpass"
+      : undefined;
   // MODIFIED: Changed icon path to root
   const icon = "/images/icon-192x192.png";
 
-  log("Mostrando notificación manual (data-only):", { title, body, url, classId });
+  log("Mostrando notificación manual (data-only):", {
+    title,
+    body,
+    url,
+    classId,
+    type,
+  });
   self.registration.showNotification(title, {
     body,
     icon,
     badge: icon,
-    data: { url, classId },
+    data: {
+      url,
+      classId,
+      type,
+      whatsappUrl,
+      whatsappMessage: isTotalPass ? data.whatsappMessage || "" : "",
+    },
     tag,
     renotify: true,
   });
@@ -71,6 +96,13 @@ messaging.onBackgroundMessage((payload) => {
 // Click → enfocamos pestaña existente del scope o abrimos una nueva
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  const type = event.notification?.data?.type;
+  const whatsappUrl = event.notification?.data?.whatsappUrl;
+  if (type === "totalpass" && whatsappUrl) {
+    event.waitUntil(clients.openWindow(whatsappUrl));
+    return;
+  }
 
   // If we have a classId, go straight to its details screen
   const classId = event.notification?.data?.classId;

@@ -103,6 +103,10 @@ const bookingReminders = require("./src/bookingReminders");
 exports.onBookingCreate = bookingReminders.onBookingCreate;
 exports.sendBookingReminder = bookingReminders.sendBookingReminder;
 
+const totalPassReminders = require("./src/totalPassReminders");
+exports.onBookingCreateTotalPass = totalPassReminders.onBookingCreateTotalPass;
+exports.sendTotalPassReminder = totalPassReminders.sendTotalPassReminder;
+
 const waitlistNotifications = require("./src/waitlistNotifications");
 exports.onBookingDelete = waitlistNotifications.onBookingDelete;
 exports.onWaitlistExpiration = waitlistNotifications.onWaitlistExpiration;
