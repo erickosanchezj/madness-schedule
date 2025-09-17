@@ -124,7 +124,12 @@ exports.generateDailyClasses = onSchedule(
         });
 
         existingTimes.add(timeUTC);
-        created.push({ date: classDate, time: timeFormatter.format(startAt.toDate()), name: entry?.name });
+        created.push({
+          id: docRef.id,
+          date: classDate,
+          time: timeFormatter.format(startAt.toDate()),
+          name: entry?.name,
+        });
       }
     }
 
@@ -138,6 +143,18 @@ exports.generateDailyClasses = onSchedule(
       `[generateDailyClasses] Created ${created.length} classes:`,
       created
     );
+
+    const notificationRecord = {
+      type: "daily-classes",
+      classId: "Generación automática",
+      userId: `Se generaron ${created.length} clases`,
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdCount: created.length,
+      classes: created,
+    };
+
+    // Store a summary notification so the admin dashboard highlights the run.
+    await db.collection("notifications").add(notificationRecord);
 
     return { created: created.length, classes: created };
   }
