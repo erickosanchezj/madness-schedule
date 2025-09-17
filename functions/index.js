@@ -110,3 +110,6 @@ exports.sendTotalPassReminder = totalPassReminders.sendTotalPassReminder;
 const waitlistNotifications = require("./src/waitlistNotifications");
 exports.onBookingDelete = waitlistNotifications.onBookingDelete;
 exports.onWaitlistExpiration = waitlistNotifications.onWaitlistExpiration;
+
+const generateDailyClasses = require("./src/generateDailyClasses");
+exports.generateDailyClasses = generateDailyClasses.generateDailyClasses;
