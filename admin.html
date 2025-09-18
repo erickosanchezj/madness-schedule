@@ -1203,7 +1203,7 @@
         // ---- USERS: Render tarjeta + cableado ----
         userCardHTML(userDoc, indexBase=0){
           const userData = userDoc.data() || {};
-          const tokens = userData.fcmTokens ? Object.keys(userData.fcmTokens) : [];
+          const tokenEntries = userData.fcmTokens ? Object.entries(userData.fcmTokens) : [];
           const safeName = DOMPurify.sanitize(userData.displayName || 'Usuario sin nombre');
           const safeEmail = DOMPurify.sanitize(userData.email || '');
           const head = `
@@ -1211,16 +1211,61 @@
               <h4 class="font-bold">${safeName}</h4>
               <p class="text-sm text-zinc-400">${safeEmail}</p>
           `;
-          if (!tokens.length){
+          if (!tokenEntries.length){
             return head + `<p class="text-sm text-zinc-400 mt-3">Sin dispositivos registrados.</p></div>`;
           }
-          const bodies = tokens.map((token,i)=>{
+          const bodies = tokenEntries.map(([token, rawMeta],i)=>{
             const safeToken = DOMPurify.sanitize(token);
             const displayToken = DOMPurify.sanitize(safeToken.substring(0,30));
             const safeUid = DOMPurify.sanitize(userDoc.id);
+            const meta = rawMeta && typeof rawMeta === 'object' ? rawMeta : null;
+
+            let registeredAtStr = '';
+            if (meta?.registeredAt){
+              const dateObj = meta.registeredAt.toDate ? meta.registeredAt.toDate() : new Date(meta.registeredAt);
+              if (dateObj instanceof Date && !Number.isNaN(dateObj.getTime())){
+                registeredAtStr = new Intl.DateTimeFormat('es-MX',{ dateStyle:'short', timeStyle:'short' }).format(dateObj);
+              }
+            }
+
+            const metaRows = [];
+            if (meta?.userAgent){
+              const ua = DOMPurify.sanitize(String(meta.userAgent));
+              metaRows.push(`<p class="text-xs text-zinc-400 break-words">UA: ${ua}</p>`);
+            }
+            if (meta?.platform){
+              const platform = DOMPurify.sanitize(String(meta.platform));
+              metaRows.push(`<p class="text-xs text-zinc-400">Plataforma: ${platform}</p>`);
+            }
+            if (registeredAtStr){
+              const safeRegistered = DOMPurify.sanitize(registeredAtStr);
+              metaRows.push(`<p class="text-xs text-zinc-500">Registrado: ${safeRegistered}</p>`);
+            }
+            const screenInfo = meta?.screen || meta?.screenResolution;
+            if (screenInfo){
+              const safeScreen = DOMPurify.sanitize(String(screenInfo));
+              metaRows.push(`<p class="text-xs text-zinc-500">Pantalla: ${safeScreen}</p>`);
+            }
+            if (meta?.timezone){
+              const safeTz = DOMPurify.sanitize(String(meta.timezone));
+              metaRows.push(`<p class="text-xs text-zinc-500">Zona horaria: ${safeTz}</p>`);
+            }
+            if (meta?.browser){
+              const safeBrowser = DOMPurify.sanitize(String(meta.browser));
+              metaRows.push(`<p class="text-xs text-zinc-500">Navegador: ${safeBrowser}</p>`);
+            }
+            if (meta?.language){
+              const safeLang = DOMPurify.sanitize(String(meta.language));
+              metaRows.push(`<p class="text-xs text-zinc-500">Idioma: ${safeLang}</p>`);
+            }
+            if (!metaRows.length){
+              metaRows.push('<p class="text-xs text-zinc-500">Sin metadata disponible.</p>');
+            }
+
             return `
             <div class="token-row p-3 bg-zinc-900 rounded-lg border border-zinc-700 mt-3">
               <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${i+1}: ${displayToken}...</p>
+              <div class="mt-2 space-y-1">${metaRows.join('')}</div>
               <div class="mt-3 space-y-2">
                 <input type="text" id="noti-title-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
                 <textarea id="noti-body-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
