@@ -114,6 +114,7 @@ exports.sendBookingReminder = onTaskDispatched(
     }
 
     const prunePromises = [];
+    const failedTokens = [];
     res.responses.forEach((r, idx) => {
       if (!r.success) {
         const token = tokens[idx];
@@ -126,15 +127,22 @@ exports.sendBookingReminder = onTaskDispatched(
         } else {
           console.error('Notification failure', token, classId, code);
         }
+        failedTokens.push({ token, errorCode: code || 'unknown' });
       }
     });
 
     await Promise.all(prunePromises);
-    await db.collection('notifications').add({
+    const notificationRecord = {
       classId,
       userId,
       interval,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      tokensUsed: [...tokens],
+      successCount: res.successCount,
+      failureCount: res.failureCount,
+      failedTokens,
+    };
+
+    await db.collection('notifications').add(notificationRecord);
   }
 );

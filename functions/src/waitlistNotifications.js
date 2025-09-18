@@ -51,6 +51,7 @@ async function processWaitlistNotification(entry) {
   }
 
   const prunePromises = [];
+  const failedTokens = [];
   res.responses.forEach((r, idx) => {
     if (!r.success) {
       const token = tokens[idx];
@@ -63,9 +64,24 @@ async function processWaitlistNotification(entry) {
       } else {
         console.error('Notification failure', token, classId, code);
       }
+      failedTokens.push({ token, errorCode: code || 'unknown' });
     }
   });
   await Promise.all(prunePromises);
+
+  const notificationRecord = {
+    classId,
+    userId,
+    type: 'waitlist',
+    waitlistId: id,
+    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    tokensUsed: [...tokens],
+    successCount: res.successCount,
+    failureCount: res.failureCount,
+    failedTokens,
+  };
+
+  await db.collection('notifications').add(notificationRecord);
 
   await db.collection('waitlists').doc(id).set(
     {
