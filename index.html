@@ -212,6 +212,10 @@
         }
         window.showToast = showToast;
 
+        const TOTALPASS_PROMPT_PARAM = 'totalpassPrompt';
+        const TOTALPASS_URL_PARAM = 'whatsappUrl';
+        const TOTALPASS_MESSAGE_PARAM = 'whatsappMessage';
+
         let whatsappDeeplink = '';
         function showWhatsappPrompt({ url, message }) {
           if (!url) return;
@@ -251,16 +255,16 @@
           }
         }
 
-        const _whatsappPrompt = _params.get('whatsappPrompt');
-        if (_whatsappPrompt === '1') {
-          const whatsappUrl = _params.get('whatsappUrl');
-          const whatsappMessage = _params.get('whatsappMessage') || '';
+        const totalpassPrompt = _params.get(TOTALPASS_PROMPT_PARAM);
+        if (totalpassPrompt === '1') {
+          const whatsappUrl = _params.get(TOTALPASS_URL_PARAM);
+          const whatsappMessage = _params.get(TOTALPASS_MESSAGE_PARAM) || '';
           if (whatsappUrl) {
             showWhatsappPrompt({ url: whatsappUrl, message: whatsappMessage });
           }
-          _params.delete('whatsappPrompt');
-          _params.delete('whatsappUrl');
-          _params.delete('whatsappMessage');
+          _params.delete(TOTALPASS_PROMPT_PARAM);
+          _params.delete(TOTALPASS_URL_PARAM);
+          _params.delete(TOTALPASS_MESSAGE_PARAM);
           const newSearch = _params.toString();
           const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
           if (history.replaceState) {
