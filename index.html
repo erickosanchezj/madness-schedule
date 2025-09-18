@@ -198,7 +198,7 @@
         let toastTimeout;
         function showToast(message, type = 'info', opts = {}) {
           if (!toastEl) return;
-          const { html = false } = opts;
+          const { html = false, duration = 3000 } = opts;
           if (html) toastEl.innerHTML = message; else toastEl.textContent = message;
           toastEl.classList.remove('opacity-0', 'bg-green-600', 'bg-red-600', 'bg-zinc-800');
           const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-800';
@@ -208,9 +208,75 @@
           toastTimeout = setTimeout(() => {
             toastEl.classList.remove('opacity-100');
             toastEl.classList.add('opacity-0');
-          }, 3000);
+          }, duration);
         }
         window.showToast = showToast;
+
+        let whatsappDeeplink = '';
+        function showWhatsappPrompt({ url, message }) {
+          if (!url) return;
+          whatsappDeeplink = url;
+          const rawMessage = message || '';
+          let safeMessage = rawMessage;
+          if (rawMessage) {
+            if (typeof DOMPurify !== 'undefined') {
+              safeMessage = DOMPurify.sanitize(rawMessage);
+            } else {
+              safeMessage = rawMessage
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            }
+          }
+          const messageHtml = safeMessage
+            ? `<p class="text-xs text-zinc-300 mt-1">${safeMessage}</p>`
+            : '';
+          const toastHtml = `
+            <div class="flex items-center gap-3">
+              <div class="flex-1">
+                <p class="text-sm font-semibold">Recuerda mandar tu TotalPass</p>
+                ${messageHtml}
+              </div>
+              <button id="toast-whatsapp-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-3 py-2 rounded-lg shrink-0">Mandar whatsapp</button>
+            </div>
+          `;
+          showToast(toastHtml, 'info', { html: true, duration: 10000 });
+          const btn = document.getElementById('toast-whatsapp-btn');
+          if (btn) {
+            btn.addEventListener('click', () => {
+              window.open(whatsappDeeplink, '_blank', 'noopener,noreferrer');
+            }, { once: true });
+          }
+        }
+
+        const _whatsappPrompt = _params.get('whatsappPrompt');
+        if (_whatsappPrompt === '1') {
+          const whatsappUrl = _params.get('whatsappUrl');
+          const whatsappMessage = _params.get('whatsappMessage') || '';
+          if (whatsappUrl) {
+            showWhatsappPrompt({ url: whatsappUrl, message: whatsappMessage });
+          }
+          _params.delete('whatsappPrompt');
+          _params.delete('whatsappUrl');
+          _params.delete('whatsappMessage');
+          const newSearch = _params.toString();
+          const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
+          if (history.replaceState) {
+            history.replaceState({}, '', newUrl);
+          }
+        }
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            const payload = event.data;
+            if (!payload || typeof payload !== 'object') return;
+            if (payload.type === 'totalpass-whatsapp' && payload.whatsappUrl) {
+              showWhatsappPrompt({ url: payload.whatsappUrl, message: payload.whatsappMessage || '' });
+            }
+          });
+        }
 
         // Firestore listeners
         let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, listenersAttached=false;

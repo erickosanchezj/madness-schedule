@@ -97,18 +97,42 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const type = event.notification?.data?.type;
-  const whatsappUrl = event.notification?.data?.whatsappUrl;
+  const data = event.notification?.data || {};
+  const type = data.type;
+  const whatsappUrl = data.whatsappUrl;
+
   if (type === "totalpass" && whatsappUrl) {
-    event.waitUntil(clients.openWindow(whatsappUrl));
+    const whatsappMessage = data.whatsappMessage || "";
+
+    event.waitUntil((async () => {
+      const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      const existing = list.find(c => c.url.startsWith(self.registration.scope));
+
+      if (existing) {
+        log("Mandando prompt TotalPass a pestaña existente");
+        existing.postMessage({
+          type: "totalpass-whatsapp",
+          whatsappUrl,
+          whatsappMessage,
+        });
+        return existing.focus();
+      }
+
+      const params = new URLSearchParams({ whatsappPrompt: "1", whatsappUrl });
+      if (whatsappMessage) params.set("whatsappMessage", whatsappMessage);
+      const targetUrl = `/?${params.toString()}`;
+      log("Abriendo ventana con prompt TotalPass:", targetUrl);
+      return clients.openWindow(targetUrl);
+    })());
+
     return;
   }
 
   // If we have a classId, go straight to its details screen
-  const classId = event.notification?.data?.classId;
+  const classId = data.classId;
   const targetUrl = classId
     ? `/?screen=classDetails&classId=${classId}`
-    : event.notification?.data?.url || "/";
+    : data.url || "/";
 
   event.waitUntil((async () => {
     const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
