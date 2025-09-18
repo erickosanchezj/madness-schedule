@@ -786,7 +786,8 @@
               r.booked = st.booked;
               r.details.booked = st.details;
               r.totalCapacity = st.capacity;
-              r.utilizationRate = Math.round((st.booked/this.FACILITY_MAX_CAPACITY)*100);
+              const dailyCapacity = Math.max(st.capacity, 1);
+              r.utilizationRate = Math.round((st.booked/dailyCapacity)*100);
               if (r.utilizationRate>85) r.warning='Capacidad crítica';
               else if (r.utilizationRate>60) r.warning='Capacidad alta';
               else r.warning='Capacidad estable';
@@ -818,7 +819,8 @@
           const today = this.dateHelper.today();
           const d = this.state.attendanceData.report[today];
           if (!d){ fill.style.width = '0%'; return; }
-          const rate = d.utilizationRate || 0;
+          const fallbackRate = Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100);
+          const rate = (d.utilizationRate ?? fallbackRate);
           fill.style.width = Math.min(rate,100)+'%';
           fill.classList.remove('bg-emerald-500','bg-amber-500','bg-rose-500');
           if (rate>85) fill.classList.add('bg-rose-500');
@@ -829,7 +831,11 @@
         calculateCapacityProjections(){
           const rep = this.state.attendanceData?.report || {};
           const arr = Object.values(rep);
-          const avg = arr.reduce((s,d)=>s+(d.utilizationRate||0),0)/(arr.length||1);
+          const values = arr.map(d=>{
+            if (typeof d.utilizationRate === 'number') return d.utilizationRate;
+            return Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100);
+          });
+          const avg = values.reduce((s,val)=>s+val,0)/(values.length||1);
           const suggestion = avg>85?'Añadir más clases': avg>60?'Monitorear capacidad':'Capacidad adecuada';
           return { averageUtilization: Math.round(avg), suggestion };
         },
