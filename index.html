@@ -261,9 +261,31 @@
           return typeof firebase.messaging.isSupported === 'function' && firebase.messaging.isSupported();
         }
 
+        function buildDeviceMetadata(){
+          const metadata = {
+            userAgent: navigator.userAgent || 'unknown',
+            platform: navigator.platform || 'unknown',
+            registeredAt: new Date()
+          };
+          const screenObj = window?.screen;
+          if (screenObj?.width && screenObj?.height){
+            metadata.screen = `${screenObj.width}x${screenObj.height}`;
+          }
+          try{
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz) metadata.timezone = tz;
+          }catch{}
+          const language = navigator.language || (navigator.languages && navigator.languages[0]);
+          if (language) metadata.language = language;
+          if (navigator.vendor) metadata.browser = navigator.vendor;
+          return metadata;
+        }
+
         async function saveToken(uid, token, prevToken){
+          if (!uid || !token) return;
           const ref = db.collection('users').doc(uid);
-          const update = { fcmTokens: { [token]: true }, fcmUpdatedAt: new Date() };
+          const deviceMetadata = buildDeviceMetadata();
+          const update = { fcmTokens: { [token]: deviceMetadata }, fcmUpdatedAt: new Date() };
           if (prevToken && prevToken !== token){
             update.fcmTokens[prevToken] = firebase.firestore.FieldValue.delete();
           }
@@ -297,7 +319,8 @@
           const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
           if (!token) return;
           const prev = localStorage.getItem(LS_KEY);
-          await saveToken(uid, token, prev);
+          const prevToken = prev && prev !== token ? prev : undefined;
+          await saveToken(uid, token, prevToken);
         }
 
         // Botón manual (expuesto en perfil)
