@@ -47,6 +47,9 @@
         <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
           <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Generar/Verificar Clases (Hoy/Mañana)
         </button>
+        <button id="create-class-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">
+          <i data-lucide="plus" class="inline-block -mt-1 mr-2"></i>Crear Nueva Clase
+        </button>
       </div>
 
       <div class="space-y-8">
@@ -157,6 +160,15 @@
           </div>
           <p id="class-time-warning" class="mt-2 text-xs text-amber-400 hidden"></p>
           <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24 mt-4"></textarea>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <input type="date" id="class-date" placeholder="Fecha" class="w-full bg-zinc-700 p-2 rounded">
+            <input type="number" id="class-capacity" placeholder="Capacidad" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
+          </div>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <input type="number" id="class-duration" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="120">
+            <input type="number" id="class-enrolled" placeholder="Inscritos" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
+          </div>
+          <input type="url" id="class-image" placeholder="URL de imagen" class="w-full bg-zinc-700 p-2 rounded mt-4">
         </div>
         <div id="attendance-content" class="hidden">
           <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
@@ -262,6 +274,7 @@
           document.getElementById('login-btn').onclick = () => this.login();
           document.getElementById('logout-btn').onclick = () => this.logout();
           document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
+          document.getElementById('create-class-btn').onclick = () => this.showCreateClassModal();
           document.getElementById('send-reset-btn').onclick = () => this.sendPasswordReset();
           document.getElementById('att-refresh').onclick = () => this.fetchAttendanceData(true);
 
@@ -1050,15 +1063,115 @@
           return (start>=lower) && (start<=upper);
         },
 
+        showCreateClassModal(){
+          this.state.currentAttendance = {};
+          this.state.selectedClass = null;
+          document.getElementById('class-id').value = '';
+          document.getElementById('class-name').value = '';
+          document.getElementById('class-instructor').value = '';
+          document.getElementById('class-time').value = '';
+          document.getElementById('class-icon').value = '💪';
+          document.getElementById('class-description').value = '';
+          document.getElementById('class-date').value = this.dateHelper.today();
+          document.getElementById('class-capacity').value = '15';
+          document.getElementById('class-duration').value = '60';
+          document.getElementById('class-enrolled').value = '0';
+          document.getElementById('class-image').value = '';
+
+          const timeInput = document.getElementById('class-time');
+          if (timeInput){
+            timeInput.readOnly = false;
+            timeInput.classList.remove('cursor-not-allowed','opacity-60');
+            timeInput.removeAttribute('aria-readonly');
+          }
+          const warning = document.getElementById('class-time-warning');
+          if (warning){
+            warning.textContent = '';
+            warning.classList.add('hidden');
+          }
+
+          const tabDetails = document.getElementById('tab-details');
+          if (tabDetails) tabDetails.onclick = () => this.switchTab('details');
+          const tabAttendance = document.getElementById('tab-attendance');
+          if (tabAttendance){
+            tabAttendance.classList.add('hidden');
+            tabAttendance.onclick = null;
+          }
+          this.switchTab('details');
+
+          document.getElementById('modal-title').textContent = 'Crear Nueva Clase';
+          document.getElementById('save-button').textContent = 'Crear Clase';
+          document.getElementById('delete-button').style.display = 'none';
+
+          document.getElementById('cancel-button').onclick = () => this.hideClassModal();
+          document.getElementById('save-button').onclick = () => this.saveClass();
+
+          document.getElementById('class-modal').classList.remove('hidden');
+          document.getElementById('class-name').focus();
+        },
+
+        async createClass(){
+          const data = {
+            name: document.getElementById('class-name').value.trim(),
+            instructor: document.getElementById('class-instructor').value.trim() || 'Por Asignar',
+            time: document.getElementById('class-time').value.trim(),
+            icon: document.getElementById('class-icon').value || '💪',
+            description: document.getElementById('class-description').value.trim(),
+            classDate: document.getElementById('class-date').value.trim(),
+            capacity: Number(document.getElementById('class-capacity').value) || 15,
+            duration: Number(document.getElementById('class-duration').value) || 60,
+            enrolledCount: 0,
+            image: document.getElementById('class-image').value.trim()
+          };
+
+          if (!data.name || !data.time || !data.classDate){
+            this.showToast({ title:'Campos requeridos', message:'Nombre, hora y fecha son obligatorios', variant:'error' });
+            return;
+          }
+
+          const safeCapacity = Math.round(Math.min(30, Math.max(1, Number(data.capacity) || 15)));
+          const safeDuration = Math.round(Math.min(120, Math.max(30, Number(data.duration) || 60)));
+          data.capacity = safeCapacity;
+          data.duration = safeDuration;
+
+          const { startAt, endAt, classDate, timeUTC } = this._buildStartEnd(data.classDate, data.time, data.duration);
+
+          if (!data.image){
+            data.image = `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(data.name)}`;
+          }
+
+          data.startAt = startAt;
+          data.endAt = endAt;
+          data.classDate = classDate;
+          data.time = timeUTC;
+
+          try{
+            await this.db.collection('classes').add(data);
+            this.showToast({ title:'Clase creada', message:`${data.name} creada exitosamente` });
+            this.hideClassModal();
+          }catch(e){
+            this.showToast({ title:'Error al crear', message:e.message, variant:'error' });
+          }
+        },
+
         async showClassModal(cls){
           this.state.currentAttendance = {};
           this.state.selectedClass = cls ? { ...cls } : null;
+          const baseDate = (cls.classDate && cls.time) ? new Date(`${cls.classDate}T${cls.time}:00Z`) : null;
+          const localTime = cls.localTime || (baseDate ? this.timeFmt.format(baseDate) : cls.time || '');
+          const localDate = cls.localDate || (baseDate ? this.dateHelper.ymd(baseDate) : cls.classDate || '');
           document.getElementById('class-id').value = cls.id;
           document.getElementById('class-name').value = cls.name || '';
           document.getElementById('class-instructor').value = cls.instructor || '';
-          document.getElementById('class-time').value = cls.localTime || cls.time || '';
+          document.getElementById('class-time').value = localTime;
           document.getElementById('class-icon').value = cls.icon || '';
           document.getElementById('class-description').value = cls.description || '';
+          document.getElementById('class-date').value = localDate;
+          document.getElementById('class-capacity').value = (cls.capacity ?? 15);
+          document.getElementById('class-duration').value = (cls.duration ?? 60);
+          const enrolledVal = Number.isFinite(cls.enrolledCount) ? cls.enrolledCount : (this.state.bookingsMap.get(cls.id)?.length || 0);
+          document.getElementById('class-enrolled').value = enrolledVal;
+          document.getElementById('class-image').value = cls.image || '';
 
           const tabD = document.getElementById('tab-details');
           const tabA = document.getElementById('tab-attendance');
@@ -1090,6 +1203,9 @@
           if (modal) modal.classList.remove('hidden');
           saveBtnEl?.focus();
           await this.refreshClassTimeLock(cls);
+          document.getElementById('modal-title').textContent = 'Editar Clase';
+          document.getElementById('save-button').textContent = 'Guardar Cambios';
+          document.getElementById('delete-button').style.display = 'block';
         },
 
         hideClassModal(){
@@ -1556,14 +1672,26 @@
 
         // ---- CRUD Clase ----
         async saveClass(){
-          const id = document.getElementById('class-id').value; if(!id) return;
+          const id = document.getElementById('class-id').value.trim();
+
+          if (!id){
+            await this.createClass();
+            return;
+          }
+
           const name = document.getElementById('class-name').value.trim();
           const instructor = document.getElementById('class-instructor').value.trim();
           const icon = document.getElementById('class-icon').value.trim();
           const description = document.getElementById('class-description').value.trim();
+          const imageInput = document.getElementById('class-image').value.trim();
           const timeInputEl = document.getElementById('class-time');
           const timeInputValue = (timeInputEl?.value || '').trim();
-          const data = { name, instructor, icon, description };
+          const dateInputEl = document.getElementById('class-date');
+          const dateInputValue = (dateInputEl?.value || '').trim();
+          const capacityRaw = Number(document.getElementById('class-capacity').value);
+          const durationEl = document.getElementById('class-duration');
+          const durationRaw = Number(durationEl?.value);
+          const enrolledEl = document.getElementById('class-enrolled');
 
           try{
             const cls = this.state.classes.find(c=>c.id===id);
@@ -1572,35 +1700,84 @@
               return;
             }
 
-            const originalTime = cls.localTime || cls.time || '';
-            const wantsTimeChange = timeInputValue && timeInputValue !== originalTime;
-            let canApplyTimeChange = wantsTimeChange;
+            const baseDate = (cls.classDate && cls.time) ? new Date(`${cls.classDate}T${cls.time}:00Z`) : null;
+            const currentDateLocal = cls.localDate || (baseDate ? this.dateHelper.ymd(baseDate) : '');
+            let currentTimeLocal = cls.localTime || '';
+            if (!currentTimeLocal && baseDate){
+              currentTimeLocal = this.timeFmt.format(baseDate);
+            }
+            const originalDuration = Number(cls.duration || 60);
 
-            if (wantsTimeChange){
+            const effectiveDate = dateInputValue || currentDateLocal;
+            const effectiveTime = timeInputValue || currentTimeLocal;
+            const capacityBase = Number.isFinite(capacityRaw) ? capacityRaw : Number(cls.capacity || 15) || 15;
+            const durationBase = Number.isFinite(durationRaw) ? durationRaw : originalDuration || 60;
+            const capacity = Math.max(1, Math.min(30, Math.round(capacityBase)));
+            const duration = Math.max(30, Math.min(120, Math.round(durationBase)));
+
+            if (!name || !effectiveTime || !effectiveDate){
+              this.showToast({ title:'Campos requeridos', message:'Nombre, hora y fecha son obligatorios', variant:'error' });
+              return;
+            }
+
+            const data = {
+              name,
+              instructor: instructor || 'Por Asignar',
+              icon: icon || '💪',
+              description,
+              image: imageInput,
+              capacity,
+              duration
+            };
+
+            if (!data.image){
+              data.image = cls.image || `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(name)}`;
+            }
+
+            if (enrolledEl){
+              const enrolledCount = Number(enrolledEl.value);
+              if (Number.isFinite(enrolledCount)) data.enrolledCount = enrolledCount;
+            }
+
+            const wantsScheduleChange = (
+              (effectiveDate && effectiveDate !== currentDateLocal) ||
+              (effectiveTime && effectiveTime !== currentTimeLocal) ||
+              (duration !== originalDuration)
+            );
+
+            let canApplyScheduleChange = wantsScheduleChange;
+
+            if (wantsScheduleChange){
               try{
                 const attSnap = await this.db.collection('attendance').where('classId','==',id).limit(1).get();
                 if (!attSnap.empty){
-                  canApplyTimeChange = false;
-                  if (timeInputEl) timeInputEl.value = originalTime;
+                  canApplyScheduleChange = false;
+                  if (timeInputEl) timeInputEl.value = currentTimeLocal;
+                  if (dateInputEl) dateInputEl.value = currentDateLocal;
+                  if (enrolledEl) enrolledEl.value = Number.isFinite(cls.enrolledCount) ? cls.enrolledCount : enrolledEl.value;
+                  if (durationEl) durationEl.value = originalDuration;
                   await this.refreshClassTimeLock(cls);
                   this.showToast({ title:'Hora bloqueada', message:'Esta clase ya tiene asistencia registrada. No puedes cambiar la hora.', variant:'warn' });
                 }
               }catch(err){
                 console.error('Error validando asistencia antes de cambiar hora', err);
-                canApplyTimeChange = false;
-                if (timeInputEl) timeInputEl.value = originalTime;
+                canApplyScheduleChange = false;
+                if (timeInputEl) timeInputEl.value = currentTimeLocal;
+                if (dateInputEl) dateInputEl.value = currentDateLocal;
+                if (durationEl) durationEl.value = originalDuration;
                 await this.refreshClassTimeLock(cls);
                 this.showToast({ title:'No se pudo verificar asistencia', message:'Guardamos los demás cambios, pero deja la hora igual.', variant:'warn' });
               }
             }
 
-            if (canApplyTimeChange){
-              const start = new Date(`${cls.localDate||cls.classDate}T${timeInputValue}:00-06:00`);
-              const end = new Date(start.getTime() + (Number(cls.duration||60)*60000));
-              data.startAt = firebase.firestore.Timestamp.fromDate(start);
-              data.endAt = firebase.firestore.Timestamp.fromDate(end);
-              data.classDate = start.toISOString().slice(0,10);
-              data.time = start.toISOString().slice(11,16);
+            if (canApplyScheduleChange){
+              const { startAt, endAt, classDate, timeUTC } = this._buildStartEnd(effectiveDate, effectiveTime, duration);
+              data.startAt = startAt;
+              data.endAt = endAt;
+              data.classDate = classDate;
+              data.time = timeUTC;
+            } else if (wantsScheduleChange){
+              data.duration = originalDuration;
             }
 
             await this.db.collection('classes').doc(id).set(data,{ merge:true });
