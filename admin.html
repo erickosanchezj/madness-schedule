@@ -752,11 +752,22 @@
             labels.push({ date:d, label:this.dayShortFmt.format(new Date(dt)) });
           }
           try {
-            const snap = await this.db.collection('attendance')
-              .where('classDate','>=',start)
-              .where('classDate','<=',end)
-              .get();
-            snap.forEach(doc=>{
+            const [attendanceSnap, classesSnap, bookingsSnap] = await Promise.all([
+              this.db.collection('attendance')
+                .where('classDate','>=',start)
+                .where('classDate','<=',end)
+                .get(),
+              this.db.collection('classes')
+                .where('classDate','>=',start)
+                .where('classDate','<=',end)
+                .get(),
+              this.db.collection('bookings')
+                .where('classDate','>=',start)
+                .where('classDate','<=',end)
+                .get()
+            ]);
+
+            attendanceSnap.forEach(doc=>{
               const r = doc.data();
               if (!report[r.classDate]) return;
               const cat = r.status==='attended' ? 'attended' : 'absent';
@@ -767,41 +778,84 @@
               report[r.classDate].details[cat][key].push(r.userName);
             });
 
-            const dayStats = {};
-            this.state.classes.forEach(c=>{
-              // Use local date so bookings align with America/Mexico_City
-              const day = c.localDate || c.classDate;
-              if (!report[day]) return;
-              const arr = this.state.bookingsMap.get(c.id)||[];
-              const cap = Number(c.capacity||0);
-              if (!dayStats[day]) dayStats[day] = { booked:0, capacity:0, details:{} };
-              dayStats[day].booked += arr.length;
-              dayStats[day].capacity += cap;
-              if (arr.length){
-                const label = `${c.time} - ${c.name}`;
-                dayStats[day].details[label] = arr.map(x=>x.userName||'Anónimo');
+            const classesByDay = {};
+            classesSnap.forEach(doc=>{
+              const data = { id:doc.id, ...doc.data() };
+              if (!data.classDate || !report[data.classDate]) return;
+              if (data.classDate && data.time){
+                const startAt = new Date(`${data.classDate}T${data.time}:00Z`);
+                data.localDate = this.dateHelper.ymd(startAt);
+                data.localTime = this.timeFmt.format(startAt);
+              }
+              if (!classesByDay[data.classDate]) classesByDay[data.classDate] = [];
+              classesByDay[data.classDate].push(data);
+            });
+
+            const listenerClassesByDay = {};
+            this.state.classes.forEach(cls=>{
+              const day = cls.localDate || cls.classDate;
+              if (!day || !report[day]) return;
+              if (!listenerClassesByDay[day]) listenerClassesByDay[day] = [];
+              listenerClassesByDay[day].push({ ...cls });
+            });
+
+            const bookingsByClass = {};
+            bookingsSnap.forEach(doc=>{
+              const data = { id:doc.id, ...doc.data() };
+              if (!data.classId) return;
+              if (!bookingsByClass[data.classId]) bookingsByClass[data.classId] = [];
+              bookingsByClass[data.classId].push(data);
+            });
+
+            const effectiveClassesByDay = {};
+            Object.keys(report).forEach(day=>{
+              if (classesByDay[day]?.length){
+                effectiveClassesByDay[day] = classesByDay[day];
+              } else if (listenerClassesByDay[day]?.length){
+                effectiveClassesByDay[day] = listenerClassesByDay[day];
+              } else {
+                effectiveClassesByDay[day] = [];
               }
             });
-            Object.entries(dayStats).forEach(([day,st])=>{
+
+            Object.entries(effectiveClassesByDay).forEach(([day, classList])=>{
               const r = report[day];
-              r.booked = st.booked;
-              r.details.booked = st.details;
-              r.totalCapacity = st.capacity;
-              const dailyCapacity = Math.max(st.capacity, 1);
-              r.utilizationRate = Math.round((st.booked/dailyCapacity)*100);
-              if (r.utilizationRate>85) r.warning='Capacidad crítica';
-              else if (r.utilizationRate>60) r.warning='Capacidad alta';
+              if (!r) return;
+              let dayCapacity = 0;
+              let dayBooked = 0;
+              const bookedDetails = {};
+              classList.forEach(cls=>{
+                dayCapacity += Number(cls.capacity||0);
+                const liveBookings = this.state.bookingsMap.get(cls.id) || [];
+                const storedBookings = bookingsByClass[cls.id] || [];
+                const rosterSource = liveBookings.length ? liveBookings : storedBookings;
+                const rosterNames = rosterSource.map(x=>x.userName || x.userEmail || x.userId || 'Anónimo');
+                if (rosterNames.length){
+                  const labelTime = cls.localTime || cls.time || '';
+                  const labelName = cls.name || 'Clase';
+                  const label = `${labelTime} - ${labelName}`.trim();
+                  bookedDetails[label] = rosterNames;
+                }
+                dayBooked += rosterNames.length;
+              });
+              r.totalCapacity = dayCapacity;
+              r.booked = dayBooked;
+              r.details.booked = bookedDetails;
+              const utilization = dayCapacity>0 ? Math.round((dayBooked/dayCapacity)*100) : 0;
+              r.utilizationRate = utilization;
+              if (utilization>85) r.warning='Capacidad crítica';
+              else if (utilization>60) r.warning='Capacidad alta';
               else r.warning='Capacidad estable';
             });
 
-            this.state.attendanceData = { report, labels };
+            this.state.attendanceData = { report, labels, classesByDay: effectiveClassesByDay, bookingsByClass };
             this.state.attendanceLastAt = now;
-          this.updateAttendanceLegend();
-          this.renderAttendanceChartFromCache();
-          this.updateCapacityGauge();
-          console.log('Proyecciones:', this.calculateCapacityProjections());
-        } catch(e){ console.error('Error leyendo asistencia:', e); }
-      },
+            this.updateAttendanceLegend();
+            this.renderAttendanceChartFromCache();
+            this.updateCapacityGauge();
+            console.log('Proyecciones:', this.calculateCapacityProjections());
+          } catch(e){ console.error('Error leyendo asistencia:', e); }
+        },
 
         updateAttendanceLegend(){
           const lastEl = document.getElementById('att-last');
@@ -845,20 +899,41 @@
         injectBookingsIntoReport(){
           const data = this.state.attendanceData;
           if (!data) return;
-          const { report } = data;
+          const { report, classesByDay, bookingsByClass } = data;
           Object.keys(report).forEach(day=>{
-            const classes = this.state.classes.filter(c=>c.localDate===day);
-            let total = 0;
-            const details = {};
-            classes.forEach(cls=>{
-              const arr = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
-              if (arr.length){
-                details[`${cls.time} - ${cls.name}`] = arr;
-                total += arr.length;
+            const classList = (classesByDay && classesByDay[day]) || [];
+            if (!classList.length){
+              report[day].booked = 0;
+              report[day].details.booked = {};
+              report[day].utilizationRate = 0;
+              report[day].warning = 'Capacidad estable';
+              return;
+            }
+            let totalBooked = 0;
+            let totalCapacity = 0;
+            const bookedDetails = {};
+            classList.forEach(cls=>{
+              totalCapacity += Number(cls.capacity||0);
+              const live = this.state.bookingsMap.get(cls.id) || [];
+              const fallback = bookingsByClass?.[cls.id] || [];
+              const source = live.length ? live : fallback;
+              const names = source.map(x=>x.userName || x.userEmail || x.userId || 'Anónimo');
+              if (names.length){
+                const labelTime = cls.localTime || cls.time || '';
+                const labelName = cls.name || 'Clase';
+                const label = `${labelTime} - ${labelName}`.trim();
+                bookedDetails[label] = names;
               }
+              totalBooked += names.length;
             });
-            report[day].booked = total;
-            report[day].details.booked = details;
+            report[day].totalCapacity = totalCapacity;
+            report[day].booked = totalBooked;
+            report[day].details.booked = bookedDetails;
+            const utilization = totalCapacity>0 ? Math.round((totalBooked/totalCapacity)*100) : 0;
+            report[day].utilizationRate = utilization;
+            if (utilization>85) report[day].warning='Capacidad crítica';
+            else if (utilization>60) report[day].warning='Capacidad alta';
+            else report[day].warning='Capacidad estable';
           });
         },
 
