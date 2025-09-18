@@ -471,10 +471,15 @@
               const safeTitle = DOMPurify.sanitize(n.title || '');
               const safeBody = DOMPurify.sanitize(n.body || '');
               const tokensUsed = Array.isArray(n.tokensUsed) ? n.tokensUsed : [];
-              const totalDevices = typeof n.totalTokens === 'number' ? n.totalTokens : tokensUsed.length;
-              const safeTotalDevices = DOMPurify.sanitize(String(totalDevices || 0));
               const successCount = typeof n.successCount === 'number' ? n.successCount : null;
               const failureCount = typeof n.failureCount === 'number' ? n.failureCount : null;
+              const totalFromCounts = (successCount !== null || failureCount !== null)
+                ? (Number(successCount || 0) + Number(failureCount || 0))
+                : null;
+              const totalDevicesRaw = Number.isFinite(n.totalTokens)
+                ? n.totalTokens
+                : (tokensUsed.length > 0 ? tokensUsed.length : (totalFromCounts ?? 0));
+              const safeTotalDevices = DOMPurify.sanitize(String(totalDevicesRaw));
               const safeSuccess = successCount !== null ? DOMPurify.sanitize(String(successCount)) : '';
               const safeFailure = failureCount !== null ? DOMPurify.sanitize(String(failureCount)) : '';
               const infoLines = [];
