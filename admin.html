@@ -761,7 +761,8 @@
               if (!report[r.classDate]) return;
               const cat = r.status==='attended' ? 'attended' : 'absent';
               report[r.classDate][cat]++;
-              const key = `${r.className}`;
+              const labelBase = r.classTime ?? r.className;
+              const key = `${labelBase} - ${r.className}`;
               if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key] = [];
               report[r.classDate].details[cat][key].push(r.userName);
             });
@@ -1158,6 +1159,7 @@
             const ref = this.db.collection('attendance').doc(`${classDate}_${cls.id}_${uid}`);
             batch.set(ref,{
               classId: cls.id, className: cls.name, classDate,
+              classTime: cls.time || cls.localTime,
               userId: uid, userName: rec.userName, status: rec.status, recordedAt: new Date()
             },{ merge:true });
           });
