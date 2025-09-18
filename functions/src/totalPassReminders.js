@@ -179,6 +179,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
     }
 
     const prunePromises = [];
+    const failedTokens = [];
     responseAggregate.responses.forEach((res, idx) => {
       if (!res.success) {
         const token = tokens[idx];
@@ -191,6 +192,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
         } else {
           console.error('TotalPass notification failure', token, classId, code);
         }
+        failedTokens.push({ token, errorCode: code || 'unknown' });
       }
     });
 
@@ -207,6 +209,10 @@ exports.sendTotalPassReminder = onTaskDispatched(
       userId,
       type: 'totalpass',
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      tokensUsed: [...tokens],
+      successCount: responseAggregate.successCount,
+      failureCount: responseAggregate.failureCount,
+      failedTokens,
     };
     if (className) {
       notificationRecord.className = className;
