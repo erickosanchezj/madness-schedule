@@ -22,6 +22,11 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Parámetros usados para avisar al cliente que debe mostrar el prompt TotalPass
+const TOTALPASS_PROMPT_PARAM = "totalpassPrompt";
+const TOTALPASS_URL_PARAM = "whatsappUrl";
+const TOTALPASS_MESSAGE_PARAM = "whatsappMessage";
+
 // -------- util de log --------
 const LOG = true;
 const log = (...a) => { if (LOG) console.log("[SW]", ...a); };
@@ -118,8 +123,9 @@ self.addEventListener("notificationclick", (event) => {
         return existing.focus();
       }
 
-      const params = new URLSearchParams({ whatsappPrompt: "1", whatsappUrl });
-      if (whatsappMessage) params.set("whatsappMessage", whatsappMessage);
+      const params = new URLSearchParams({ [TOTALPASS_PROMPT_PARAM]: "1" });
+      params.set(TOTALPASS_URL_PARAM, whatsappUrl);
+      if (whatsappMessage) params.set(TOTALPASS_MESSAGE_PARAM, whatsappMessage);
       const targetUrl = `/?${params.toString()}`;
       log("Abriendo ventana con prompt TotalPass:", targetUrl);
       return clients.openWindow(targetUrl);
