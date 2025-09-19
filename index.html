@@ -885,7 +885,7 @@
                 .catch(err=>{ alert('Error: '+err.message); loadingSpinner.classList.add('hidden'); });
             }
           },
-          navigateTo: (screen, data={}){
+          navigateTo: (screen, data={})=>{
             if (screen==='agenda') attachAgendaListeners(); else detachListeners();
             state.currentScreen = screen;
             if (data.classId) state.selectedClassId = data.classId;
