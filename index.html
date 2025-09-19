@@ -117,66 +117,22 @@
           get today(){ return this.getYYYYMMDD(new Date()); },
           get tomorrow(){ return this.getYYYYMMDD(new Date(Date.now()+86400000)); },
           human(ymd){
-            const dt = mxDateFromYMD(ymd);
-            if (!dt) return '';
+            const dt=new Date(`${ymd}T00:00:00Z`);
             return dt.toLocaleDateString('es-MX',{ timeZone: MX_TZ, weekday:'long',day:'2-digit',month:'short' });
           }
         };
         const timeHelper = {
           range(ymd, hhmm, durationMin=60){
-            const start = mxDateFromYMD(ymd, hhmm);
-            if (!start) return '';
-            const end = new Date(start.getTime()+Number(durationMin||60)*60000);
+            const start=new Date(`${ymd}T${hhmm}:00Z`);
+            const end=new Date(start.getTime()+Number(durationMin||60)*60000);
             return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
           }
         };
-
-        // Small helper so every manual date uses Mexico City timezone
-        function getTimeZoneOffset(tz, date){
-          const formatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: tz,
-            hour12: false,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-          });
-          const parts = formatter.formatToParts(date);
-          const filled = {};
-          for (const part of parts) {
-            if (part.type !== 'literal') filled[part.type] = part.value;
-          }
-          const asUTC = Date.UTC(
-            Number(filled.year || date.getUTCFullYear()),
-            Number((filled.month || String(date.getUTCMonth()+1)).padStart(2,'0'))-1,
-            Number(filled.day || String(date.getUTCDate()).padStart(2,'0')),
-            Number(filled.hour || String(date.getUTCHours()).padStart(2,'0')),
-            Number(filled.minute || String(date.getUTCMinutes()).padStart(2,'0')),
-            Number(filled.second || String(date.getUTCSeconds()).padStart(2,'0'))
-          );
-          return asUTC - date.getTime();
-        }
-
-        function mxDateFromYMD(ymd, hhmm='00:00'){
-          if (!ymd) return null;
-          const [year, month, day] = ymd.split('-').map(Number);
-          const [hour, minute] = (hhmm||'00:00').split(':').map(Number);
-          if (![year, month, day].every(n=>Number.isFinite(n))) return null;
-          const safeHour = Number.isFinite(hour) ? hour : 0;
-          const safeMinute = Number.isFinite(minute) ? minute : 0;
-          const baseUTC = new Date(Date.UTC(year, (month||1)-1, day||1, safeHour, safeMinute));
-          const offset = getTimeZoneOffset(MX_TZ, baseUTC);
-          return new Date(baseUTC.getTime()-offset);
-        }
         const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
 
         function timeUntilLabel(ymd, hhmm){
           if(!ymd||!hhmm) return '';
-          const startDate = mxDateFromYMD(ymd, hhmm);
-          if (!startDate) return '';
-          const start=startDate.getTime();
+          const start=new Date(`${ymd}T${hhmm}:00Z`).getTime();
           const now=Date.now();
           const diff=start-now;
           if (diff>4*60*60*1000) return '';
@@ -612,34 +568,32 @@
         // --- AGENDA (igual que tu implementación, con mínimos cambios)
         function getAgendaScreenHTML(){
           const upcoming = state.myBookings.filter(Boolean).filter(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : mxDateFromYMD(b.classDate, b.time||'00:00');
-            if (!startObj) return false;
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
             return Date.now() <= startObj.getTime()+5*60*1000;
           }).sort((a,b)=>{
-            const ta = a.startAt ? asDate(a.startAt).getTime() : (mxDateFromYMD(a.classDate, a.time||'00:00')?.getTime()||0);
-            const tb = b.startAt ? asDate(b.startAt).getTime() : (mxDateFromYMD(b.classDate, b.time||'00:00')?.getTime()||0);
+            const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
+            const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
             return ta - tb;
           });
           const reservasHTML = upcoming.length ? upcoming.map(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : mxDateFromYMD(b.classDate, b.time||'00:00');
-            if (!startObj) return '';
-            const ymdForCountdown = b.classDate || dateHelper.getYYYYMMDD(startObj);
-            const hhmmForCountdown = b.time || timeFmt.format(startObj);
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+            const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
+            const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
+            const hhmm = timeFmt.format(startObj);
             const ymdLocal = dateHelper.getYYYYMMDD(startObj);
             const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
             const cover = coverHelper.forClassName(b.className, b.className);
             const safeClassName = DOMPurify.sanitize(b.className || '');
             const safeDayText = DOMPurify.sanitize(dayText);
             const safeClassId = DOMPurify.sanitize(b.classId);
-            const safeTimeText = DOMPurify.sanitize(hhmmForCountdown);
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                   <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                   <div>
                     <p class="font-bold text-lg">${safeClassName}</p>
-                    <p class="text-zinc-400 text-sm">${safeDayText} • ${safeTimeText}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymdForCountdown, hhmmForCountdown)}</p>
+                    <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                   </div>
                 </div>
                 <button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
@@ -649,19 +603,19 @@
           const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
           const filtered = state.classes
             .filter(cls=>{
-              const start = cls.startAt?.toDate ? cls.startAt.toDate() : mxDateFromYMD(cls.classDate, cls.time);
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
               const ymd = dateHelper.getYYYYMMDD(start);
               return ymd===targetYMD;
             })
             .filter(cls=>{
               if (state.scheduleFilter!=='today') return true;
-              const start = cls.startAt?.toDate ? cls.startAt.toDate() : mxDateFromYMD(cls.classDate, cls.time);
-              return start ? Date.now() <= start.getTime() + 5*60*1000 : false;
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
+              return Date.now() <= start.getTime() + 5*60*1000;
             })
             .sort((a, b) => {
-              const startA = a.startAt?.toDate ? a.startAt.toDate() : mxDateFromYMD(a.classDate, a.time);
-              const startB = b.startAt?.toDate ? b.startAt.toDate() : mxDateFromYMD(b.classDate, b.time);
-              return (startA?.getTime()||0) - (startB?.getTime()||0);
+              const startA = a.startAt?.toDate ? a.startAt.toDate() : new Date(`${a.classDate}T${a.time}:00Z`);
+              const startB = b.startAt?.toDate ? b.startAt.toDate() : new Date(`${b.classDate}T${b.time}:00Z`);
+              return startA.getTime() - startB.getTime();
             });
 
           const horarioHTML = filtered.length ? filtered.map(cls=>{
@@ -686,23 +640,19 @@
               // user has been notified of a free spot
               badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
             }
-            const startObj = cls.startAt?.toDate ? cls.startAt.toDate() : mxDateFromYMD(cls.classDate, cls.time);
-            if (!startObj) return '';
-            const ymdLocal = dateHelper.getYYYYMMDD(startObj);
-            const hhmmLocal = cls.time || timeFmt.format(startObj);
-            const countdownYMD = cls.classDate || ymdLocal;
-            const countdownHHMM = hhmmLocal;
+            const ymdUTC = cls.classDate || targetYMD;
+            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+            const hhmm = timeFmt.format(new Date(`${ymdUTC}T${hhmmUTC}:00Z`));
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
-            const safeTimeText = DOMPurify.sanitize(hhmmLocal);
             return `
               <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
                 <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                 <div class="flex-1">
                   <p class="font-bold text-lg">${safeName}</p>
                   <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
-                  <p class="text-sm mt-1 text-emerald-400">${safeTimeText} hrs</p>
-                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(countdownYMD, countdownHHMM)}</p>
+                  <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
+                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                 </div>
                 <div class="text-right">${badge}</div>
               </div>`;
@@ -780,10 +730,9 @@
             const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
             const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
             const durationMin = Number(cls.duration||60);
-            const startObj = cls.startAt?.toDate ? cls.startAt.toDate() : mxDateFromYMD(cls.classDate, cls.time);
-            const ymdLocal = cls.classDate || (startObj ? dateHelper.getYYYYMMDD(startObj) : null);
-            const hhmmLocal = cls.time || (startObj ? timeFmt.format(startObj) : null);
-            const timeRange = ymdLocal && hhmmLocal ? timeHelper.range(ymdLocal, hhmmLocal, durationMin) : '';
+            const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
+            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+            const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeDesc = DOMPurify.sanitize(cls.description || '');
             const safeId = DOMPurify.sanitize(cls.id);
