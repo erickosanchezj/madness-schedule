@@ -152,23 +152,53 @@
           </nav>
         </div>
         <div id="details-content">
-          <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded mt-4">
-          <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded mt-4">
+          <div class="mt-4">
+            <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded">
+            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Escribe el nombre que verán los alumnos en el horario.</p>
+          </div>
+          <div class="mt-4">
+            <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
+            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica quién impartirá la sesión.</p>
+          </div>
           <div class="grid grid-cols-2 gap-4 mt-4">
-            <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
-            <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
+            <div class="flex flex-col">
+              <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
+              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Coloca la hora de inicio en formato 24 horas.</p>
+            </div>
+            <div class="flex flex-col">
+              <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
+              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Elige un emoji que represente la clase.</p>
+            </div>
           </div>
           <p id="class-time-warning" class="mt-2 text-xs text-amber-400 hidden"></p>
-          <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24 mt-4"></textarea>
-          <div class="grid grid-cols-2 gap-4 mt-4">
-            <input type="date" id="class-date" placeholder="Fecha" class="w-full bg-zinc-700 p-2 rounded">
-            <input type="number" id="class-capacity" placeholder="Capacidad" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
+          <div class="mt-4">
+            <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
+            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Resume la dinámica o enfoque de la clase.</p>
           </div>
           <div class="grid grid-cols-2 gap-4 mt-4">
-            <input type="number" id="class-duration" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="120">
-            <input type="number" id="class-enrolled" placeholder="Inscritos" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
+            <div class="flex flex-col">
+              <input type="date" id="class-date" placeholder="Fecha" class="w-full bg-zinc-700 p-2 rounded">
+              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Selecciona la fecha exacta de la clase.</p>
+            </div>
+            <div class="flex flex-col">
+              <input type="number" id="class-capacity" placeholder="Capacidad" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
+              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Define el número máximo de asistentes.</p>
+            </div>
           </div>
-          <input type="url" id="class-image" placeholder="URL de imagen" class="w-full bg-zinc-700 p-2 rounded mt-4">
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="flex flex-col">
+              <input type="number" id="class-duration" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="120">
+              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica cuánto dura la sesión en minutos.</p>
+            </div>
+            <div class="flex flex-col">
+              <input type="number" id="class-enrolled" placeholder="Inscritos" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
+              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Consulta cuántos alumnos están inscritos ahora.</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <input type="url" id="class-image" placeholder="URL de imagen" class="w-full bg-zinc-700 p-2 rounded">
+            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Pega la URL de la foto o banner de la clase.</p>
+          </div>
         </div>
         <div id="attendance-content" class="hidden">
           <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
