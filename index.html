@@ -170,6 +170,8 @@
           const offset = getTimeZoneOffset(MX_TZ, baseUTC);
           return new Date(baseUTC.getTime()-offset);
         }
+
+        // ROBUST asDate + getLocalStart (unifica Timestamp, Date, string, number)
         function asDate(value){
           if (value === null || value === undefined) return null;
           if (typeof value?.toDate === 'function') {
@@ -193,7 +195,6 @@
           const parsed = new Date(candidate);
           return Number.isNaN(parsed.getTime()) ? null : parsed;
         }
-
         function getLocalStart(record){
           if (!record) return null;
           const direct = record.startAt ? asDate(record.startAt) : null;
@@ -563,7 +564,7 @@
           loadingSpinner.classList.add('hidden');
         });
 
-        // ---- UI (auth / render / acciones) — *tu lógica original con mínimos cambios* ----
+        // ---- UI (auth / render / acciones)
         function renderAuthScreen(isLogin=true){
           authContainer.innerHTML = `
             <div class="w-full max-w-md mx-auto">
@@ -583,11 +584,12 @@
               </p>
             </div>`;
           
-          // 2. ADDED: Manually render the widget after the HTML is on the page
-          turnstile.render('#turnstile-widget', {
-            sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY',
-            // You can add other options here, like theme: 'dark'
-          });
+          // Render del Turnstile tras montar el HTML
+          if (window.turnstile?.render) {
+            turnstile.render('#turnstile-widget', {
+              sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY'
+            });
+          }
 
           document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
           document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
@@ -641,7 +643,7 @@
           }
         }
 
-        // --- AGENDA (igual que tu implementación, con mínimos cambios)
+        // --- AGENDA
         function getAgendaScreenHTML(){
           const upcoming = state.myBookings.filter(Boolean).filter(b=>{
             const startObj = getLocalStart(b);
@@ -708,22 +710,20 @@
             if (isBooked) {
               badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
             } else if (available<=0 && !notified) {
-              // class full: show join or leave waitlist options
               if (waitEntry) {
                 const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-                badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
+                badge = `<div><p class="text-xs text-amber-400">Posición ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="mt-1 text-xs text-rose-400 hover:text-rose-300">Salir</button></div>`;
               } else {
-                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md\">Unirse a lista de espera</button>`;
+                badge = `<button data-action="join-waitlist" data-class-id="${safeId}" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md">Unirse a lista de espera</button>`;
               }
             } else if (available<=0 && notified) {
-              // user has been notified of a free spot
               badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
             }
             const startObj = getLocalStart(cls);
             if (!startObj) return '';
-            const ymdLocal = dateHelper.getYYYYMMDD(startObj);
+            const ymdLocal = cls.classDate || dateHelper.getYYYYMMDD(startObj);
             const hhmmLocal = cls.time || timeFmt.format(startObj);
-            const countdownYMD = cls.classDate || ymdLocal;
+            const countdownYMD = ymdLocal;
             const countdownHHMM = hhmmLocal;
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
@@ -804,65 +804,65 @@
             </div>`;
         }
 
-          function getClassDetailsScreenHTML(classId){
-            const cls = state.classes.find(c=>c.id===classId);
-            if (!cls) return getAgendaScreenHTML();
-            const enrolled = Number(cls.enrolledCount||0);
-            const availableSpots = Number(cls.capacity||0)-enrolled;
-            const isBooked = state.myBookings.some(b=>b.classId===cls.id);
-            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
-            const expiresAt = waitEntry ? asDate(waitEntry.expiresAt) : null;
-            const notified = Boolean(waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || (expiresAt && expiresAt.getTime()>Date.now()))); // true if user has active waitlist notification
-            const durationMin = Number(cls.duration||60);
-            const startObj = getLocalStart(cls);
-            const ymdLocal = cls.classDate || (startObj ? dateHelper.getYYYYMMDD(startObj) : null);
-            const hhmmLocal = cls.time || (startObj ? timeFmt.format(startObj) : null);
-            const timeRange = ymdLocal && hhmmLocal ? timeHelper.range(ymdLocal, hhmmLocal, durationMin) : '';
-            const safeName = DOMPurify.sanitize(cls.name || '');
-            const safeDesc = DOMPurify.sanitize(cls.description || '');
-            const safeId = DOMPurify.sanitize(cls.id);
-            // default booking button
-            let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-            if (isBooked) {
-              // already have a booking
-              buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-            } else if (availableSpots<=0 && !notified) {
-              // class is full: either join waitlist or allow leaving
-              if (waitEntry) {
-                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-                buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
-              } else {
-                buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
-              }
+        function getClassDetailsScreenHTML(classId){
+          const cls = state.classes.find(c=>c.id===classId);
+          if (!cls) return getAgendaScreenHTML();
+          const enrolled = Number(cls.enrolledCount||0);
+          const availableSpots = Number(cls.capacity||0)-enrolled;
+          const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+          const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
+          const expiresAt = waitEntry ? asDate(waitEntry.expiresAt) : null;
+          const notified = Boolean(waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || (expiresAt && expiresAt.getTime()>Date.now()))); // true if user has active waitlist notification
+          const durationMin = Number(cls.duration||60);
+          const startObj = getLocalStart(cls);
+          const ymdLocal = cls.classDate || (startObj ? dateHelper.getYYYYMMDD(startObj) : null);
+          const hhmmLocal = cls.time || (startObj ? timeFmt.format(startObj) : null);
+          const timeRange = ymdLocal && hhmmLocal ? timeHelper.range(ymdLocal, hhmmLocal, durationMin) : '';
+          const safeName = DOMPurify.sanitize(cls.name || '');
+          const safeDesc = DOMPurify.sanitize(cls.description || '');
+          const safeId = DOMPurify.sanitize(cls.id);
+          // default booking button
+          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+          if (isBooked) {
+            // already have a booking
+            buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+          } else if (availableSpots<=0 && !notified) {
+            // class is full: either join waitlist or allow leaving
+            if (waitEntry) {
+              const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+              buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
+            } else {
+              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
             }
-            return `
-              <div>
-                <div class="relative">
-                  <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
-                  <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
-                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                  </button>
-                </div>
-                <div class="p-6 space-y-4 pb-40">
-                  <h1 class="text-3xl font-bold">
-                    ${safeName}
-                    <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
-                  </h1>
-                  <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
-                  <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                    <span class="font-semibold text-lg">Estado</span>
-                    <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
-                  </div>
-                </div>
-                <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
-                  ${buttonHTML}
-                </div>
-              </div>`;
           }
+          return `
+            <div>
+              <div class="relative">
+                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
+                <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
+                  <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+              </div>
+              <div class="p-6 space-y-4 pb-40">
+                <h1 class="text-3xl font-bold">
+                  ${safeName}
+                  <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+                </h1>
+                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
+                <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+                  <span class="font-semibold text-lg">Estado</span>
+                  <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
+                </div>
+              </div>
+              <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+                ${buttonHTML}
+              </div>
+            </div>`;
+        }
 
         const app = {
           handleAuth: (isLogin)=>{
-            const turnstileToken = turnstile.getResponse();
+            const turnstileToken = window.turnstile?.getResponse ? turnstile.getResponse() : null;
             const email = document.getElementById('email-input').value;
             const pass  = document.getElementById('password-input').value;
             if (!turnstileToken) {
@@ -885,7 +885,7 @@
                 .catch(err=>{ alert('Error: '+err.message); loadingSpinner.classList.add('hidden'); });
             }
           },
-          navigateTo: (screen, data={})=>{
+          navigateTo: (screen, data={}){
             if (screen==='agenda') attachAgendaListeners(); else detachListeners();
             state.currentScreen = screen;
             if (data.classId) state.selectedClassId = data.classId;
