@@ -611,6 +611,11 @@
               if (state.scheduleFilter!=='today') return true;
               const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
               return Date.now() <= start.getTime() + 5*60*1000;
+            })
+            .sort((a, b) => {
+              const startA = a.startAt?.toDate ? a.startAt.toDate() : new Date(`${a.classDate}T${a.time}:00Z`);
+              const startB = b.startAt?.toDate ? b.startAt.toDate() : new Date(`${b.classDate}T${b.time}:00Z`);
+              return startA.getTime() - startB.getTime();
             });
 
           const horarioHTML = filtered.length ? filtered.map(cls=>{
