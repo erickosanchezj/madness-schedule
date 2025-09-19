@@ -387,8 +387,9 @@
             .onSnapshot((snap)=>{
               this.state.classes = snap.docs.map(d=>{
                 const data = { id:d.id, ...d.data() };
-                if (data.classDate && data.time){
-                  const start = new Date(`${data.classDate}T${data.time}:00Z`);
+                const timeStr = data.time || data.timeUTC;
+                if (data.classDate && timeStr){
+                  const start = new Date(`${data.classDate}T${timeStr}:00Z`);
                   data.localDate = this.dateHelper.ymd(start);
                   data.localTime = this.timeFmt.format(start);
                 }
@@ -874,7 +875,10 @@
                 const rosterSource = liveBookings.length ? liveBookings : storedBookings;
                 const rosterNames = rosterSource.map(x=>x.userName || x.userEmail || x.userId || 'Anónimo');
                 if (rosterNames.length){
-                  const labelTime = cls.localTime || cls.time || '';
+                  const fallbackTime = (cls.classDate && cls.time)
+                    ? this.timeFmt.format(new Date(`${cls.classDate}T${cls.time}:00Z`))
+                    : (cls.time || '');
+                  const labelTime = cls.localTime || fallbackTime;
                   const labelName = cls.name || 'Clase';
                   const label = `${labelTime} - ${labelName}`.trim();
                   bookedDetails[label] = rosterNames;
