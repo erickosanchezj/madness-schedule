@@ -1373,18 +1373,23 @@
             this.showToast({ title:'Sin cambios', message:'No marcaste asistencia', variant:'warn' });
             return;
           }
-          const batch = this.db.batch();
           const classDate = cls.classDate || cls.localDate || '';
           if (!classDate){
             this.showToast({ title:'Clase sin fecha', message:'No se pudo identificar la fecha de la clase.', variant:'error' });
             return;
           }
+          let classTimeLocal = cls.localTime || '';
+          if (!classTimeLocal && cls.time){
+            const baseTime = new Date(`${classDate}T${cls.time}:00Z`);
+            classTimeLocal = this.timeFmt.format(baseTime);
+          }
+          const batch = this.db.batch();
           Object.keys(data).forEach(uid=>{
             const rec = data[uid];
             const ref = this.db.collection('attendance').doc(`${classDate}_${cls.id}_${uid}`);
             batch.set(ref,{
               classId: cls.id, className: cls.name, classDate,
-              classTime: cls.time || cls.localTime,
+              classTime: classTimeLocal,
               userId: uid, userName: rec.userName, status: rec.status, recordedAt: new Date()
             },{ merge:true });
           });
