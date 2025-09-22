@@ -212,76 +212,6 @@
         }
         window.showToast = showToast;
 
-        const TOTALPASS_PROMPT_PARAM = 'totalpassPrompt';
-        const TOTALPASS_URL_PARAM = 'whatsappUrl';
-        const TOTALPASS_MESSAGE_PARAM = 'whatsappMessage';
-
-        let whatsappDeeplink = '';
-        function showWhatsappPrompt({ url, message }) {
-          if (!url) return;
-          whatsappDeeplink = url;
-          const rawMessage = message || '';
-          let safeMessage = rawMessage;
-          if (rawMessage) {
-            if (typeof DOMPurify !== 'undefined') {
-              safeMessage = DOMPurify.sanitize(rawMessage);
-            } else {
-              safeMessage = rawMessage
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-            }
-          }
-          const messageHtml = safeMessage
-            ? `<p class="text-xs text-zinc-300 mt-1">${safeMessage}</p>`
-            : '';
-          const toastHtml = `
-            <div class="flex items-center gap-3">
-              <div class="flex-1">
-                <p class="text-sm font-semibold">Recuerda mandar tu TotalPass</p>
-                ${messageHtml}
-              </div>
-              <button id="toast-whatsapp-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-3 py-2 rounded-lg shrink-0">Mandar whatsapp</button>
-            </div>
-          `;
-          showToast(toastHtml, 'info', { html: true, duration: 10000 });
-          const btn = document.getElementById('toast-whatsapp-btn');
-          if (btn) {
-            btn.addEventListener('click', () => {
-              window.open(whatsappDeeplink, '_blank', 'noopener,noreferrer');
-            }, { once: true });
-          }
-        }
-
-        const totalpassPrompt = _params.get(TOTALPASS_PROMPT_PARAM);
-        if (totalpassPrompt === '1') {
-          const whatsappUrl = _params.get(TOTALPASS_URL_PARAM);
-          const whatsappMessage = _params.get(TOTALPASS_MESSAGE_PARAM) || '';
-          if (whatsappUrl) {
-            showWhatsappPrompt({ url: whatsappUrl, message: whatsappMessage });
-          }
-          _params.delete(TOTALPASS_PROMPT_PARAM);
-          _params.delete(TOTALPASS_URL_PARAM);
-          _params.delete(TOTALPASS_MESSAGE_PARAM);
-          const newSearch = _params.toString();
-          const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
-          if (history.replaceState) {
-            history.replaceState({}, '', newUrl);
-          }
-        }
-
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.addEventListener('message', (event) => {
-            const payload = event.data;
-            if (!payload || typeof payload !== 'object') return;
-            if (payload.type === 'totalpass-whatsapp' && payload.whatsappUrl) {
-              showWhatsappPrompt({ url: payload.whatsappUrl, message: payload.whatsappMessage || '' });
-            }
-          });
-        }
-
         // Firestore listeners
         let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, listenersAttached=false;
         function detachListeners(){
@@ -625,6 +555,47 @@
               </div>`;
           }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
 
+          let completadasHTML = '';
+          if (state.isTotalPass) {
+            const today = dateHelper.today;
+            const completed = state.myBookings
+              .filter(Boolean)
+              .map(booking => {
+                const startObj = booking.startAt
+                  ? asDate(booking.startAt)
+                  : (booking.classDate ? new Date(`${booking.classDate}T${booking.time||'00:00'}:00Z`) : null);
+                if (!startObj) return null;
+                const ymdLocal = dateHelper.getYYYYMMDD(startObj);
+                if (ymdLocal !== today) return null;
+                const relatedClass = state.classes.find(cls => cls.id === booking.classId);
+                const durationRaw = Number(booking.duration || relatedClass?.duration || 60);
+                const duration = Number.isFinite(durationRaw) && durationRaw > 0 ? durationRaw : 60;
+                if (Date.now() <= startObj.getTime() + duration * 60000) return null;
+                return { booking, startObj, relatedClass };
+              })
+              .filter(Boolean)
+              .sort((a, b) => b.startObj.getTime() - a.startObj.getTime());
+
+            completadasHTML = completed.length ? completed.map(({ booking, startObj, relatedClass }) => {
+              const className = booking.className || relatedClass?.name || '';
+              const cover = relatedClass ? coverHelper.forClass(relatedClass) : coverHelper.forClassName(className, className);
+              const safeClassName = DOMPurify.sanitize(className);
+              const safeClassId = DOMPurify.sanitize(booking.classId);
+              const hhmm = timeFmt.format(startObj);
+              return `
+                <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                    <div>
+                      <p class="font-bold text-lg">${safeClassName}</p>
+                      <p class="text-zinc-400 text-sm">Hoy • ${hhmm}</p>
+                    </div>
+                  </div>
+                  <button data-action="send-totalpass" data-class-id="${safeClassId}" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-2 rounded-lg">Enviar TotalPass</button>
+                </div>`;
+            }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">Aún no terminas clases hoy.</div>`;
+          }
+
           const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
           const filtered = state.classes
             .filter(cls=>{
@@ -693,6 +664,11 @@
                 <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
                 <div class="space-y-3">${reservasHTML}</div>
               </section>
+              ${state.isTotalPass ? `
+              <section aria-labelledby="clases-completadas">
+                <h2 id="clases-completadas" class="text-xl font-semibold mb-3">Clases Terminadas Hoy</h2>
+                <div class="space-y-3">${completadasHTML}</div>
+              </section>` : ''}
               <section aria-labelledby="horario">
                 <div class="flex items-center justify-between mb-3">
                   <h2 id="horario" class="text-xl font-semibold">Horario</h2>
@@ -951,6 +927,17 @@
             case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
             case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
+            case 'send-totalpass': {
+              const classInfo = state.classes.find(c=>c.id===classId) || state.myBookings.find(b=>b.classId===classId);
+              const className = classInfo?.name || classInfo?.className || '';
+              const whatsappUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${encodeURIComponent('Hola! Aqui te mando mi codigo de TotalPass: ')}`;
+              if (className) {
+                // placeholder: class name is ready if we decide to personalize the message later
+              }
+              window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+              showToast('WhatsApp abierto para enviar token', 'success');
+              break;
+            }
           }
         }
         document.addEventListener('click', handleInteraction);

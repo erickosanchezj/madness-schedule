@@ -22,11 +22,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Parámetros usados para avisar al cliente que debe mostrar el prompt TotalPass
-const TOTALPASS_PROMPT_PARAM = "totalpassPrompt";
-const TOTALPASS_URL_PARAM = "whatsappUrl";
-const TOTALPASS_MESSAGE_PARAM = "whatsappMessage";
-
 // -------- util de log --------
 const LOG = true;
 const log = (...a) => { if (LOG) console.log("[SW]", ...a); };
@@ -45,33 +40,11 @@ messaging.onBackgroundMessage((payload) => {
   }
 
   const data = payload?.data || {};
-  const type = data.type || "";
-  let title = data.title || "Recordatorio de clase";
-  let body = data.body || "";
-
-  const isWaitlist = type === "waitlist_opportunity";
-  const isTotalPass = type === "totalpass";
-
-  if (isWaitlist) {
-    title = "¡Lugar disponible!";
-    body = "Tienes 5 minutos para reservar";
-  }
-
-  if (isTotalPass) {
-    title = data.title || "TotalPass";
-    body = data.body || "Recuerda enviar tu token de TotalPass";
-  }
-
-  const whatsappUrl = isTotalPass ? data.whatsappUrl || data.url || "" : "";
-  const url = isTotalPass
-    ? whatsappUrl || "/"
-    : data.url || "/";
+  const title = data.title || "Recordatorio de clase";
+  const body = data.body || "";
+  const url = data.url || "/";
   const classId = data.classId || "";
-  const tag = classId
-    ? `class-${classId}`
-    : isTotalPass
-      ? "totalpass"
-      : undefined;
+  const tag = classId ? `class-${classId}` : undefined;
   // MODIFIED: Changed icon path to root
   const icon = "/images/icon-192x192.png";
 
@@ -80,7 +53,6 @@ messaging.onBackgroundMessage((payload) => {
     body,
     url,
     classId,
-    type,
   });
   self.registration.showNotification(title, {
     body,
@@ -89,9 +61,6 @@ messaging.onBackgroundMessage((payload) => {
     data: {
       url,
       classId,
-      type,
-      whatsappUrl,
-      whatsappMessage: isTotalPass ? data.whatsappMessage || "" : "",
     },
     tag,
     renotify: true,
@@ -103,38 +72,6 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const data = event.notification?.data || {};
-  const type = data.type;
-  const whatsappUrl = data.whatsappUrl;
-
-  if (type === "totalpass" && whatsappUrl) {
-    const whatsappMessage = data.whatsappMessage || "";
-
-    event.waitUntil((async () => {
-      const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
-      const existing = list.find(c => c.url.startsWith(self.registration.scope));
-
-      if (existing) {
-        log("Mandando prompt TotalPass a pestaña existente");
-        existing.postMessage({
-          type: "totalpass-whatsapp",
-          whatsappUrl,
-          whatsappMessage,
-        });
-        return existing.focus();
-      }
-
-      const params = new URLSearchParams({ [TOTALPASS_PROMPT_PARAM]: "1" });
-      params.set(TOTALPASS_URL_PARAM, whatsappUrl);
-      if (whatsappMessage) params.set(TOTALPASS_MESSAGE_PARAM, whatsappMessage);
-      const targetUrl = `/?${params.toString()}`;
-      log("Abriendo ventana con prompt TotalPass:", targetUrl);
-      return clients.openWindow(targetUrl);
-    })());
-
-    return;
-  }
-
-  // If we have a classId, go straight to its details screen
   const classId = data.classId;
   const targetUrl = classId
     ? `/?screen=classDetails&classId=${classId}`
