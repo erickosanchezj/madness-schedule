@@ -53,26 +53,71 @@
       </div>
 
       <div class="space-y-8">
-        <section aria-labelledby="hoy-title">
-          <h2 id="hoy-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de Hoy</h2>
-          <div id="today-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
-        </section>
-        <section aria-labelledby="maniana-title">
-          <h2 id="maniana-title" class="text-2xl font-bold mb-4 text-sky-400 border-b border-zinc-700 pb-2">Clases de Mañana</h2>
-          <div id="tomorrow-classes-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4"></div>
+        <section aria-labelledby="week-title">
+          <h2 id="week-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de la Semana</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
+            <div class="day-column" data-day="monday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Lunes</h3>
+              <div id="monday-classes-container" class="space-y-3"></div>
+            </div>
+            <div class="day-column" data-day="tuesday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Martes</h3>
+              <div id="tuesday-classes-container" class="space-y-3"></div>
+            </div>
+            <div class="day-column" data-day="wednesday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Miércoles</h3>
+              <div id="wednesday-classes-container" class="space-y-3"></div>
+            </div>
+            <div class="day-column" data-day="thursday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Jueves</h3>
+              <div id="thursday-classes-container" class="space-y-3"></div>
+            </div>
+            <div class="day-column" data-day="friday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Viernes</h3>
+              <div id="friday-classes-container" class="space-y-3"></div>
+            </div>
+            <div class="day-column" data-day="saturday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Sábado</h3>
+              <div id="saturday-classes-container" class="space-y-3"></div>
+            </div>
+            <div class="day-column" data-day="sunday">
+              <h3 class="text-lg font-semibold text-blue-400 mb-3">Domingo</h3>
+              <div id="sunday-classes-container" class="space-y-3"></div>
+            </div>
+          </div>
         </section>
       </div>
 
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="reservas-title">
-        <h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas del Día</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Hoy</h3>
-            <div id="today-bookings-list" class="space-y-4 text-sm"></div>
+        <h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas de la Semana</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
+          <div class="day-column" data-day="monday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Lunes</h3>
+            <div id="monday-bookings-list" class="space-y-4 text-sm"></div>
           </div>
-          <div>
-            <h3 class="text-lg font-semibold text-sky-400 mb-3 border-b border-zinc-700 pb-2">Mañana</h3>
-            <div id="tomorrow-bookings-list" class="space-y-4 text-sm"></div>
+          <div class="day-column" data-day="tuesday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Martes</h3>
+            <div id="tuesday-bookings-list" class="space-y-4 text-sm"></div>
+          </div>
+          <div class="day-column" data-day="wednesday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Miércoles</h3>
+            <div id="wednesday-bookings-list" class="space-y-4 text-sm"></div>
+          </div>
+          <div class="day-column" data-day="thursday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Jueves</h3>
+            <div id="thursday-bookings-list" class="space-y-4 text-sm"></div>
+          </div>
+          <div class="day-column" data-day="friday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Viernes</h3>
+            <div id="friday-bookings-list" class="space-y-4 text-sm"></div>
+          </div>
+          <div class="day-column" data-day="saturday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Sábado</h3>
+            <div id="saturday-bookings-list" class="space-y-4 text-sm"></div>
+          </div>
+          <div class="day-column" data-day="sunday">
+            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Domingo</h3>
+            <div id="sunday-bookings-list" class="space-y-4 text-sm"></div>
           </div>
         </div>
       </section>
@@ -230,6 +275,7 @@
           bookingsMap: new Map(),
           waitlistsMap: new Map(),
           weeklySchedule: {},
+          weekDates: [],
           recentNotifications: [],
           currentAttendance: {},
           selectedClass: null,
@@ -342,7 +388,7 @@
                 document.getElementById('admin-panel').classList.remove('hidden');
                 try {
                   await this.loadWeeklyScheduleTemplate();
-                  this.listenClassesTodayTomorrow();
+                  this.listenWeeklyClasses();
                   this.startAttendancePolling();
                   this.listenRecentNotifications();
                 } catch(e){
@@ -373,16 +419,35 @@
           snap.forEach(doc => { this.state.weeklySchedule[doc.id] = doc.data().classes || []; });
         },
 
-        // --- LISTENERS (ayer/hoy/mañana) ---
-        listenClassesTodayTomorrow(){
-          const yesterday = this.dateHelper.yesterday();
-          const today = this.dateHelper.today();
-          const tomorrow = this.dateHelper.tomorrow();
-          const dayAfterTomorrow = this.dateHelper.ymd(new Date(Date.now()+172800000));
+        // --- LISTENERS (semana completa) ---
+        listenWeeklyClasses(){
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+
+          const weekDates = [];
+          for (let i = 0; i < 7; i++) {
+            const date = new Date(startOfWeek);
+            date.setDate(startOfWeek.getDate() + i);
+            weekDates.push(this.dateHelper.ymd(date));
+          }
+
+          this.state.weekDates = weekDates;
 
           if (this.state.unsubClasses) this.state.unsubClasses();
+
+          if (!weekDates.length){
+            this.state.classes = [];
+            this.mountBookingsListenersForVisibleClasses();
+            this.mountWaitlistListenersForVisibleClasses();
+            this.renderAll();
+            this.renderAttendanceChartFromCache();
+            return;
+          }
+
           this.state.unsubClasses = this.db.collection('classes')
-            .where('classDate', 'in', [yesterday, today, tomorrow, dayAfterTomorrow])
+            .where('classDate', 'in', weekDates)
             .orderBy('classDate','asc').orderBy('time','asc')
             .onSnapshot((snap)=>{
               this.state.classes = snap.docs.map(d=>{
@@ -666,16 +731,34 @@
         },
 
         renderClassCards(){
-          const todayC = document.getElementById('today-classes-container');
-          const tomorrowC = document.getElementById('tomorrow-classes-container');
-          todayC.innerHTML=''; tomorrowC.innerHTML='';
+          const dayContainers = {
+            1: document.getElementById('monday-classes-container'),
+            2: document.getElementById('tuesday-classes-container'),
+            3: document.getElementById('wednesday-classes-container'),
+            4: document.getElementById('thursday-classes-container'),
+            5: document.getElementById('friday-classes-container'),
+            6: document.getElementById('saturday-classes-container'),
+            0: document.getElementById('sunday-classes-container')
+          };
+
+          Object.values(dayContainers).forEach(container => {
+            if (container) container.innerHTML = '';
+          });
 
           const sorted = [...this.state.classes].sort((a,b)=>{
             const sa = new Date(`${a.classDate}T${a.time}:00Z`).getTime();
             const sb = new Date(`${b.classDate}T${b.time}:00Z`).getTime();
             return sa - sb;
           });
+
           for (const cls of sorted){
+            const localDateStr = cls.localDate || cls.classDate;
+            if (!localDateStr) continue;
+            const localDate = new Date(`${localDateStr}T00:00:00`);
+            const dayOfWeek = Number.isNaN(localDate.getTime()) ? null : localDate.getDay();
+            const container = (dayOfWeek !== null) ? dayContainers[dayOfWeek] : null;
+            if (!container) continue;
+
             const isRunning = this.isClassRunningNow(cls);
             const style = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
             const enrolled = Number(cls.enrolledCount||0);
@@ -701,22 +784,57 @@
                 <span class="font-semibold">a las ${safeTime}</span>
                 <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
               </div>`;
-            if (cls.localDate === this.dateHelper.today()) todayC.appendChild(card);
-            else if (cls.localDate === this.dateHelper.tomorrow()) tomorrowC.appendChild(card);
+            container.appendChild(card);
           }
-          if (!todayC.children.length) todayC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para hoy.</p>';
-          if (!tomorrowC.children.length) tomorrowC.innerHTML = '<p class="text-zinc-500 col-span-full">No hay clases programadas para mañana.</p>';
+
+          Object.values(dayContainers).forEach(container => {
+            if (!container) return;
+            if (!container.children.length){
+              container.innerHTML = '<p class="text-zinc-500 text-sm">No hay clases programadas.</p>';
+            }
+          });
         },
 
         renderDailyBookings(){
-          const todayList = document.getElementById('today-bookings-list');
-          const tomList = document.getElementById('tomorrow-bookings-list');
-          todayList.innerHTML=''; tomList.innerHTML='';
+          const dayContainers = {
+            1: document.getElementById('monday-bookings-list'),
+            2: document.getElementById('tuesday-bookings-list'),
+            3: document.getElementById('wednesday-bookings-list'),
+            4: document.getElementById('thursday-bookings-list'),
+            5: document.getElementById('friday-bookings-list'),
+            6: document.getElementById('saturday-bookings-list'),
+            0: document.getElementById('sunday-bookings-list')
+          };
 
-          const byDate = { [this.dateHelper.today()]:[], [this.dateHelper.tomorrow()]:[] };
-          this.state.classes.forEach(c=>{ if(byDate[c.localDate]) byDate[c.localDate].push(c); });
+          Object.values(dayContainers).forEach(container => {
+            if (container) container.innerHTML = '';
+          });
 
-          const buildHTML = (classesArr)=>{
+          const groupedByDay = {};
+          const sorted = [...this.state.classes].sort((a,b)=>{
+            const sa = new Date(`${a.classDate}T${a.time}:00Z`).getTime();
+            const sb = new Date(`${b.classDate}T${b.time}:00Z`).getTime();
+            return sa - sb;
+          });
+
+          for (const cls of sorted){
+            const localDateStr = cls.localDate || cls.classDate;
+            if (!localDateStr) continue;
+            const localDate = new Date(`${localDateStr}T00:00:00`);
+            const dayOfWeek = Number.isNaN(localDate.getTime()) ? null : localDate.getDay();
+            if (dayOfWeek === null) continue;
+            if (!groupedByDay[dayOfWeek]) groupedByDay[dayOfWeek] = [];
+            groupedByDay[dayOfWeek].push(cls);
+          }
+
+          Object.entries(dayContainers).forEach(([dayKey, container]) => {
+            if (!container) return;
+            const classesArr = groupedByDay[dayKey] || [];
+            if (!classesArr.length){
+              container.innerHTML = '<p class="text-zinc-500 text-sm">No hay reservas.</p>';
+              return;
+            }
+
             const blocks = classesArr.map(cls=>{
               const attendees = (this.state.bookingsMap.get(cls.id)||[]).map(b=>b.userName||'Anónimo');
               const waiters = (this.state.waitlistsMap.get(cls.id)||[])
@@ -739,10 +857,9 @@
                   ${waitHTML}
                 </div>`;
             });
-            return blocks.join('') || '<p class="text-zinc-500">No hay reservas.</p>';
-          };
-          todayList.innerHTML = buildHTML(byDate[this.dateHelper.today()]);
-          tomList.innerHTML   = buildHTML(byDate[this.dateHelper.tomorrow()]);
+
+            container.innerHTML = blocks.join('') || '<p class="text-zinc-500 text-sm">No hay reservas.</p>';
+          });
         },
 
         // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
