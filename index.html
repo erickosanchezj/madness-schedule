@@ -507,18 +507,41 @@
               </p>
             </div>`;
           
-          // 2. ADDED: Manually render the widget after the HTML is on the page
-          if (window.turnstile?.render){
-            window.turnstile.render('#turnstile-widget', {
-              sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY',
-              // You can add other options here, like theme: 'dark'
-            });
-          }
+            // 2. ADDED: Manually render the widget after the HTML is on the page
+            const authButton = document.getElementById('auth-button');
+            const widgetContainer = document.getElementById('turnstile-widget');
 
-          document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
-          document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
-          lucide.createIcons();
-        }
+            // Disable the button until Turnstile is fully ready to avoid ReferenceErrors on slow networks
+            authButton.disabled = true;
+
+            const enableAuthButton = () => { authButton.disabled = false; };
+
+            const renderTurnstileWhenReady = () => {
+              if (!widgetContainer || widgetContainer.dataset.rendered === '1'){
+                enableAuthButton();
+                return;
+              }
+
+              const api = window.turnstile;
+              if (api?.render){
+                api.render(widgetContainer, {
+                  sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY'
+                });
+                widgetContainer.dataset.rendered = '1';
+                enableAuthButton();
+                return;
+              }
+
+              // Retry shortly after to give the async script time to load before enabling auth
+              setTimeout(renderTurnstileWhenReady, 250);
+            };
+
+            renderTurnstileWhenReady();
+
+            authButton.onclick = () => app.handleAuth(isLogin);
+            document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
+            lucide.createIcons();
+          }
 
         // Render principal
         function render(){
@@ -778,11 +801,17 @@
           }
 
         const app = {
-          handleAuth: (isLogin)=>{
-            const turnstileToken = turnstile.getResponse();
-            const email = document.getElementById('email-input').value;
-            const pass  = document.getElementById('password-input').value;
-            if (!turnstileToken) {
+            handleAuth: (isLogin)=>{
+              const turnstileApi = window.turnstile;
+              if (!turnstileApi || typeof turnstileApi.getResponse !== 'function'){
+                alert('La verificación de seguridad se está inicializando. Intenta de nuevo en unos segundos.');
+                return;
+              }
+
+              const turnstileToken = turnstileApi.getResponse();
+              const email = document.getElementById('email-input').value;
+              const pass  = document.getElementById('password-input').value;
+              if (!turnstileToken) {
               alert('Por favor, completa la verificación de seguridad.');  
               return;  
             }
