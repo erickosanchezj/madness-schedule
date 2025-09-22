@@ -146,11 +146,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
 
     const className = classData.title || classData.name || '';
     const title = 'TotalPass';
-    const body = 'Recuerda enviar tu token de TotalPass';
-    const whatsappMessage = 'Hola! Aqui te mando mi codigo de TotalPass: ';
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${encodeURIComponent(
-      whatsappMessage
-    )}`;
+    const body = 'Ve a la app para enviar tu token';
 
     const tokenChunks = [];
     for (let i = 0; i < tokens.length; i += 500) {
@@ -168,9 +164,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
           classId,
           className: className || '',
           type: 'totalpass',
-          url: whatsappUrl,
-          whatsappUrl,
-          whatsappMessage,
+          url: '/',
         },
       });
       responseAggregate.responses.push(...chunkResponse.responses);
