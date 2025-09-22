@@ -1,6 +1,6 @@
 // functions/src/generateDailyClasses.js
 // Scheduled Cloud Function to auto-generate classes from the weekly template.
-// Ensures the daily schedule is created for today and tomorrow without manual admin actions.
+// Ensures the upcoming week's classes are prepared without manual admin actions.
 // RELEVANT FILES: admin.html, functions/index.js, functions/src/bookingReminders.js
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
@@ -8,7 +8,7 @@ const admin = require("firebase-admin");
 
 const db = admin.firestore();
 const TIME_ZONE = "America/Mexico_City";
-const DAILY_CRON = "30 0 * * *"; // 12:30 AM local time
+const WEEKLY_CRON = "0 16 * * 6"; // 4 PM every Saturday
 
 const timeFormatter = new Intl.DateTimeFormat("es-MX", {
   timeZone: TIME_ZONE,
@@ -39,9 +39,9 @@ function buildStartEnd(dateStr, timeStr, duration = 60) {
 }
 
 exports.generateDailyClasses = onSchedule(
-  { region: "us-central1", schedule: DAILY_CRON, timeZone: TIME_ZONE },
+  { region: "us-central1", schedule: WEEKLY_CRON, timeZone: TIME_ZONE },
   async () => {
-    console.log("[generateDailyClasses] Starting scheduled run");
+    console.log("[generateDailyClasses] Starting weekly scheduled run");
 
     const templateSnap = await db.collection("schedule_template").get();
     if (templateSnap.empty) {
@@ -55,12 +55,19 @@ exports.generateDailyClasses = onSchedule(
     });
 
     const now = toTimeZone(new Date(), TIME_ZONE);
-    const tomorrow = addDays(now, 1);
+    // Calculate next Monday (start of next week)
+    const daysUntilNextMonday = (8 - now.getUTCDay()) % 7 || 7;
+    const nextMonday = addDays(now, daysUntilNextMonday);
 
-    const targets = [
-      { date: now.toISOString().slice(0, 10), dow: now.getUTCDay() },
-      { date: tomorrow.toISOString().slice(0, 10), dow: tomorrow.getUTCDay() },
-    ];
+    // Generate Monday through Saturday (6 days)
+    const targets = [];
+    for (let i = 0; i < 6; i++) {
+      const targetDate = addDays(nextMonday, i);
+      targets.push({
+        date: targetDate.toISOString().slice(0, 10),
+        dow: targetDate.getUTCDay(),
+      });
+    }
 
     const batch = db.batch();
     const created = [];
