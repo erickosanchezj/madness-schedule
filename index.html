@@ -508,10 +508,12 @@
             </div>`;
           
           // 2. ADDED: Manually render the widget after the HTML is on the page
-          turnstile.render('#turnstile-widget', {
-            sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY',
-            // You can add other options here, like theme: 'dark'
-          });
+          if (window.turnstile?.render){
+            window.turnstile.render('#turnstile-widget', {
+              sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY',
+              // You can add other options here, like theme: 'dark'
+            });
+          }
 
           document.getElementById('auth-button').onclick = () => app.handleAuth(isLogin);
           document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
@@ -830,8 +832,17 @@
                 const enrolled = Number(cls.enrolledCount||0);
                 const capacity = Number(cls.capacity||0);
                 if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
-                const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(new Date(cls.startAt));
-                const startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(cls.startAt);
+                let startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : (cls.startAt ? new Date(cls.startAt) : null);
+                if (!startDateObj || isNaN(startDateObj.getTime())){
+                  if (cls.classDate){
+                    const hhmm = cls.time || '00:00';
+                    startDateObj = new Date(`${cls.classDate}T${hhmm}:00Z`);
+                  }
+                }
+                if (!startDateObj || isNaN(startDateObj.getTime())){
+                  throw new Error('La clase no tiene horario válido.');
+                }
+                const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(startDateObj);
                 const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
                 const time = cls.time || timeFmt.format(startDateObj);
                 tx.set(bookingRef, {
