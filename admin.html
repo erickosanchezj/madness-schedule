@@ -660,12 +660,25 @@
             this.showToast({ title:'Plantilla no cargada', variant:'warn' });
             return;
           }
-          const today = new Date();
-          const tomorrow = new Date(); tomorrow.setDate(today.getDate()+1);
-          const days = [
-            { dateStr: this.dateHelper.ymd(today), dow: today.getDay() },
-            { dateStr: this.dateHelper.ymd(tomorrow), dow: tomorrow.getDay() }
-          ];
+
+          // We anchor the calculation to midnight in Mexico City time to avoid timezone drift.
+          const todayLocalStr = this.dateHelper.today();
+          const localMidnight = new Date(`${todayLocalStr}T00:00:00-06:00`);
+          const todayDow = localMidnight.getUTCDay();
+          const daysUntilSaturday = (6 - todayDow + 7) % 7;
+
+          const days = [];
+          for (let offset = 0; offset <= daysUntilSaturday; offset++) {
+            const cursor = new Date(localMidnight.getTime() + (offset * 86400000));
+            const dateStr = cursor.toISOString().slice(0,10);
+            days.push({ dateStr, dow: cursor.getUTCDay() });
+          }
+
+          if (!days.length) {
+            this.showToast({ title:'Sin rango válido', variant:'warn' });
+            return;
+          }
+
           const batch = this.db.batch();
           let created = 0;
           const createdList = [];
@@ -673,38 +686,41 @@
           for (const d of days){
             const tpl = this.state.weeklySchedule[String(d.dow)] || [];
             if (!tpl.length) continue;
-            const base = new Date(`${d.dateStr}T00:00:00-06:00`);
-            const storedDate = base.toISOString().slice(0,10);
-            const storedNext = new Date(base.getTime()+86400000).toISOString().slice(0,10);
-            const existingSnap = await this.db.collection('classes').where('classDate','in',[storedDate, storedNext]).get();
-            const existingTimes = new Set(existingSnap.docs.map(x=>{
+
+            // We only compare against classes stored for the same calendar day.
+            const existingSnap = await this.db.collection('classes')
+              .where('classDate','==', d.dateStr)
+              .get();
+            const existingKeys = new Set(existingSnap.docs.map(x => {
               const data = x.data();
-              const start = new Date(`${data.classDate}T${data.time}:00Z`);
-              return this.timeFmt.format(start);
+              return `${data.classDate}|${data.time}`;
             }));
+
             for (const c of tpl){
-              if (!existingTimes.has(c.time)){
-                const ref = this.db.collection('classes').doc();
-                const { startAt, endAt, classDate, timeUTC } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
-                const isTRX = /trx/i.test(c.name || "");
-                const capacity = (typeof c.capacity === "number") ? c.capacity : (isTRX ? 13 : 15);
-                batch.set(ref,{
-                  name: c.name,
-                  time: timeUTC,
-                  instructor: c.instructor || 'Por Asignar',
-                  duration: c.duration || 60,
-                  classDate,
-                  capacity,
-                  enrolledCount: 0,
-                  startAt,
-                  endAt,
-                  description:`Clase de ${c.name}`,
-                  icon:'💪',
-                  image:`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
-                });
-                createdList.push({ date: d.dateStr, time: c.time, name: c.name });
-                created++;
-              }
+              const { startAt, endAt, classDate, timeUTC } = this._buildStartEnd(d.dateStr, c.time, c.duration||60);
+              const classKey = `${classDate}|${timeUTC}`;
+              if (existingKeys.has(classKey)) continue;
+
+              const ref = this.db.collection('classes').doc();
+              const isTRX = /trx/i.test(c.name || "");
+              const capacity = (typeof c.capacity === "number") ? c.capacity : (isTRX ? 13 : 15);
+              batch.set(ref,{
+                name: c.name,
+                time: timeUTC,
+                instructor: c.instructor || 'Por Asignar',
+                duration: c.duration || 60,
+                classDate,
+                capacity,
+                enrolledCount: 0,
+                startAt,
+                endAt,
+                description:`Clase de ${c.name}`,
+                icon:'💪',
+                image:`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
+              });
+              existingKeys.add(classKey);
+              createdList.push({ date: d.dateStr, time: c.time, name: c.name });
+              created++;
             }
           }
 
