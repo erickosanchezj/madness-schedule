@@ -1,7 +1,7 @@
-// Firestore security rules for the Madness Schedule app.
-// Guards database access so only allowed users can read or write.
+// PATH: firestore.rules
+// DESCRIPTION: Firestore security rules for the Madness Schedule app.
+// WHY: Guards database access so only allowed users can read or write.
 // RELEVANT FILES: firebase.json, firestore.indexes.json, functions/index.js
-// FILE: firestore.rules
 
 rules_version = '2';
 service cloud.firestore {
@@ -23,12 +23,11 @@ service cloud.firestore {
 
    function cooldownOk(uid) {
     let userDoc = get(/databases/$(db)/documents/users/$(uid));
-    if (userDoc == null) return true;
-    let data = userDoc.data;
+    let data = userDoc == null ? null : userDoc.data;
     let cooldownWindow = 15 * 60 * 1000;
     let hasValidCancelGap = data == null
      || !('lastCancelAt' in data)
-     || request.time.toMillis() - data.lastCancelAt.toMillis() >= cooldownWindow;
+     || (request.time.toMillis() - data.lastCancelAt.toMillis() >= cooldownWindow);
 
     return userDoc == null
      || data == null
