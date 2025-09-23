@@ -522,9 +522,15 @@
 
         // --- AGENDA (igual que tu implementación, con mínimos cambios)
         function getAgendaScreenHTML(){
+          const now = Date.now();
           const upcoming = state.myBookings.filter(Boolean).filter(b=>{
             const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
-            return Date.now() <= startObj.getTime()+5*60*1000;
+            const relatedClass = state.classes.find(cls=>cls.id===b.classId);
+            const durationRaw = b.duration ?? relatedClass?.duration;
+            const durationValue = Number(durationRaw);
+            const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
+            const endTime = startObj.getTime() + durationMinutes*60000;
+            return now <= endTime;
           }).sort((a,b)=>{
             const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
             const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
@@ -606,7 +612,10 @@
             .filter(cls=>{
               if (state.scheduleFilter!=='today') return true;
               const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
-              return Date.now() <= start.getTime() + 5*60*1000;
+              const durationValue = Number(cls.duration);
+              const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
+              const endTime = start.getTime() + durationMinutes*60000;
+              return now <= endTime;
             })
             .sort((a, b) => {
               const startA = a.startAt?.toDate ? a.startAt.toDate() : new Date(`${a.classDate}T${a.time}:00Z`);
