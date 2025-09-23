@@ -942,12 +942,27 @@
             case 'send-totalpass': {
               const classInfo = state.classes.find(c=>c.id===classId) || state.myBookings.find(b=>b.classId===classId);
               const className = classInfo?.name || classInfo?.className || '';
-              const whatsappUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${encodeURIComponent('Hola! Aqui te mando mi codigo de TotalPass: ')}`;
-              if (className) {
-                // placeholder: class name is ready if we decide to personalize the message later
-              }
-              window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-              showToast('WhatsApp abierto para enviar token', 'success');
+
+              showModal({
+                title: '¿Abrir WhatsApp?',
+                message: 'Se abrirá WhatsApp para enviar tu código de TotalPass.',
+                buttons: [
+                  {
+                    text: 'Cancelar',
+                    primary: false,
+                    callback: null
+                  },
+                  {
+                    text: 'Abrir WhatsApp',
+                    primary: true,
+                    callback: () => {
+                      const whatsappUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${encodeURIComponent('Hola! Aqui te mando mi codigo de TotalPass: ')}`;
+                      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                      showToast('WhatsApp abierto para enviar token', 'success');
+                    }
+                  }
+                ]
+              });
               break;
             }
           }
@@ -961,19 +976,44 @@
         const genericModal = document.getElementById('generic-modal');
         const modalContent = document.getElementById('modal-content');
 
-        function showModal({success, title}){
+        function showModal({success, title, message, buttons}){
           const fabs = document.getElementById('social-fabs');
           if (fabs) fabs.classList.add('opacity-0','pointer-events-none');
           const safeTitle = DOMPurify.sanitize(title);
-          modalContent.innerHTML = `
-            <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
-              <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
-            </div>
-            <h2 class="text-2xl font-bold">${safeTitle}</h2>
-            <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
+          const safeMessage = message ? DOMPurify.sanitize(message) : '';
+
+          if (!buttons) {
+            modalContent.innerHTML = `
+              <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
+              </div>
+              <h2 class="text-2xl font-bold">${safeTitle}</h2>
+              ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
+              <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
+            document.getElementById('modal-close-btn').onclick = hideModal;
+          } else {
+            const buttonsHTML = buttons.map((btn, index) =>
+              `<button id="modal-btn-${index}" class="flex-1 ${btn.primary ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-300'} font-semibold py-3 rounded-lg">${DOMPurify.sanitize(btn.text)}</button>`
+            ).join('');
+
+            modalContent.innerHTML = `
+              <div class="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="message-circle" class="w-10 h-10"></i>
+              </div>
+              <h2 class="text-2xl font-bold">${safeTitle}</h2>
+              ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
+              <div class="flex gap-3 mt-4">${buttonsHTML}</div>`;
+
+            buttons.forEach((btn, index) => {
+              document.getElementById(`modal-btn-${index}`).onclick = () => {
+                if (btn.callback) btn.callback();
+                hideModal();
+              };
+            });
+          }
+
           genericModal.classList.remove('hidden');
           setTimeout(()=>modalContent.classList.remove('scale-95','opacity-0'),10);
-          document.getElementById('modal-close-btn').onclick = hideModal;
           lucide.createIcons();
         }
         function hideModal(){
