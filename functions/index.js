@@ -4,6 +4,7 @@
 // RELEVANT FILES: functions/src/bookingReminders.js, functions/src/waitlistNotifications.js
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -113,3 +114,40 @@ exports.onWaitlistExpiration = waitlistNotifications.onWaitlistExpiration;
 
 const generateDailyClasses = require("./src/generateDailyClasses");
 exports.generateDailyClasses = generateDailyClasses.generateDailyClasses;
+
+exports.automaticWhitelisting = onSchedule(
+  {
+    region: "us-central1",
+    schedule: "0 0 1 * *",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const snap = await db.collection("users").where("blacklisted", "==", true).get();
+    if (snap.empty) {
+      console.log("automaticWhitelisting: no blacklisted users found.");
+      return;
+    }
+
+    const CHUNK = 400;
+    const docs = snap.docs;
+    let processed = 0;
+
+    for (let i = 0; i < docs.length; i += CHUNK) {
+      const slice = docs.slice(i, i + CHUNK);
+      if (slice.length === 0) continue;
+
+      const batch = db.batch();
+      slice.forEach((doc) => {
+        batch.update(doc.ref, {
+          blacklisted: false,
+          lateCancellations: 0,
+          blacklistedAt: admin.firestore.FieldValue.delete(),
+        });
+      });
+
+      await batch.commit();
+      processed += slice.length;
+      console.log(`automaticWhitelisting: processed ${processed}/${docs.length}`);
+    }
+  }
+);
