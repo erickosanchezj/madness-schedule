@@ -956,8 +956,24 @@
                     text: 'Abrir WhatsApp',
                     primary: true,
                     callback: () => {
-                      const whatsappUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${encodeURIComponent('Hola! Aqui te mando mi codigo de TotalPass: ')}`;
-                      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                      // Intentamos abrir directamente la app usando el esquema nativo
+                      const message = encodeURIComponent('Hola! Aqui te mando mi codigo de TotalPass: ');
+                      const whatsappDeepLink = `whatsapp://send?phone=5215539887713&text=${message}`;
+                      const whatsappWebUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${message}`;
+
+                      const visibilityHandler = () => {
+                        document.removeEventListener('visibilitychange', visibilityHandler);
+                        clearTimeout(fallbackTimer);
+                      };
+
+                      const fallbackTimer = setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                          window.location.href = whatsappWebUrl;
+                        }
+                      }, 600);
+
+                      document.addEventListener('visibilitychange', visibilityHandler);
+                      window.location.href = whatsappDeepLink;
                       showToast('WhatsApp abierto para enviar token', 'success');
                     }
                   }
