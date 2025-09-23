@@ -544,9 +544,12 @@
             const ymdLocal = dateHelper.getYYYYMMDD(startObj);
             const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
             const cover = coverHelper.forClassName(b.className, b.className);
+            const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
+            const showCancelButton = timeStatus !== 'en curso';
             const safeClassName = DOMPurify.sanitize(b.className || '');
             const safeDayText = DOMPurify.sanitize(dayText);
             const safeClassId = DOMPurify.sanitize(b.classId);
+            const safeTimeStatus = DOMPurify.sanitize(timeStatus);
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
@@ -554,10 +557,10 @@
                   <div>
                     <p class="font-bold text-lg">${safeClassName}</p>
                     <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${safeTimeStatus}</p>
                   </div>
                 </div>
-                <button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>
+                ${showCancelButton ? `<button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>` : ''}
               </div>`;
           }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
 
