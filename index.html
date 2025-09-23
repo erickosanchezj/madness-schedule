@@ -735,72 +735,72 @@
             </div>`;
         }
 
-          function getClassDetailsScreenHTML(classId){
-            const cls = state.classes.find(c=>c.id===classId);
-            if (!cls) return getAgendaScreenHTML();
-            const enrolled = Number(cls.enrolledCount||0);
-            const availableSpots = Number(cls.capacity||0)-enrolled;
-            const isBooked = state.myBookings.some(b=>b.classId===cls.id);
-            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
-            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
-            const durationMin = Number(cls.duration||60);
-            const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
-            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-            const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
-            const safeName = DOMPurify.sanitize(cls.name || '');
-            const safeDesc = DOMPurify.sanitize(cls.description || '');
-            const safeId = DOMPurify.sanitize(cls.id);
-            // default booking button
-            let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-            if (isBooked) {
-              // already have a booking
-              buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-            } else if (availableSpots<=0 && !notified) {
-              // class is full: either join waitlist or allow leaving
-              if (waitEntry) {
-                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-                buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
-              } else {
-                buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
-              }
+        function getClassDetailsScreenHTML(classId){
+          const cls = state.classes.find(c=>c.id===classId);
+          if (!cls) return getAgendaScreenHTML();
+          const enrolled = Number(cls.enrolledCount||0);
+          const availableSpots = Number(cls.capacity||0)-enrolled;
+          const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+          const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
+          const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
+          const durationMin = Number(cls.duration||60);
+          const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
+          const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+          const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
+          const safeName = DOMPurify.sanitize(cls.name || '');
+          const safeDesc = DOMPurify.sanitize(cls.description || '');
+          const safeId = DOMPurify.sanitize(cls.id);
+          // default booking button
+          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+          if (isBooked) {
+            // already have a booking
+            buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+          } else if (availableSpots<=0 && !notified) {
+            // class is full: either join waitlist or allow leaving
+            if (waitEntry) {
+              const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+              buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
+            } else {
+              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
             }
-            return `
-              <div>
-                <div class="relative">
-                  <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
-                  <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
-                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                  </button>
-                </div>
-                <div class="p-6 space-y-4 pb-40">
-                  <h1 class="text-3xl font-bold">
-                    ${safeName}
-                    <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
-                  </h1>
-                  <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
-                  <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                    <span class="font-semibold text-lg">Estado</span>
-                    <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
-                  </div>
-                </div>
-                <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
-                  ${buttonHTML}
-                </div>
-              </div>`;
           }
+          return `
+            <div>
+              <div class="relative">
+                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
+                <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
+                  <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+              </div>
+              <div class="p-6 space-y-4 pb-40">
+                <h1 class="text-3xl font-bold">
+                  ${safeName}
+                  <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+                </h1>
+                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
+                <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+                  <span class="font-semibold text-lg">Estado</span>
+                  <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
+                </div>
+              </div>
+              <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+                ${buttonHTML}
+              </div>
+            </div>`;
+        }
 
         const app = {
-            handleAuth: (isLogin)=>{
-              const turnstileApi = window.turnstile;
-              if (!turnstileApi || typeof turnstileApi.getResponse !== 'function'){
-                alert('La verificación de seguridad se está inicializando. Intenta de nuevo en unos segundos.');
-                return;
-              }
+          handleAuth: (isLogin)=>{
+            const turnstileApi = window.turnstile;
+            if (!turnstileApi || typeof turnstileApi.getResponse !== 'function'){
+              alert('La verificación de seguridad se está inicializando. Intenta de nuevo en unos segundos.');
+              return;
+            }
 
-              const turnstileToken = turnstileApi.getResponse();
-              const email = document.getElementById('email-input').value;
-              const pass  = document.getElementById('password-input').value;
-              if (!turnstileToken) {
+            const turnstileToken = turnstileApi.getResponse();
+            const email = document.getElementById('email-input').value;
+            const pass  = document.getElementById('password-input').value;
+            if (!turnstileToken) {
               alert('Por favor, completa la verificación de seguridad.');  
               return;  
             }
@@ -940,10 +940,49 @@
             case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
             case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
+
+            /* RESUELTO: usar deep-link + fallback web y confirmación modal
+               Mantiene el nombre de acción existente: send-totalpass-daily */
             case 'send-totalpass-daily': {
-              const whatsappUrl = `https://api.whatsapp.com/send?phone=5215539887713&text=${encodeURIComponent('Hola! Aqui te mando mi codigo de TotalPass: ')}`;
-              window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-              showToast('WhatsApp abierto para enviar token del día', 'success');
+              const classInfo = state.classes.find(c=>c.id===classId) || state.myBookings.find(b=>b.classId===classId);
+              const className = classInfo?.name || classInfo?.className || '';
+
+              showModal({
+                title: '¿Abrir WhatsApp?',
+                message: 'Se abrirá WhatsApp para enviar tu código de TotalPass.',
+                buttons: [
+                  { text: 'Cancelar', primary: false, callback: null },
+                  {
+                    text: 'Abrir WhatsApp',
+                    primary: true,
+                    callback: () => {
+                      const baseMsg = 'Hola! Aqui te mando mi codigo de TotalPass: ';
+                      const txt = className ? `${baseMsg} (${className})` : baseMsg;
+                      const message = encodeURIComponent(txt);
+
+                      // Deep link a la app nativa
+                      const deepLink = `whatsapp://send?phone=5215539887713&text=${message}`;
+                      // Fallback a web si la app no abre
+                      const webLink  = `https://api.whatsapp.com/send?phone=5215539887713&text=${message}`;
+
+                      const visibilityHandler = () => {
+                        document.removeEventListener('visibilitychange', visibilityHandler);
+                        clearTimeout(fallbackTimer);
+                      };
+
+                      const fallbackTimer = setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                          window.location.href = webLink;
+                        }
+                      }, 600);
+
+                      document.addEventListener('visibilitychange', visibilityHandler);
+                      window.location.href = deepLink;
+                      showToast('WhatsApp abierto para enviar token', 'success');
+                    }
+                  }
+                ]
+              });
               break;
             }
           }
