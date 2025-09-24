@@ -61,7 +61,9 @@ service cloud.firestore {
         && request.resource.data.className is string
         && request.resource.data.startAt is timestamp
         && cooldownOk(request.auth.uid);
-      allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      // Booking cancellations must go through the callable Cloud Function.
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     // ===== USERS (Final, Simpler Ruleset) =====
