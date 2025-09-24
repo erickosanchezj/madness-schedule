@@ -177,7 +177,8 @@
           currentScreen: 'agenda',
           scheduleFilter: 'today',
           selectedClassId: null,
-          isTotalPass: false
+          isTotalPass: false,
+          cancellationStrikes: 0
         };
 
         // ---- Render batching
@@ -218,11 +219,12 @@
         window.showToast = showToast;
 
         // Firestore listeners
-        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, listenersAttached=false;
+        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, listenersAttached=false;
         function detachListeners(){
           if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
           if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
           if (unsubWaitlist){ try{unsubWaitlist();}catch{}; unsubWaitlist=null; }
+          if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
           listenersAttached=false;
         }
         function attachAgendaListeners(){
@@ -242,6 +244,14 @@
             .where('userId', '==', state.currentUser.uid)
             .onSnapshot(snap => {
               state.waitlistEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleRender();
+            });
+          unsubUser = db.collection('users').doc(state.currentUser.uid)
+            .onSnapshot(doc => {
+              const data = doc.data() || {};
+              state.isTotalPass = !!data.totalPass;
+              const strikesRaw = Number(data.lateCancellations);
+              state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
               scheduleRender();
             });
           listenersAttached=true;
@@ -381,6 +391,11 @@
             // Crea doc de usuario si no existe
             const userRef = db.collection('users').doc(user.uid);
             const docSnap = await userRef.get();
+            const existingData = docSnap.exists ? docSnap.data() : {};
+            state.isTotalPass = !!existingData.totalPass;
+            const strikesRaw = Number(existingData.lateCancellations);
+            state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+
             if (!docSnap.exists){
               try{
                 await userRef.set({
@@ -396,7 +411,6 @@
                 return;
               }
             }
-            state.isTotalPass = !!docSnap.data()?.totalPass;
             state.currentUser = user;
             authContainer.style.display = 'none';
             appContainer.style.display = 'flex';
@@ -528,6 +542,15 @@
         // --- AGENDA (igual que tu implementación, con mínimos cambios)
         function getAgendaScreenHTML(){
           const now = Date.now();
+          const strikesRaw = Number(state.cancellationStrikes);
+          const strikeCount = Number.isFinite(strikesRaw) && strikesRaw > 0 ? Math.min(strikesRaw, 3) : 0;
+          const strikeMessage = strikeCount >= 3
+            ? 'Llegaste al límite de 3 strikes. Tu cuenta queda bloqueada temporalmente.'
+            : strikeCount === 2
+              ? 'Estás a 1 strike del bloqueo. Cancela con tiempo.'
+              : strikeCount === 1
+                ? 'Tienes 1 strike. Cancela con más de 2 horas de anticipación.'
+                : 'Evita cancelar tarde para no llegar a 3 strikes.';
           const upcoming = state.myBookings.filter(Boolean).filter(b=>{
             const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
             const relatedClass = state.classes.find(cls=>cls.id===b.classId);
@@ -696,6 +719,13 @@
                   </div>
                 </div>
                 <div class="space-y-3">${horarioHTML}</div>
+              </section>
+              <section aria-labelledby="cancel-strikes">
+                <h2 id="cancel-strikes" class="text-xl font-semibold mb-3">Strikes por cancelación</h2>
+                <div class="bg-zinc-800 rounded-2xl p-4">
+                  <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
+                  <p class="text-sm text-zinc-400 mt-2">${strikeMessage}</p>
+                </div>
               </section>
             </div>`;
         }
@@ -952,6 +982,8 @@
               } else if (recordedLateStrike) {
                 showToast(`Cancelación tardía registrada. Strikes: ${resultingLateCount}/3`, 'error');
               }
+              state.cancellationStrikes = Number.isFinite(resultingLateCount) && resultingLateCount > 0 ? resultingLateCount : 0;
+              scheduleRender();
             }catch(err){
               const errMessage = err?.details?.message || err?.message || 'Error desconocido.';
               alert(`No se pudo cancelar\n\n${errMessage}`);
