@@ -11,6 +11,126 @@ const db = admin.firestore();
 
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+/**
+ * Member cancellation handled on the server to prevent clock tampering.
+ * Calculates lateness using the Firebase server clock and applies strikes.
+ */
+exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+
+  const classIdRaw = typeof request.data?.classId === "string" ? request.data.classId.trim() : "";
+  if (!classIdRaw) {
+    throw new HttpsError("invalid-argument", "classId is required.");
+  }
+
+  const classId = classIdRaw;
+  const uid = auth.uid;
+
+  const classRef = db.collection("classes").doc(classId);
+  const bookingRef = db.collection("bookings").doc(`${classId}_${uid}`);
+  const userRef = db.collection("users").doc(uid);
+
+  const toDate = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (value instanceof admin.firestore.Timestamp) return value.toDate();
+    if (typeof value.toDate === "function") {
+      try {
+        const converted = value.toDate();
+        if (converted instanceof Date && !Number.isNaN(converted.getTime())) return converted;
+      } catch (err) {
+        console.warn("cancelBooking: toDate conversion failed", err);
+      }
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const resolveStartDate = (bookingData = {}, classData = {}) => {
+    const bookingStart = toDate(bookingData.startAt);
+    if (bookingStart) return bookingStart;
+
+    const classStart = toDate(classData.startAt);
+    if (classStart) return classStart;
+
+    const dateStr = bookingData.classDate || classData.classDate;
+    const timeStr = bookingData.time || classData.time;
+    if (dateStr && timeStr) {
+      const parsed = toDate(`${dateStr}T${timeStr}:00Z`);
+      if (parsed) return parsed;
+    }
+
+    return null;
+  };
+
+  let becameBlacklisted = false;
+  let recordedLateStrike = false;
+  let resultingLateCount = 0;
+
+  await db.runTransaction(async (tx) => {
+    const [bookingSnap, classSnap, userSnap] = await Promise.all([
+      tx.get(bookingRef),
+      tx.get(classRef),
+      tx.get(userRef),
+    ]);
+
+    if (!bookingSnap.exists) {
+      throw new HttpsError("failed-precondition", "No tienes reserva para esta clase.");
+    }
+
+    const bookingData = bookingSnap.data() || {};
+    const classData = classSnap.exists ? classSnap.data() || {} : {};
+    const startDate = resolveStartDate(bookingData, classData);
+    const serverNow = admin.firestore.Timestamp.now().toDate();
+    const lateCancellation = startDate instanceof Date
+      ? startDate.getTime() - serverNow.getTime() <= TWO_HOURS_MS
+      : true;
+
+    if (classSnap.exists) {
+      const enrolled = Number(classData.enrolledCount || 0);
+      if (enrolled > 0) {
+        tx.update(classRef, {
+          enrolledCount: admin.firestore.FieldValue.increment(-1),
+        });
+      }
+    }
+
+    const userData = userSnap.exists ? userSnap.data() || {} : {};
+    const baseLate = Number(userData.lateCancellations || 0);
+    const userUpdates = {
+      lastCancelAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (lateCancellation) {
+      recordedLateStrike = true;
+      const nextLate = Math.min(baseLate + 1, 3);
+      resultingLateCount = nextLate;
+      userUpdates.lateCancellations = nextLate;
+
+      if (nextLate >= 3 && userData.blacklisted !== true) {
+        userUpdates.blacklisted = true;
+        userUpdates.blacklistedAt = admin.firestore.FieldValue.serverTimestamp();
+        becameBlacklisted = true;
+      }
+    } else {
+      resultingLateCount = baseLate;
+    }
+
+    tx.delete(bookingRef);
+    tx.set(userRef, userUpdates, { merge: true });
+  });
+
+  return {
+    success: true,
+    becameBlacklisted,
+    recordedLateStrike,
+    resultingLateCount,
+  };
+});
+
 /**
  * Admin-only: send a direct push notification to a provided FCM token.
  * Auto-prunes token if FCM responds with "not registered" or "invalid".

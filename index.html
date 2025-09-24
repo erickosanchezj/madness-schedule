@@ -83,6 +83,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions-compat.js"></script>
 
     <script>
       document.addEventListener('DOMContentLoaded', async () => {
@@ -100,6 +101,8 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const messaging = firebase.messaging();
+        const functionsSvc = firebase.app().functions('us-central1');
+        const cancelBookingCallable = functionsSvc.httpsCallable('cancelBooking');
 
         // ---- Enable client cache (multi-tab safe)
         try {
@@ -892,8 +895,8 @@
           },
           cancelBooking: async (classId)=>{
             const uid = state.currentUser.uid;
-            const classRef = db.collection('classes').doc(classId);
-            const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
+            if (!classId) return;
+
             const userRef = db.collection('users').doc(uid);
 
             const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
@@ -934,55 +937,14 @@
             if (!confirm(confirmMessage)) return;
 
             try{
-              let becameBlacklisted = false;
-              let resultingLateCount = currentLateCount;
-              let recordedLateStrike = false;
-              await db.runTransaction(async tx=>{
-                const [bookingSnap, classSnap, userSnap] = await Promise.all([
-                  tx.get(bookingRef),
-                  tx.get(classRef),
-                  tx.get(userRef)
-                ]);
-                if (!bookingSnap.exists) throw new Error('No tienes reserva para esta clase.');
+              const response = await cancelBookingCallable({ classId });
+              const data = response?.data || {};
+              const becameBlacklisted = data.becameBlacklisted === true;
+              const recordedLateStrike = data.recordedLateStrike === true;
+              const resultingLateCount = Number.isFinite(Number(data.resultingLateCount))
+                ? Number(data.resultingLateCount)
+                : currentLateCount;
 
-                const classData = classSnap.exists ? classSnap.data() : null;
-                const bookingData = bookingSnap.data() || {};
-                const startDate = resolveStartDate(bookingData, classData);
-                const lateCancellation = isValidDate(startDate)
-                  ? (startDate.getTime() - Date.now()) <= TWO_HOURS_MS
-                  : true;
-
-                if (classSnap.exists){
-                  const enrolled = Number(classData?.enrolledCount || 0);
-                  if (enrolled > 0) {
-                    tx.update(classRef,{ enrolledCount: firebase.firestore.FieldValue.increment(-1) });
-                  }
-                }
-
-                const userData = userSnap.exists ? userSnap.data() : {};
-                const baseLate = Number(userData.lateCancellations || 0);
-                const userUpdates = {
-                  lastCancelAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-                if (lateCancellation) {
-                  recordedLateStrike = true;
-                  const nextLate = Math.min(baseLate + 1, 3);
-                  userUpdates.lateCancellations = nextLate;
-                  resultingLateCount = nextLate;
-                  if (nextLate >= 3 && userData.blacklisted !== true) {
-                    userUpdates.blacklisted = true;
-                    userUpdates.blacklistedAt = firebase.firestore.FieldValue.serverTimestamp();
-                    becameBlacklisted = true;
-                  }
-                } else {
-                  resultingLateCount = baseLate;
-                }
-
-                tx.set(userRef, userUpdates, { merge: true });
-              });
-
-              await bookingRef.delete();
               showModal({ success:false, title:'Cancelación Exitosa' });
 
               if (becameBlacklisted) {
@@ -990,7 +952,10 @@
               } else if (recordedLateStrike) {
                 showToast(`Cancelación tardía registrada. Strikes: ${resultingLateCount}/3`, 'error');
               }
-            }catch(err){ alert(`No se pudo cancelar\n\n${err.message}`); }
+            }catch(err){
+              const errMessage = err?.details?.message || err?.message || 'Error desconocido.';
+              alert(`No se pudo cancelar\n\n${errMessage}`);
+            }
           },
           joinWaitlist: async (classId)=>{
             const uid = state.currentUser.uid;
