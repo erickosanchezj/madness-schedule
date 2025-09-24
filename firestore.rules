@@ -29,8 +29,8 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if isAdmin();
 
-      // Members can only increment the enrollment count during booking.
-      // Decrements must go through server-side cancellation logic.
+      // Members can nudge the enrollment count by one.
+      // First booking initializes the count when it is missing.
       allow update: if isAdmin() ||
       (
         isSignedIn()
@@ -42,7 +42,10 @@ service cloud.firestore {
           )
           || (
             resource.data.enrolledCount != null
-            && request.resource.data.enrolledCount == resource.data.enrolledCount + 1
+            && (
+              request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
+              request.resource.data.enrolledCount == resource.data.enrolledCount - 1
+            )
           )
         )
       );
