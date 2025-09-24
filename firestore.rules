@@ -1,137 +1,115 @@
-// PATH: firestore.rules
-// DESCRIPTION: Firestore security rules for the Madness Schedule app.
-// WHY: Guards database access so only allowed users can read or write.
+// Firestore security rules for the Madness Schedule app.
+// Guards database access so only allowed users can read or write.
 // RELEVANT FILES: firebase.json, firestore.indexes.json, functions/index.js
+// FILE: firestore.rules
 
 rules_version = '2';
 service cloud.firestore {
- match /databases/{db}/documents {
+  match /databases/{db}/documents {
 
-  // Place helper functions inside a match block.
-  // This makes them accessible to all nested rules.
-  match /{document=**} {
-   // ===== Helpers =====
-   function isSignedIn() {
-    return request.auth != null;
-   }
-   function isAdmin() {
-    return isSignedIn()
-     && request.auth.token != null
-     && ('admin' in request.auth.token)
-     && request.auth.token.admin == true;
-   }
+    // ===== Helpers =====
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token != null
+        && ('admin' in request.auth.token)
+        && request.auth.token.admin == true;
+    }
+    
+    function cooldownOk(uid) {
+      let userDoc = get(/databases/$(db)/documents/users/$(uid));
+      // Cooldown is okay if the user has no 'lastCancelAt' field OR if the time since last cancel is >= 15 minutes
+      return !('lastCancelAt' in userDoc.data) || (request.time.toMillis() - userDoc.data.lastCancelAt.toMillis() >= 15 * 60 * 1000);
+    }
 
-   function cooldownOk(uid) {
-    let userDoc = get(/databases/$(db)/documents/users/$(uid));
-    let data = userDoc == null ? null : userDoc.data;
-    let cooldownWindow = 15 * 60 * 1000;
-    let hasValidCancelGap = data == null
-     || !('lastCancelAt' in data)
-     || (request.time.toMillis() - data.lastCancelAt.toMillis() >= cooldownWindow);
+    // ===== CLASSES (Refined) =====
+    match /classes/{classId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
 
-    return userDoc == null
-     || data == null
-     || (
-      (!('blacklisted' in data) || data.blacklisted != true)
-      && hasValidCancelGap
-     );
-   }
+      // Members can nudge the enrollment count by one.
+      // First booking initializes the count when it is missing.
+      allow update: if isAdmin() ||
+      (
+        isSignedIn()
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
+        && (
+          (
+            resource.data.enrolledCount == null
+            && request.resource.data.enrolledCount == 1
+          )
+          || (
+            resource.data.enrolledCount != null
+            && (
+              request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
+              request.resource.data.enrolledCount == resource.data.enrolledCount - 1
+            )
+          )
+        )
+      );
+    }
 
-   // Fallback rule for all other documents
-   allow read, write: if false;
+    // ===== BOOKINGS =====
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn();
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.classId is string
+        && request.resource.data.className is string
+        && request.resource.data.startAt is timestamp
+        && cooldownOk(request.auth.uid);
+      allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // ===== USERS (Final, Simpler Ruleset) =====
+    match /users/{userId} {
+      allow read: if (isSignedIn() && request.auth.uid == userId) ||
+      isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
+      allow update: if (
+          isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['fcmTokens', 'fcmUpdatedAt', 'displayName', 'photoURL', 'lastActivity', 'lastCancelAt', 'totalPass'])
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.createdAt == resource.data.createdAt
+      ) ||
+      isAdmin();
+    }
+
+    // ===== ATTENDANCE (admin-only) =====
+    match /attendance/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    // ===== SCHEDULE TEMPLATE =====
+    match /schedule_template/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // ===== WAITLISTS =====
+    match /waitlists/{waitlistId} {
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      // Transactions read missing docs before writes, so allow the null resource case.
+      allow get: if isAdmin() ||
+      (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
+
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+    
+    // ===== NOTIFICATIONS (admin-only) =====
+    match /notifications/{notifId} {
+        allow read, write: if isAdmin();
+    }
+
+    // ===== Everything else locked =====
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
-
-  // Rest of your rules...
-
-  // ===== CLASSES (Refined) =====
-  match /classes/{classId} {
-   allow read: if true;
-   allow create, update, delete: if isAdmin();
-
-   // Members can nudge the enrollment count by one.
-   // First booking initializes the count when it is missing.
-   allow update: if isAdmin() ||
-   (
-    isSignedIn()
-    && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
-    && (
-     (
-      resource.data.enrolledCount == null
-      && request.resource.data.enrolledCount == 1
-     )
-     || (
-      resource.data.enrolledCount != null
-      && (
-       request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
-       request.resource.data.enrolledCount == resource.data.enrolledCount - 1
-      )
-     )
-    )
-   );
-  }
-
-  // ===== BOOKINGS =====
-  match /bookings/{bookingId} {
-   allow get: if isSignedIn();
-   allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-   allow create: if isSignedIn()
-    && request.resource.data.userId == request.auth.uid
-    && request.resource.data.classId is string
-    && request.resource.data.className is string
-    && request.resource.data.startAt is timestamp
-    && cooldownOk(request.auth.uid);
-   allow update, delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-  }
-
-  // ===== USERS (Final, Simpler Ruleset) =====
-  match /users/{userId} {
-   allow read: if (isSignedIn() && request.auth.uid == userId) ||
-   isAdmin();
-   allow create: if isSignedIn() && request.auth.uid == userId &&
-    request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
-   allow update: if (
-     isSignedIn()
-     && request.auth.uid == userId
-     && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-      'fcmTokens', 'fcmUpdatedAt', 'displayName', 'photoURL', 'lastActivity', 'lastCancelAt', 'totalPass', 'lateCancellations', 'blacklisted', 'blacklistedAt'
-     ])
-     && request.resource.data.email == resource.data.email
-     && request.resource.data.createdAt == resource.data.createdAt
-     && (!('lateCancellations' in request.resource.data) ||
-      !('lateCancellations' in resource.data) ||
-      request.resource.data.lateCancellations >= resource.data.lateCancellations)
-     && (!('blacklisted' in request.resource.data) ||
-      request.resource.data.blacklisted == resource.data.blacklisted ||
-      (request.resource.data.blacklisted == true && resource.data.blacklisted != true))
-     && (!('blacklistedAt' in request.resource.data) || request.resource.data.blacklisted == true)
-   ) ||
-   isAdmin();
-  }
-
-  // ===== ATTENDANCE (admin-only) =====
-  match /attendance/{doc} {
-   allow read, write: if isAdmin();
-  }
-
-  // ===== SCHEDULE TEMPLATE =====
-  match /schedule_template/{doc} {
-   allow read: if true;
-   allow write: if isAdmin();
-  }
-
-  // ===== WAITLISTS =====
-  match /waitlists/{waitlistId} {
-   allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-   // Transactions read missing docs before writes, so allow the null resource case.
-   allow get: if isAdmin() ||
-   (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));
-   allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-   allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-  }
-
-  // ===== NOTIFICATIONS (admin-only) =====
-  match /notifications/{notifId} {
-    allow read, write: if isAdmin();
-  }
- }
 }
