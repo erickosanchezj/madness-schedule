@@ -1,1143 +1,1159 @@
+<!-- /index.html -->
+<!-- Main PWA interface for class booking and profile management -->
+<!-- Bootstraps the app and loads all client-side logic -->
+<!-- RELEVANT FILES: firebase-config.js, service-worker.js, admin.html -->
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
-    <title>Madness - Reserva de Clases</title>
-
-        <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
-        <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#18181b">
-
-        <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="./images/icon-192x192.png">
-
-    <style>
-      body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .transition-all { transition: all 0.3s ease-in-out; }
-      .spinner { border-top-color: #6366f1; }
-    </style>
-  </head>
-  <body class="bg-zinc-900 text-white antialiased">
-        <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
-      <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
-            <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
-        <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
-          <button data-screen="agenda" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
-            <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i>
-            <span class="text-xs font-medium">Agenda</span>
-          </button>
-          <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400">
-            <i data-lucide="user-circle" class="w-6 h-6 mb-1"></i>
-            <span class="text-xs font-medium">Perfil</span>
-          </button>
-        </div>
-      </nav>
-    </div>
-
-        <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
-
-        <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
-      <div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
-    </div>
-
-        <div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
-      <div id="modal-content" class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"></div>
-    </div>
-
-        <div id="toast" role="status" tabindex="0" class="fixed bottom-4 left-1/2 -translate-x-1/2 transform bg-zinc-800 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity z-[100]"></div>
-
-        <div id="social-fabs" class="fixed right-4 flex flex-col gap-3 z-[70] pointer-events-auto" style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);">
-      <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer" class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
-        <i data-lucide="message-circle" class="w-6 h-6"></i>
-      </a>
-      <a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer" class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
-        <i data-lucide="camera" class="w-6 h-6"></i>
-      </a>
-    </div>
-
-        <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions-compat.js"></script>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', async () => {
-        // ---- Firebase config
-        const firebaseConfig = {
-          apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
-          authDomain: "madnessscheds.firebaseapp.com",
-          projectId: "madnessscheds",
-          storageBucket: "madnessscheds.firebasestorage.app",
-          messagingSenderId: "788538690861",
-          appId: "1:788538690861:web:ce19ead5929a8867c197a4"
-        };
-        firebase.initializeApp(firebaseConfig);
-
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const messaging = firebase.messaging();
-        const functionsSvc = firebase.app().functions('us-central1');
-        const cancelBookingCallable = functionsSvc.httpsCallable('cancelBooking');
-
-        // ---- Enable client cache (multi-tab safe)
-        try {
-          await firebase.firestore().enablePersistence({ synchronizeTabs: true });
-        } catch (e) {
-          console.warn('Persistence not enabled:', e && e.code);
-        }
-
-        // ---- Helpers (fechas, UI, etc.)
-        const MX_TZ = 'America/Mexico_City';
-        const ymdFmt = new Intl.DateTimeFormat('en-CA',{ timeZone: MX_TZ, year:'numeric', month:'2-digit', day:'2-digit' });
-        const timeFmt = new Intl.DateTimeFormat('es-MX',{ timeZone: MX_TZ, hour:'2-digit', minute:'2-digit', hour12:false });
-        const dateHelper = {
-          getYYYYMMDD(date){ return ymdFmt.format(date); },
-          get today(){ return this.getYYYYMMDD(new Date()); },
-          get tomorrow(){ return this.getYYYYMMDD(new Date(Date.now()+86400000)); },
-          human(ymd){
-            const dt=new Date(`${ymd}T00:00:00Z`);
-            return dt.toLocaleDateString('es-MX',{ timeZone: MX_TZ, weekday:'long',day:'2-digit',month:'short' });
-          }
-        };
-        const timeHelper = {
-          range(ymd, hhmm, durationMin=60){
-            const start=new Date(`${ymd}T${hhmm}:00Z`);
-            const end=new Date(start.getTime()+Number(durationMin||60)*60000);
-            return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
-          }
-        };
-        const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
-        const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
-        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
-        function timeUntilLabel(ymd, hhmm){
-          if(!ymd||!hhmm) return '';
-          const start=new Date(`${ymd}T${hhmm}:00Z`).getTime();
-          const now=Date.now();
-          const diff=start-now;
-          if (diff>4*60*60*1000) return '';
-          const min=Math.round(diff/60000);
-          if (min<=-120) return 'finalizada';
-          if (min<0) return 'en curso';
-          if (min===0) return 'empieza ahora';
-          if (min<60) return `empieza en ${min} min`;
-          const h=Math.floor(min/60), r=min%60;
-          return r===0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
-        }
-
-        const coverHelper = {
-          byName(name=''){
-            const n=name.toLowerCase();
-            if (n.includes('trx')) return 'images/trx.png';
-            if (n.includes('yoga')) return 'images/yoga.png';
-            if (n.includes('hiit')) return 'images/HIIT.png';
-            if (n.includes('capoeira')) return 'images/capoeira.png';
-            if (n.includes('funcional')||n.includes('functional')) return 'images/functional.png';
-            return null;
-          },
-          forClassName(name, fallbackText){
-            return this.byName(name)||`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(fallbackText||name||'Clase')}`;
-          },
-          forClass(cls){
-            return this.byName(cls.name)||cls.image||`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
-          }
-        };
-
-        // ---- Estado
-        let state = {
-          currentUser: null,
-          classes: [],
-          myBookings: [],
-          waitlistEntries: [],
-          currentScreen: 'agenda',
-          scheduleFilter: 'today',
-          selectedClassId: null,
-          isTotalPass: false,
-          cancellationStrikes: 0
-        };
-
-        // ---- Render batching
-        let renderQueued=false;
-        function scheduleRender(){
-          if (renderQueued) return;
-          renderQueued=true;
-          requestAnimationFrame(()=>{ renderQueued=false; render(); });
-        }
-
-        // Screen via querystring
-        const _params = new URLSearchParams(location.search);
-        const _screen = _params.get('screen');
-        if (_screen && ['agenda','profile','classDetails'].includes(_screen)) state.currentScreen=_screen;
-
-        // DOM refs
-        const mainContent = document.getElementById('main-content');
-        const authContainer = document.getElementById('auth-container');
-        const appContainer = document.getElementById('app-container');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const navBar = document.getElementById('nav-bar');
-        const toastEl = document.getElementById('toast');
-        let toastTimeout;
-        function showToast(message, type = 'info', opts = {}) {
-          if (!toastEl) return;
-          const { html = false, duration = 3000 } = opts;
-          if (html) toastEl.innerHTML = message; else toastEl.textContent = message;
-          toastEl.classList.remove('opacity-0', 'bg-green-600', 'bg-red-600', 'bg-zinc-800');
-          const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-800';
-          toastEl.classList.add(color, 'opacity-100');
-          toastEl.focus();
-          clearTimeout(toastTimeout);
-          toastTimeout = setTimeout(() => {
-            toastEl.classList.remove('opacity-100');
-            toastEl.classList.add('opacity-0');
-          }, duration);
-        }
-        window.showToast = showToast;
-
-        // Firestore listeners
-        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, listenersAttached=false;
-        function detachListeners(){
-          if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
-          if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
-          if (unsubWaitlist){ try{unsubWaitlist();}catch{}; unsubWaitlist=null; }
-          if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
-          listenersAttached=false;
-        }
-        function attachAgendaListeners(){
-          if (listenersAttached || !state.currentUser) return;
-          const nowMinus5 = new Date(Date.now()-5*60*1000);
-          unsubClasses = db.collection('classes').where('startAt','>=',nowMinus5).orderBy('startAt','asc').limit(100)
-            .onSnapshot(snap=>{
-              state.classes = snap.docs.map(d=>({id:d.id,...d.data()}));
-              scheduleRender();
-            }, err=>console.error('Error clases:', err));
-          unsubMyBookings = db.collection('bookings').where('userId','==',state.currentUser.uid)
-            .onSnapshot(snap=>{
-              state.myBookings = snap.docs.map(d=>({id:d.id,...d.data()}));
-              scheduleRender();
-            }, err=>console.error('Error mis reservas:', err));
-          unsubWaitlist = db.collection('waitlists')
-            .where('userId', '==', state.currentUser.uid)
-            .onSnapshot(snap => {
-              state.waitlistEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
-              scheduleRender();
-            });
-          unsubUser = db.collection('users').doc(state.currentUser.uid)
-            .onSnapshot(doc => {
-              const data = doc.data() || {};
-              state.isTotalPass = !!data.totalPass;
-              const strikesRaw = Number(data.lateCancellations);
-              state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
-              scheduleRender();
-            });
-          listenersAttached=true;
-        }
-
-        // ===============================
-        //  FCM: registrar SW y mantener token fresco
-        // ===============================
-        const VAPID_KEY = 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw';
-        const LS_KEY = 'fcm:lastToken';
-
-        async function registerSW() {
-          // Asegura scope correcto en GitHub Pages
-          const reg = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
-          try { await reg.update(); } catch {}
-          // Guarda para getToken
-          window._msgSW = reg;
-          return reg;
-        }
-
-        function isPushSupported(){
-          return typeof firebase.messaging.isSupported === 'function' && firebase.messaging.isSupported();
-        }
-
-        function buildDeviceMetadata(){
-          const metadata = {
-            userAgent: navigator.userAgent || 'unknown',
-            platform: navigator.platform || 'unknown',
-            registeredAt: new Date()
-          };
-          const screenObj = window?.screen;
-          if (screenObj?.width && screenObj?.height){
-            metadata.screen = `${screenObj.width}x${screenObj.height}`;
-          }
-          try{
-            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (tz) metadata.timezone = tz;
-          }catch{}
-          const language = navigator.language || (navigator.languages && navigator.languages[0]);
-          if (language) metadata.language = language;
-          if (navigator.vendor) metadata.browser = navigator.vendor;
-          return metadata;
-        }
-
-        async function saveToken(uid, token, prevToken){
-          if (!uid || !token) return;
-          const ref = db.collection('users').doc(uid);
-          const deviceMetadata = buildDeviceMetadata();
-          const update = { fcmTokens: { [token]: deviceMetadata }, fcmUpdatedAt: new Date() };
-          if (prevToken && prevToken !== token){
-            update.fcmTokens[prevToken] = firebase.firestore.FieldValue.delete();
-          }
-          await ref.set(update, { merge:true });
-          localStorage.setItem(LS_KEY, token);
-        }
-
-        async function removeToken(uid, token){
-          try{
-            await db.collection('users').doc(uid).set({
-              fcmTokens: { [token]: firebase.firestore.FieldValue.delete() },
-              fcmUpdatedAt: new Date()
-            }, { merge:true });
-          }catch{}
-          if (localStorage.getItem(LS_KEY) === token) localStorage.removeItem(LS_KEY);
-        }
-
-        async function ensureFreshFcmToken(uid){
-          if (!isPushSupported()) return; // navegador no soporta
-          // Permiso
-          let perm = Notification.permission;
-          if (perm === 'default') perm = await Notification.requestPermission();
-          if (perm !== 'granted'){
-            const prev = localStorage.getItem(LS_KEY);
-            if (uid && prev) await removeToken(uid, prev);
-            return;
-          }
-          // SW listo
-          const reg = window._msgSW || await registerSW();
-          // Token actual
-          const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-          if (!token) return;
-          const prev = localStorage.getItem(LS_KEY);
-          const prevToken = prev && prev !== token ? prev : undefined;
-          await saveToken(uid, token, prevToken);
-        }
-
-        // Botón manual (expuesto en perfil)
-        async function ensurePushPermissionAndToken(user){
-          if (!user) throw new Error('No user session');
-          if (!isPushSupported()) throw new Error('Push no soportado en este navegador');
-          const perm = await Notification.requestPermission();
-          if (perm !== 'granted') throw new Error('Permiso no concedido');
-          const reg = window._msgSW || await registerSW();
-          const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-          if (!token) throw new Error('No se obtuvo token FCM');
-          const prev = localStorage.getItem(LS_KEY);
-          await saveToken(user.uid, token, prev);
-          // Foreground handler opcional
-          messaging.onMessage((payload) => {
-            const title = payload.notification?.title || payload.data?.title || 'Notificación';
-            const body  = payload.notification?.body  || payload.data?.body  || '';
-            showToast(`${title}${body ? ': ' + body : ''}`);
-          });
-          return token;
-        }
-        window.ensurePushPermissionAndToken = ensurePushPermissionAndToken; // útil para consola
-
-        // Limpieza si el usuario revoca permisos después
-        if (navigator.permissions?.query){
-          try{
-            const status = await navigator.permissions.query({ name: 'notifications' });
-            status.onchange = async () => {
-              if (status.state !== 'granted'){
-                const uid = auth.currentUser?.uid;
-                const prev = localStorage.getItem(LS_KEY);
-                if (uid && prev) await removeToken(uid, prev);
-                showToast('Notificaciones desactivadas. <a href="#" class="underline" id="re-enable-notifs">Permitir de nuevo</a>', 'error', { html: true });
-                document.getElementById('re-enable-notifs')?.addEventListener('click', (e) => {
-                  e.preventDefault();
-                  const ua = navigator.userAgent.toLowerCase();
-                  let url = 'chrome://settings/content/notifications';
-                  if (ua.includes('firefox')) url = 'about:preferences#privacy';
-                  else if (ua.includes('edg')) url = 'edge://settings/content/notifications';
-                  window.open(url, '_blank');
-                });
-                try{ gtag('event', 'notification_permission_disabled'); }catch{ console.log('notification_permission_disabled'); }
-              }
-            };
-          }catch{}
-        }
-        // ===============================
-
-        // ---- Auth gate
-        auth.onAuthStateChanged(async user => {
-          loadingSpinner.classList.remove('hidden');
-          if (user) {
-            // Crea doc de usuario si no existe
-            const userRef = db.collection('users').doc(user.uid);
-            const docSnap = await userRef.get();
-            const existingData = docSnap.exists ? docSnap.data() : {};
-            state.isTotalPass = !!existingData.totalPass;
-            const strikesRaw = Number(existingData.lateCancellations);
-            state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
-
-            if (!docSnap.exists){
-              try{
-                await userRef.set({
-                  email: user.email,
-                  displayName: user.displayName || '',
-                  photoURL: user.photoURL || '',
-                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-              }catch(e){
-                console.error('Error creando perfil:', e);
-                alert('Hubo un problema al configurar tu perfil. Intenta de nuevo.');
-                auth.signOut();
-                return;
-              }
-            }
-            state.currentUser = user;
-            authContainer.style.display = 'none';
-            appContainer.style.display = 'flex';
-
-            // 🔔 REFRESCA TOKEN EN CADA SESIÓN
-            try { await registerSW(); await ensureFreshFcmToken(user.uid); } catch(e){ console.warn('FCM token refresh failed:', e?.message||e); }
-            // También al volver a la pestaña (una vez)
-            document.addEventListener('visibilitychange', async () => {
-              if (document.visibilityState === 'visible' && auth.currentUser) {
-                try { await ensureFreshFcmToken(auth.currentUser.uid); } catch {}
-              }
-            }, { once:true });
-
-            if (state.currentScreen === 'agenda') attachAgendaListeners();
-            scheduleRender();
-          } else {
-            state.currentUser = null;
-            detachListeners();
-            appContainer.style.display = 'none';
-            authContainer.style.display = 'flex';
-            renderAuthScreen();
-          }
-          loadingSpinner.classList.add('hidden');
-        });
-
-        // ---- UI (auth / render / acciones) — *tu lógica original con mínimos cambios* ----
-        function renderAuthScreen(isLogin=true){
-          authContainer.innerHTML = `
-            <div class="w-full max-w-md mx-auto">
-              <h1 class="text-4xl font-bold text-white mb-2">Madness - Reserva de clases</h1>
-              <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
-              <div class="space-y-4">
-                <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                
-                <div id="turnstile-widget"></div>
-
-              </div>
-              <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
-              <p class="text-center text-zinc-400 mt-6">
-                ${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
-                <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a>
-              </p>
-            </div>`;
-          
-            // 2. ADDED: Manually render the widget after the HTML is on the page
-            const authButton = document.getElementById('auth-button');
-            const widgetContainer = document.getElementById('turnstile-widget');
-
-            // Disable the button until Turnstile is fully ready to avoid ReferenceErrors on slow networks
-            authButton.disabled = true;
-
-            const enableAuthButton = () => { authButton.disabled = false; };
-
-            const renderTurnstileWhenReady = () => {
-              if (!widgetContainer || widgetContainer.dataset.rendered === '1'){
-                enableAuthButton();
-                return;
-              }
-
-              const api = window.turnstile;
-              if (api?.render){
-                api.render(widgetContainer, {
-                  sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY'
-                });
-                widgetContainer.dataset.rendered = '1';
-                enableAuthButton();
-                return;
-              }
-
-              // Retry shortly after to give the async script time to load before enabling auth
-              setTimeout(renderTurnstileWhenReady, 250);
-            };
-
-            renderTurnstileWhenReady();
-
-            authButton.onclick = () => app.handleAuth(isLogin);
-            document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
-            lucide.createIcons();
-          }
-
-        // Render principal
-        function render(){
-          const screen = state.currentScreen;
-          let content = '';
-          if (screen === 'agenda') content = getAgendaScreenHTML();
-          else if (screen === 'profile') content = getProfileScreenHTML();
-          else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
-          mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
-          updateNavButtons();
-          lucide.createIcons();
-
-          const btn = document.getElementById('enablePush');
-          if (btn){
-            btn.onclick = async () => {
-              try{
-                const user = firebase.auth().currentUser;
-                if (!user) return showToast('Inicia sesión primero', 'error');
-                if (!isPushSupported()) return showToast('Este navegador no soporta notificaciones push.', 'error');
-                btn.disabled = true;
-                await ensurePushPermissionAndToken(user);
-                showToast('Notificaciones activadas ✅', 'success');
-                scheduleRender();
-              }catch(e){
-                console.error('Enable push failed:', e);
-                showToast(e.message || 'No se pudo activar notificaciones', 'error');
-              }finally{
-                btn.disabled = false;
-              }
-            };
-          }
-
-          const tpToggle = document.getElementById('totalpass-toggle');
-          if (tpToggle){
-            tpToggle.onchange = async e => {
-              const checked = e.target.checked;
-              try{
-                await db.collection('users').doc(state.currentUser.uid).set({ totalPass: checked }, { merge: true });
-                state.isTotalPass = checked;
-                showToast('Preferencia guardada', 'success');
-              }catch(err){
-                showToast('No se pudo guardar', 'error');
-                e.target.checked = !checked;
-              }
-            };
-          }
-        }
-
-        // --- AGENDA (igual que tu implementación, con mínimos cambios)
-        function getAgendaScreenHTML(){
-          const now = Date.now();
-          const strikesRaw = Number(state.cancellationStrikes);
-          const strikeCount = Number.isFinite(strikesRaw) && strikesRaw > 0 ? Math.min(strikesRaw, 3) : 0;
-          const strikeMessage = strikeCount >= 3
-            ? 'Llegaste al límite de 3 strikes. Tu cuenta queda bloqueada temporalmente.'
-            : strikeCount === 2
-              ? 'Estás a 1 strike del bloqueo. Cancela con tiempo.'
-              : strikeCount === 1
-                ? 'Tienes 1 strike. Cancela con más de 2 horas de anticipación.'
-                : 'Evita cancelar tarde para no llegar a 3 strikes.';
-          const upcoming = state.myBookings.filter(Boolean).filter(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
-            const relatedClass = state.classes.find(cls=>cls.id===b.classId);
-            const durationRaw = b.duration ?? relatedClass?.duration;
-            const durationValue = Number(durationRaw);
-            const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
-            const endTime = startObj.getTime() + durationMinutes*60000;
-            return now <= endTime;
-          }).sort((a,b)=>{
-            const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
-            const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
-            return ta - tb;
-          });
-          const reservasHTML = upcoming.length ? upcoming.map(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
-            const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
-            const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
-            const hhmm = timeFmt.format(startObj);
-            const ymdLocal = dateHelper.getYYYYMMDD(startObj);
-            const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
-            const cover = coverHelper.forClassName(b.className, b.className);
-            const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
-            const showCancelButton = timeStatus !== 'en curso';
-            const safeClassName = DOMPurify.sanitize(b.className || '');
-            const safeDayText = DOMPurify.sanitize(dayText);
-            const safeClassId = DOMPurify.sanitize(b.classId);
-            const safeTimeStatus = DOMPurify.sanitize(timeStatus);
-            return `
-              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-                  <div>
-                    <p class="font-bold text-lg">${safeClassName}</p>
-                    <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${safeTimeStatus}</p>
-                  </div>
-                </div>
-                ${showCancelButton ? `<button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>` : ''}
-              </div>`;
-          }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
-
-          let completadasHTML = '';
-          if (state.isTotalPass) {
-            const today = dateHelper.today;
-            const completed = state.myBookings
-              .filter(Boolean)
-              .map(booking => {
-                const startObj = booking.startAt
-                  ? asDate(booking.startAt)
-                  : (booking.classDate ? new Date(`${booking.classDate}T${booking.time||'00:00'}:00Z`) : null);
-                if (!startObj) return null;
-                const ymdLocal = dateHelper.getYYYYMMDD(startObj);
-                if (ymdLocal !== today) return null;
-                const relatedClass = state.classes.find(cls => cls.id === booking.classId);
-                const durationRaw = Number(booking.duration || relatedClass?.duration || 60);
-                const duration = Number.isFinite(durationRaw) && durationRaw > 0 ? durationRaw : 60;
-                if (Date.now() <= startObj.getTime() + duration * 60000) return null;
-                return { booking, startObj, relatedClass };
-              })
-              .filter(Boolean)
-              .sort((a, b) => b.startObj.getTime() - a.startObj.getTime());
-
-              completadasHTML = completed.length ? completed.map(({ booking, startObj, relatedClass }) => {
-                const className = booking.className || relatedClass?.name || '';
-                const cover = relatedClass ? coverHelper.forClass(relatedClass) : coverHelper.forClassName(className, className);
-                const safeClassName = DOMPurify.sanitize(className);
-                const hhmm = timeFmt.format(startObj);
-                return `
-                  <div class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4">
-                    <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-                    <div>
-                      <p class="font-bold text-lg">${safeClassName}</p>
-                      <p class="text-zinc-400 text-sm">Hoy • ${hhmm}</p>
-                    </div>
-                  </div>`;
-              }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">Aún no terminas clases hoy.</div>`;
-
-              const singleTokenButton = completed.length > 0 ?
-                `<button data-action="send-totalpass-daily" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg">Enviar Token del Día</button>` : '';
-
-              completadasHTML += singleTokenButton;
-          }
-
-          const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
-          const filtered = state.classes
-            .filter(cls=>{
-              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
-              const ymd = dateHelper.getYYYYMMDD(start);
-              return ymd===targetYMD;
-            })
-            .filter(cls=>{
-              if (state.scheduleFilter!=='today') return true;
-              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
-              const durationValue = Number(cls.duration);
-              const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
-              const endTime = start.getTime() + durationMinutes*60000;
-              return now <= endTime;
-            })
-            .sort((a, b) => {
-              const startA = a.startAt?.toDate ? a.startAt.toDate() : new Date(`${a.classDate}T${a.time}:00Z`);
-              const startB = b.startAt?.toDate ? b.startAt.toDate() : new Date(`${b.classDate}T${b.time}:00Z`);
-              return startA.getTime() - startB.getTime();
-            });
-
-          const horarioHTML = filtered.length ? filtered.map(cls=>{
-            const enrolled = Number(cls.enrolledCount||0);
-            const available = Number(cls.capacity||0)-enrolled;
-            const isBooked = state.myBookings.some(b=>b.classId===cls.id);
-            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
-            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
-            const safeId = DOMPurify.sanitize(cls.id);
-            let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
-            if (isBooked) {
-              badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
-            } else if (available<=0 && !notified) {
-              // class full: show join or leave waitlist options
-              if (waitEntry) {
-                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-                badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
-              } else {
-                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md\">Unirse a lista de espera</button>`;
-              }
-            } else if (available<=0 && notified) {
-              // user has been notified of a free spot
-              badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
-            }
-            const ymdUTC = cls.classDate || targetYMD;
-            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-            const hhmm = timeFmt.format(new Date(`${ymdUTC}T${hhmmUTC}:00Z`));
-            const safeName = DOMPurify.sanitize(cls.name || '');
-            const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
-            return `
-              <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
-                <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-                <div class="flex-1">
-                  <p class="font-bold text-lg">${safeName}</p>
-                  <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
-                  <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
-                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
-                </div>
-                <div class="text-right">${badge}</div>
-              </div>`;
-          }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
-
-          return `
-            <div class="p-6 space-y-8">
-              <header>
-                <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
-                <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
-              </header>
-              <section aria-labelledby="mis-reservas">
-                <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
-                <div class="space-y-3">${reservasHTML}</div>
-              </section>
-              ${state.isTotalPass ? `
-              <section aria-labelledby="clases-completadas">
-                <h2 id="clases-completadas" class="text-xl font-semibold mb-3">Clases Terminadas Hoy</h2>
-                <div class="space-y-3">${completadasHTML}</div>
-              </section>` : ''}
-              <section aria-labelledby="horario">
-                <div class="flex items-center justify-between mb-3">
-                  <h2 id="horario" class="text-xl font-semibold">Horario</h2>
-                  <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-                    <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='today'?'bg-indigo-600 text-white':''}">Hoy</button>
-                    <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='tomorrow'?'bg-indigo-600 text-white':''}">Mañana</button>
-                  </div>
-                </div>
-                <div class="space-y-3">${horarioHTML}</div>
-              </section>
-              <section aria-labelledby="cancel-strikes">
-                <h2 id="cancel-strikes" class="text-xl font-semibold mb-3">Strikes por cancelación</h2>
-                <div class="bg-zinc-800 rounded-2xl p-4">
-                  <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
-                  <p class="text-sm text-zinc-400 mt-2">${strikeMessage}</p>
-                </div>
-              </section>
-            </div>`;
-        }
-
-        function getProfileScreenHTML(){
-          const safeDisplay = DOMPurify.sanitize(state.currentUser.displayName || '');
-          const safeEmail = DOMPurify.sanitize(state.currentUser.email || '');
-          const nameForText = safeDisplay || safeEmail;
-          const placeholder = (nameForText.charAt(0) || 'U').toUpperCase();
-          // true if push notifications are allowed and token saved
-          const pushEnabled = Notification.permission==='granted' && localStorage.getItem(LS_KEY);
-          return `
-            <div class="p-6 space-y-6">
-              <header class="text-center space-y-4">
-                <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${placeholder}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
-                <div class="space-y-1">
-                  <h1 class="text-2xl font-bold">${nameForText}</h1>
-                  <p class="text-sm text-zinc-400">${safeEmail}</p>
-                </div>
-              </header>
-              <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
-                <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
-                  <span>Editar Nombre</span>
-                  <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
-                </a>
-                <label for="totalpass-toggle" class="flex items-center justify-between py-3">
-                  <span>Usuario TotalPass</span>
-                  <input type="checkbox" id="totalpass-toggle" class="w-5 h-5 accent-indigo-600" ${state.isTotalPass?'checked':''}>
-                </label>
-                <button id="enablePush" class="flex items-center justify-between w-full py-3">
-                  <span>Notificaciones Push</span>
-                  <div class="flex items-center gap-2">
-                    <i data-lucide="${pushEnabled?'bell-ring':'bell-off'}" class="w-5 h-5 ${pushEnabled?'text-emerald-400':'text-zinc-500'}"></i>
-                    <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
-                  </div>
-                </button>
-                <a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400">
-                  <span>Cerrar Sesión</span>
-                  <i data-lucide="log-out" class="w-5 h-5"></i>
-                </a>
-              </div>
-            </div>`;
-        }
-
-        function getClassDetailsScreenHTML(classId){
-          const cls = state.classes.find(c=>c.id===classId);
-          if (!cls) return getAgendaScreenHTML();
-          const enrolled = Number(cls.enrolledCount||0);
-          const availableSpots = Number(cls.capacity||0)-enrolled;
-          const isBooked = state.myBookings.some(b=>b.classId===cls.id);
-          const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
-          const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
-          const durationMin = Number(cls.duration||60);
-          const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
-          const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-          const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
-          const safeName = DOMPurify.sanitize(cls.name || '');
-          const safeDesc = DOMPurify.sanitize(cls.description || '');
-          const safeId = DOMPurify.sanitize(cls.id);
-          // default booking button
-          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
-          if (isBooked) {
-            // already have a booking
-            buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
-          } else if (availableSpots<=0 && !notified) {
-            // class is full: either join waitlist or allow leaving
-            if (waitEntry) {
-              const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-              buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
-            } else {
-              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
-            }
-          }
-          return `
-            <div>
-              <div class="relative">
-                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
-                <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
-                  <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                </button>
-              </div>
-              <div class="p-6 space-y-4 pb-40">
-                <h1 class="text-3xl font-bold">
-                  ${safeName}
-                  <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
-                </h1>
-                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
-                <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                  <span class="font-semibold text-lg">Estado</span>
-                  <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
-                </div>
-              </div>
-              <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
-                ${buttonHTML}
-              </div>
-            </div>`;
-        }
-
-        const app = {
-          handleAuth: (isLogin)=>{
-            const turnstileApi = window.turnstile;
-            if (!turnstileApi || typeof turnstileApi.getResponse !== 'function'){
-              alert('La verificación de seguridad se está inicializando. Intenta de nuevo en unos segundos.');
-              return;
-            }
-
-            const turnstileToken = turnstileApi.getResponse();
-            const email = document.getElementById('email-input').value;
-            const pass  = document.getElementById('password-input').value;
-            if (!turnstileToken) {
-              alert('Por favor, completa la verificación de seguridad.');  
-              return;  
-            }
-            if (!email || !pass){ alert('Por favor, ingresa correo y contraseña.'); return; }
-            loadingSpinner.classList.remove('hidden');
-            const p = isLogin ? auth.signInWithEmailAndPassword(email,pass) : auth.createUserWithEmailAndPassword(email,pass);
-            p.catch(err=>{ alert(err.message); loadingSpinner.classList.add('hidden'); });
-          },
-          logout: ()=> auth.signOut(),
-          editUserName: (event)=>{
-            event.preventDefault();
-            const newName = prompt('Ingresa tu nombre y apellido:', state.currentUser.displayName || '');
-            if (newName && newName.trim()!==''){
-              loadingSpinner.classList.remove('hidden');
-              state.currentUser.updateProfile({ displayName: newName.trim() })
-                .then(()=>{ scheduleRender(); loadingSpinner.classList.add('hidden'); })
-                .catch(err=>{ alert('Error: '+err.message); loadingSpinner.classList.add('hidden'); });
-            }
-          },
-          navigateTo: (screen, data={})=>{
-            if (screen==='agenda') attachAgendaListeners(); else detachListeners();
-            state.currentScreen = screen;
-            if (data.classId) state.selectedClassId = data.classId;
-            render();
-          },
-          setScheduleFilter: (filter)=>{ state.scheduleFilter=filter; render(); },
-          confirmBooking: async (classId)=>{
-            const uid = state.currentUser.uid;
-            const classRef = db.collection('classes').doc(classId);
-            const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
-            const userRef = db.collection('users').doc(uid);
-            const waitRef = db.collection('waitlists').doc(`${classId}_${uid}`);
-            const waitEntry = state.waitlistEntries.find(w=>w.classId===classId); // user's waitlist entry
-            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // valid notification
-            try{
-              await db.runTransaction(async tx=>{
-                const [classSnap, bookingSnap, userSnap, waitSnap] = await Promise.all([
-                  tx.get(classRef), tx.get(bookingRef), tx.get(userRef), tx.get(waitRef)
-                ]);
-                if (!classSnap.exists) throw new Error('La clase ya no existe.');
-                if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
-                const userData = userSnap.exists ? userSnap.data() : {};
-                if (userData.blacklisted === true) {
-                  throw new Error('Tu cuenta está en revisión por cancelaciones tardías. Escríbenos para apoyarte.');
-                }
-                const lastCancelAt = userData.lastCancelAt ? asDate(userData.lastCancelAt) : null;
-                if (lastCancelAt && Date.now() - lastCancelAt.getTime() < FIFTEEN_MINUTES_MS) {
-                  throw new Error('Debes esperar 15 minutos después de cancelar para reservar de nuevo.');
-                }
-                const cls = classSnap.data();
-                const enrolled = Number(cls.enrolledCount||0);
-                const capacity = Number(cls.capacity||0);
-                if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
-                let startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : (cls.startAt ? new Date(cls.startAt) : null);
-                if (!startDateObj || isNaN(startDateObj.getTime())){
-                  if (cls.classDate){
-                    const hhmm = cls.time || '00:00';
-                    startDateObj = new Date(`${cls.classDate}T${hhmm}:00Z`);
-                  }
-                }
-                if (!startDateObj || isNaN(startDateObj.getTime())){
-                  throw new Error('La clase no tiene horario válido.');
-                }
-                const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(startDateObj);
-                const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
-                const time = cls.time || timeFmt.format(startDateObj);
-                tx.set(bookingRef, {
-                  classId, userId: uid,
-                  userName: state.currentUser.displayName || state.currentUser.email,
-                  startAt: startAtTs, classDate, time, className: cls.name,
-                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
-                if (waitSnap.exists) tx.delete(waitRef);
-              });
-              if (waitEntry){
-                const q = await db.collection('waitlists')
-                  .where('classId','==',classId)
-                  .where('position','>',waitEntry.position||0)
-                  .get(); // entries behind user
-                const batch = db.batch();
-                q.forEach(doc=> batch.update(doc.ref,{ position: (doc.data().position||1)-1 })); // shift positions up
-                await batch.commit();
-              }
-              showModal({ success:true, title:'¡Reserva Exitosa!' });
-            }catch(err){ alert(`No se pudo reservar\n\n${err.message}`); }
-          },
-          cancelBooking: async (classId)=>{
-            const uid = state.currentUser.uid;
-            if (!classId) return;
-
-            const userRef = db.collection('users').doc(uid);
-
-            const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
-            const resolveStartDate = (bookingData, classData) => {
-              if (bookingData?.startAt) {
-                const fromBooking = asDate(bookingData.startAt);
-                if (isValidDate(fromBooking)) return fromBooking;
-              }
-              if (classData?.startAt) {
-                const fromClass = asDate(classData.startAt);
-                if (isValidDate(fromClass)) return fromClass;
-              }
-              const dateStr = bookingData?.classDate || classData?.classDate;
-              const timeStr = bookingData?.time || classData?.time;
-              if (dateStr && timeStr) {
-                const parsed = new Date(`${dateStr}T${timeStr}:00Z`);
-                if (isValidDate(parsed)) return parsed;
-              }
-              return null;
-            };
-
-            const localBooking = state.myBookings.find(b=>b.classId===classId);
-            const localClass = state.classes.find(cls=>cls.id===classId);
-            const estimatedStart = resolveStartDate(localBooking, localClass);
-            const startValid = isValidDate(estimatedStart);
-            const looksLate = startValid ? (estimatedStart.getTime() - Date.now()) <= TWO_HOURS_MS : true;
-
-            let currentLateCount = 0;
-            try{
-              const userSnap = await userRef.get();
-              if (userSnap.exists) currentLateCount = Number(userSnap.data()?.lateCancellations || 0);
-            }catch(err){ console.warn('No se pudo leer lateCancellations:', err); }
-
-            const upcomingStrike = Math.min(currentLateCount + 1, 3);
-            const confirmMessage = looksLate
-              ? `Cancelar a menos de 2 horas suma un strike (${upcomingStrike}/3). Si llegas a 3 tu cuenta será bloqueada temporalmente. ¿Deseas continuar?`
-              : 'Si cancelas deberás esperar 15 minutos para volver a reservar. ¿Deseas continuar?';
-            if (!confirm(confirmMessage)) return;
-
-            try{
-              const response = await cancelBookingCallable({ classId });
-              const data = response?.data || {};
-              const becameBlacklisted = data.becameBlacklisted === true;
-              const recordedLateStrike = data.recordedLateStrike === true;
-              const resultingLateCount = Number.isFinite(Number(data.resultingLateCount))
-                ? Number(data.resultingLateCount)
-                : currentLateCount;
-
-              showModal({ success:false, title:'Cancelación Exitosa' });
-
-              if (becameBlacklisted) {
-                showToast('Llegaste a 3 strikes por cancelaciones tardías. Tu cuenta fue bloqueada temporalmente.', 'error');
-              } else if (recordedLateStrike) {
-                showToast(`Cancelación tardía registrada. Strikes: ${resultingLateCount}/3`, 'error');
-              }
-              state.cancellationStrikes = Number.isFinite(resultingLateCount) && resultingLateCount > 0 ? resultingLateCount : 0;
-              scheduleRender();
-            }catch(err){
-              const errMessage = err?.details?.message || err?.message || 'Error desconocido.';
-              alert(`No se pudo cancelar\n\n${errMessage}`);
-            }
-          },
-          joinWaitlist: async (classId)=>{
-            const uid = state.currentUser.uid;
-            try{
-              await db.collection('waitlists').doc(`${classId}_${uid}`).set({
-                classId, userId: uid,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              showToast('Unido a la lista de espera', 'success');
-            }catch(err){ alert(`No se pudo unir a la lista de espera\n\n${err.message}`); }
-          },
-          leaveWaitlist: async (classId)=>{
-            const uid = state.currentUser.uid;
-            try{
-              await db.collection('waitlists').doc(`${classId}_${uid}`).delete();
-              showToast('Saliste de la lista de espera');
-            }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
-          }
-        };
-
-        function handleInteraction(e){
-          const target = e.target.closest('[data-action]');
-          if (!target) return;
-          const { action, screen, filter, classId } = target.dataset;
-          switch(action){
-            case 'navigate': app.navigateTo(screen); break;
-            case 'navigate-details': app.navigateTo('classDetails',{classId}); break;
-            case 'set-filter': app.setScheduleFilter(filter); break;
-            case 'edit-name': app.editUserName(e); break;
-            case 'logout': app.logout(); break;
-            case 'confirm-booking': target.disabled=true; app.confirmBooking(classId).finally(()=>target.disabled=false); break;
-            case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
-            case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
-            case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
-
-            /* RESUELTO: usar deep-link + fallback web y confirmación modal
-               Mantiene el nombre de acción existente: send-totalpass-daily */
-            case 'send-totalpass-daily': {
-              const classInfo = state.classes.find(c=>c.id===classId) || state.myBookings.find(b=>b.classId===classId);
-              const className = classInfo?.name || classInfo?.className || '';
-
-              showModal({
-                title: '¿Abrir WhatsApp?',
-                message: 'Se abrirá WhatsApp para enviar tu código de TotalPass.',
-                buttons: [
-                  { text: 'Cancelar', primary: false, callback: null },
-                  {
-                    text: 'Abrir WhatsApp',
-                    primary: true,
-                    callback: () => {
-                      const baseMsg = 'Hola! Aqui te mando mi codigo de TotalPass: ';
-                      const txt = className ? `${baseMsg} (${className})` : baseMsg;
-                      const message = encodeURIComponent(txt);
-
-                      // Deep link a la app nativa
-                      const deepLink = `whatsapp://send?phone=5215539887713&text=${message}`;
-                      // Fallback a web si la app no abre
-                      const webLink  = `https://api.whatsapp.com/send?phone=5215539887713&text=${message}`;
-
-                      const visibilityHandler = () => {
-                        document.removeEventListener('visibilitychange', visibilityHandler);
-                        clearTimeout(fallbackTimer);
-                      };
-
-                      const fallbackTimer = setTimeout(() => {
-                        if (document.visibilityState === 'visible') {
-                          window.location.href = webLink;
-                        }
-                      }, 600);
-
-                      document.addEventListener('visibilitychange', visibilityHandler);
-                      window.location.href = deepLink;
-                      showToast('WhatsApp abierto para enviar token', 'success');
-                    }
-                  }
-                ]
-              });
-              break;
-            }
-          }
-        }
-        document.addEventListener('click', handleInteraction);
-        navBar.addEventListener('click', e=>{
-          const target = e.target.closest('.nav-button');
-          if (target) app.navigateTo(target.dataset.screen);
-        });
-
-        const genericModal = document.getElementById('generic-modal');
-        const modalContent = document.getElementById('modal-content');
-
-        function showModal({success, title, message, buttons}){
-          const fabs = document.getElementById('social-fabs');
-          if (fabs) fabs.classList.add('opacity-0','pointer-events-none');
-          const safeTitle = DOMPurify.sanitize(title);
-          const safeMessage = message ? DOMPurify.sanitize(message) : '';
-
-          if (!buttons) {
-            modalContent.innerHTML = `
-              <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
-                <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
-              </div>
-              <h2 class="text-2xl font-bold">${safeTitle}</h2>
-              ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
-              <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
-            document.getElementById('modal-close-btn').onclick = hideModal;
-          } else {
-            const buttonsHTML = buttons.map((btn, index) =>
-              `<button id="modal-btn-${index}" class="flex-1 ${btn.primary ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-300'} font-semibold py-3 rounded-lg">${DOMPurify.sanitize(btn.text)}</button>`
-            ).join('');
-
-            modalContent.innerHTML = `
-              <div class="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mx-auto">
-                <i data-lucide="message-circle" class="w-10 h-10"></i>
-              </div>
-              <h2 class="text-2xl font-bold">${safeTitle}</h2>
-              ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
-              <div class="flex gap-3 mt-4">${buttonsHTML}</div>`;
-
-            buttons.forEach((btn, index) => {
-              document.getElementById(`modal-btn-${index}`).onclick = () => {
-                if (btn.callback) btn.callback();
-                hideModal();
-              };
-            });
-          }
-
-          genericModal.classList.remove('hidden');
-          setTimeout(()=>modalContent.classList.remove('scale-95','opacity-0'),10);
-          lucide.createIcons();
-        }
-        function hideModal(){
-          const fabs = document.getElementById('social-fabs');
-          modalContent.classList.add('scale-95','opacity-0');
-          setTimeout(()=>{
-            genericModal.classList.add('hidden');
-            if (fabs) fabs.classList.remove('opacity-0','pointer-events-none');
-            app.navigateTo(state.currentScreen==='classDetails'?'agenda':state.currentScreen);
-          },200);
-        }
-        function updateNavButtons(){
-          const navButtons = navBar.querySelectorAll('.nav-button');
-          navButtons.forEach(btn=>{
-            const isActive = btn.dataset.screen===state.currentScreen;
-            btn.classList.toggle('active-nav', isActive);
-            btn.classList.toggle('text-indigo-400', isActive);
-            btn.classList.toggle('text-zinc-400', !isActive);
-          });
-        }
-
-        // Íconos
-        lucide.createIcons();
-      });
-    </script>
-
-        <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', async () => {
-          try {
-            const reg = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
-            window._msgSW = reg;
-          } catch (err) {
-            console.error('SW fail', err);
-          }
-        });
-      }
-    </script>
-  </body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <title>Madness - Reserva de Clases</title>
+
+    <!-- Tailwind + Lucide + Fuente -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+    <!-- PWA -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#18181b">
+
+    <!-- iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="./images/icon-192x192.png">
+
+    <style>
+      body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .transition-all { transition: all 0.3s ease-in-out; }
+      .spinner { border-top-color: #6366f1; }
+    </style>
+  </head>
+  <body class="bg-zinc-900 text-white antialiased">
+    <!-- App -->
+    <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
+      <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
+      <!-- NavBar -->
+      <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
+        <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
+          <button data-screen="agenda" class="nav-button active-nav flex-1 flex flex-col items-center justify-center text-indigo-400">
+            <i data-lucide="calendar-days" class="w-6 h-6 mb-1"></i>
+            <span class="text-xs font-medium">Agenda</span>
+          </button>
+          <button data-screen="profile" class="nav-button flex-1 flex flex-col items-center justify-center text-zinc-400">
+            <i data-lucide="user-circle" class="w-6 h-6 mb-1"></i>
+            <span class="text-xs font-medium">Perfil</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Auth -->
+    <div id="auth-container" class="h-screen flex-col p-8 justify-center bg-zinc-900 hidden"></div>
+
+    <!-- Loading -->
+    <div id="loading-spinner" class="fixed inset-0 bg-zinc-900 flex items-center justify-center z-50">
+      <div class="spinner animate-spin rounded-full h-16 w-16 border-4 border-zinc-700"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="generic-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-6 hidden z-50">
+      <div id="modal-content" class="bg-zinc-800 rounded-2xl p-6 text-center space-y-6 max-w-sm w-full mx-auto transition-all transform scale-95 opacity-0"></div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" role="status" tabindex="0" class="fixed bottom-4 left-1/2 -translate-x-1/2 transform bg-zinc-800 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity z-[100]"></div>
+
+    <!-- FABs -->
+    <div id="social-fabs" class="fixed right-4 flex flex-col gap-3 z-[70] pointer-events-auto" style="bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);">
+      <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer" class="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+        <i data-lucide="message-circle" class="w-6 h-6"></i>
+      </a>
+      <a href="https://instagram.com/madness_crosstrainingmx" target="_blank" rel="noopener noreferrer" class="bg-gradient-to-tr from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white rounded-full p-4 shadow-lg flex items-center justify-center">
+        <i data-lucide="camera" class="w-6 h-6"></i>
+      </a>
+    </div>
+
+    <!-- Firebase SDKs (compat) — v10.12.5 para alinear con el SW -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-functions-compat.js"></script>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', async () => {
+        // ---- Firebase config
+        const firebaseConfig = {
+          apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
+          authDomain: "madnessscheds.firebaseapp.com",
+          projectId: "madnessscheds",
+          storageBucket: "madnessscheds.firebasestorage.app",
+          messagingSenderId: "788538690861",
+          appId: "1:788538690861:web:ce19ead5929a8867c197a4"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const messaging = firebase.messaging();
+        const functionsSvc = firebase.app().functions('us-central1');
+        const cancelBookingCallable = functionsSvc.httpsCallable('cancelBooking');
+
+        // ---- Enable client cache (multi-tab safe)
+        try {
+          await firebase.firestore().enablePersistence({ synchronizeTabs: true });
+        } catch (e) {
+          console.warn('Persistence not enabled:', e && e.code);
+        }
+
+        // ---- Helpers (fechas, UI, etc.)
+        const MX_TZ = 'America/Mexico_City';
+        const ymdFmt = new Intl.DateTimeFormat('en-CA',{ timeZone: MX_TZ, year:'numeric', month:'2-digit', day:'2-digit' });
+        const timeFmt = new Intl.DateTimeFormat('es-MX',{ timeZone: MX_TZ, hour:'2-digit', minute:'2-digit', hour12:false });
+        const dateHelper = {
+          getYYYYMMDD(date){ return ymdFmt.format(date); },
+          get today(){ return this.getYYYYMMDD(new Date()); },
+          get tomorrow(){ return this.getYYYYMMDD(new Date(Date.now()+86400000)); },
+          human(ymd){
+            const dt=new Date(`${ymd}T00:00:00Z`);
+            return dt.toLocaleDateString('es-MX',{ timeZone: MX_TZ, weekday:'long',day:'2-digit',month:'short' });
+          }
+        };
+        const timeHelper = {
+          range(ymd, hhmm, durationMin=60){
+            const start=new Date(`${ymd}T${hhmm}:00Z`);
+            const end=new Date(start.getTime()+Number(durationMin||60)*60000);
+            return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
+          }
+        };
+        const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
+        const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+        const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+        function timeUntilLabel(ymd, hhmm){
+          if(!ymd||!hhmm) return '';
+          const start=new Date(`${ymd}T${hhmm}:00Z`).getTime();
+          const now=Date.now();
+          const diff=start-now;
+          if (diff>4*60*60*1000) return '';
+          const min=Math.round(diff/60000);
+          if (min<=-120) return 'finalizada';
+          if (min<0) return 'en curso';
+          if (min===0) return 'empieza ahora';
+          if (min<60) return `empieza en ${min} min`;
+          const h=Math.floor(min/60), r=min%60;
+          return r===0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
+        }
+
+        const coverHelper = {
+          byName(name=''){
+            const n=name.toLowerCase();
+            if (n.includes('trx')) return 'images/trx.png';
+            if (n.includes('yoga')) return 'images/yoga.png';
+            if (n.includes('hiit')) return 'images/HIIT.png';
+            if (n.includes('capoeira')) return 'images/capoeira.png';
+            if (n.includes('funcional')||n.includes('functional')) return 'images/functional.png';
+            return null;
+          },
+          forClassName(name, fallbackText){
+            return this.byName(name)||`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(fallbackText||name||'Clase')}`;
+          },
+          forClass(cls){
+            return this.byName(cls.name)||cls.image||`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(cls.name)}`;
+          }
+        };
+
+        // ---- Estado
+        let state = {
+          currentUser: null,
+          classes: [],
+          myBookings: [],
+          waitlistEntries: [],
+          currentScreen: 'agenda',
+          scheduleFilter: 'today',
+          selectedClassId: null,
+          isTotalPass: false,
+          cancellationStrikes: 0
+        };
+
+        // ---- Render batching
+        let renderQueued=false;
+        function scheduleRender(){
+          if (renderQueued) return;
+          renderQueued=true;
+          requestAnimationFrame(()=>{ renderQueued=false; render(); });
+        }
+
+        // Screen via querystring
+        const _params = new URLSearchParams(location.search);
+        const _screen = _params.get('screen');
+        if (_screen && ['agenda','profile','classDetails'].includes(_screen)) state.currentScreen=_screen;
+
+        // DOM refs
+        const mainContent = document.getElementById('main-content');
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const navBar = document.getElementById('nav-bar');
+        const toastEl = document.getElementById('toast');
+        let toastTimeout;
+        function showToast(message, type = 'info', opts = {}) {
+          if (!toastEl) return;
+          const { html = false, duration = 3000 } = opts;
+          if (html) toastEl.innerHTML = message; else toastEl.textContent = message;
+          toastEl.classList.remove('opacity-0', 'bg-green-600', 'bg-red-600', 'bg-zinc-800');
+          const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-800';
+          toastEl.classList.add(color, 'opacity-100');
+          toastEl.focus();
+          clearTimeout(toastTimeout);
+          toastTimeout = setTimeout(() => {
+            toastEl.classList.remove('opacity-100');
+            toastEl.classList.add('opacity-0');
+          }, duration);
+        }
+        window.showToast = showToast;
+
+        // Firestore listeners
+        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, listenersAttached=false;
+        function detachListeners(){
+          if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
+          if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
+          if (unsubWaitlist){ try{unsubWaitlist();}catch{}; unsubWaitlist=null; }
+          if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
+          listenersAttached=false;
+        }
+        function attachAgendaListeners(){
+          if (listenersAttached || !state.currentUser) return;
+          const nowMinus5 = new Date(Date.now()-5*60*1000);
+          unsubClasses = db.collection('classes').where('startAt','>=',nowMinus5).orderBy('startAt','asc').limit(100)
+            .onSnapshot(snap=>{
+              state.classes = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleRender();
+            }, err=>console.error('Error clases:', err));
+          unsubMyBookings = db.collection('bookings').where('userId','==',state.currentUser.uid)
+            .onSnapshot(snap=>{
+              state.myBookings = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleRender();
+            }, err=>console.error('Error mis reservas:', err));
+          unsubWaitlist = db.collection('waitlists')
+            .where('userId', '==', state.currentUser.uid)
+            .onSnapshot(snap => {
+              state.waitlistEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
+              scheduleRender();
+            });
+          unsubUser = db.collection('users').doc(state.currentUser.uid)
+            .onSnapshot(doc => {
+              const data = doc.data() || {};
+              state.isTotalPass = !!data.totalPass;
+              const strikesRaw = Number(data.lateCancellations);
+              state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+              scheduleRender();
+            });
+          listenersAttached=true;
+        }
+
+        // ===============================
+        //  FCM: registrar SW y mantener token fresco
+        // ===============================
+        const VAPID_KEY = 'BDkzQqJ9a_NQssIIP6Pu-HQ1sxCOIwUiDW6OxCdKtvCmrSZMXpcjO-hdETrkPKycj-CfLSf75cskOC6HfHmYWRw';
+        const LS_KEY = 'fcm:lastToken';
+
+        async function registerSW() {
+          // Asegura scope correcto en GitHub Pages
+          const reg = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+          try { await reg.update(); } catch {}
+          // Guarda para getToken
+          window._msgSW = reg;
+          return reg;
+        }
+
+        function isPushSupported(){
+          return typeof firebase.messaging.isSupported === 'function' && firebase.messaging.isSupported();
+        }
+
+        function buildDeviceMetadata(){
+          const metadata = {
+            userAgent: navigator.userAgent || 'unknown',
+            platform: navigator.platform || 'unknown',
+            registeredAt: new Date()
+          };
+          const screenObj = window?.screen;
+          if (screenObj?.width && screenObj?.height){
+            metadata.screen = `${screenObj.width}x${screenObj.height}`;
+          }
+          try{
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz) metadata.timezone = tz;
+          }catch{}
+          const language = navigator.language || (navigator.languages && navigator.languages[0]);
+          if (language) metadata.language = language;
+          if (navigator.vendor) metadata.browser = navigator.vendor;
+          return metadata;
+        }
+
+        async function saveToken(uid, token, prevToken){
+          if (!uid || !token) return;
+          const ref = db.collection('users').doc(uid);
+          const deviceMetadata = buildDeviceMetadata();
+          const update = { fcmTokens: { [token]: deviceMetadata }, fcmUpdatedAt: new Date() };
+          if (prevToken && prevToken !== token){
+            update.fcmTokens[prevToken] = firebase.firestore.FieldValue.delete();
+          }
+          await ref.set(update, { merge:true });
+          localStorage.setItem(LS_KEY, token);
+        }
+
+        async function removeToken(uid, token){
+          try{
+            await db.collection('users').doc(uid).set({
+              fcmTokens: { [token]: firebase.firestore.FieldValue.delete() },
+              fcmUpdatedAt: new Date()
+            }, { merge:true });
+          }catch{}
+          if (localStorage.getItem(LS_KEY) === token) localStorage.removeItem(LS_KEY);
+        }
+
+        async function ensureFreshFcmToken(uid){
+          if (!isPushSupported()) return; // navegador no soporta
+          // Permiso
+          let perm = Notification.permission;
+          if (perm === 'default') perm = await Notification.requestPermission();
+          if (perm !== 'granted'){
+            const prev = localStorage.getItem(LS_KEY);
+            if (uid && prev) await removeToken(uid, prev);
+            return;
+          }
+          // SW listo
+          const reg = window._msgSW || await registerSW();
+          // Token actual
+          const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+          if (!token) return;
+          const prev = localStorage.getItem(LS_KEY);
+          const prevToken = prev && prev !== token ? prev : undefined;
+          await saveToken(uid, token, prevToken);
+        }
+
+        // Botón manual (expuesto en perfil)
+        async function ensurePushPermissionAndToken(user){
+          if (!user) throw new Error('No user session');
+          if (!isPushSupported()) throw new Error('Push no soportado en este navegador');
+          const perm = await Notification.requestPermission();
+          if (perm !== 'granted') throw new Error('Permiso no concedido');
+          const reg = window._msgSW || await registerSW();
+          const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+          if (!token) throw new Error('No se obtuvo token FCM');
+          const prev = localStorage.getItem(LS_KEY);
+          await saveToken(user.uid, token, prev);
+          // Foreground handler opcional
+          messaging.onMessage((payload) => {
+            const title = payload.notification?.title || payload.data?.title || 'Notificación';
+            const body  = payload.notification?.body  || payload.data?.body  || '';
+            showToast(`${title}${body ? ': ' + body : ''}`);
+          });
+          return token;
+        }
+        window.ensurePushPermissionAndToken = ensurePushPermissionAndToken; // útil para consola
+
+        // Limpieza si el usuario revoca permisos después
+        if (navigator.permissions?.query){
+          try{
+            const status = await navigator.permissions.query({ name: 'notifications' });
+            status.onchange = async () => {
+              if (status.state !== 'granted'){
+                const uid = auth.currentUser?.uid;
+                const prev = localStorage.getItem(LS_KEY);
+                if (uid && prev) await removeToken(uid, prev);
+                showToast('Notificaciones desactivadas. <a href="#" class="underline" id="re-enable-notifs">Permitir de nuevo</a>', 'error', { html: true });
+                document.getElementById('re-enable-notifs')?.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  const ua = navigator.userAgent.toLowerCase();
+                  let url = 'chrome://settings/content/notifications';
+                  if (ua.includes('firefox')) url = 'about:preferences#privacy';
+                  else if (ua.includes('edg')) url = 'edge://settings/content/notifications';
+                  window.open(url, '_blank');
+                });
+                try{ gtag('event', 'notification_permission_disabled'); }catch{ console.log('notification_permission_disabled'); }
+              }
+            };
+          }catch{}
+        }
+        // ===============================
+
+        // ---- Auth gate
+        auth.onAuthStateChanged(async user => {
+          loadingSpinner.classList.remove('hidden');
+          if (user) {
+            // Crea doc de usuario si no existe
+            const userRef = db.collection('users').doc(user.uid);
+            const docSnap = await userRef.get();
+            const existingData = docSnap.exists ? docSnap.data() : {};
+            state.isTotalPass = !!existingData.totalPass;
+            const strikesRaw = Number(existingData.lateCancellations);
+            state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+
+            if (!docSnap.exists){
+              try{
+                await userRef.set({
+                  email: user.email,
+                  displayName: user.displayName || '',
+                  photoURL: user.photoURL || '',
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+              }catch(e){
+                console.error('Error creando perfil:', e);
+                alert('Hubo un problema al configurar tu perfil. Intenta de nuevo.');
+                auth.signOut();
+                return;
+              }
+            }
+            state.currentUser = user;
+            authContainer.style.display = 'none';
+            appContainer.style.display = 'flex';
+
+            // 🔔 REFRESCA TOKEN EN CADA SESIÓN
+            try { await registerSW(); await ensureFreshFcmToken(user.uid); } catch(e){ console.warn('FCM token refresh failed:', e?.message||e); }
+            // También al volver a la pestaña (una vez)
+            document.addEventListener('visibilitychange', async () => {
+              if (document.visibilityState === 'visible' && auth.currentUser) {
+                try { await ensureFreshFcmToken(auth.currentUser.uid); } catch {}
+              }
+            }, { once:true });
+
+            if (state.currentScreen === 'agenda') attachAgendaListeners();
+            scheduleRender();
+          } else {
+            state.currentUser = null;
+            detachListeners();
+            appContainer.style.display = 'none';
+            authContainer.style.display = 'flex';
+            renderAuthScreen();
+          }
+          loadingSpinner.classList.add('hidden');
+        });
+
+        // ---- UI (auth / render / acciones) — *tu lógica original con mínimos cambios* ----
+        function renderAuthScreen(isLogin=true){
+          authContainer.innerHTML = `
+            <div class="w-full max-w-md mx-auto">
+              <h1 class="text-4xl font-bold text-white mb-2">Madness - Reserva de clases</h1>
+              <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
+              <div class="space-y-4">
+                <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <input type="password" id="password-input" placeholder="Contraseña" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                
+                <div id="turnstile-widget"></div>
+
+              </div>
+              <button id="auth-button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md mt-6">${isLogin ? 'Iniciar Sesión' : 'Registrarse'}</button>
+              <p class="text-center text-zinc-400 mt-6">
+                ${isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+                <a id="auth-toggle" href="#" class="font-semibold text-indigo-400 hover:underline">${isLogin ? 'Regístrate' : 'Inicia Sesión'}</a>
+              </p>
+            </div>`;
+          
+            // 2. ADDED: Manually render the widget after the HTML is on the page
+            const authButton = document.getElementById('auth-button');
+            const widgetContainer = document.getElementById('turnstile-widget');
+
+            // Disable the button until Turnstile is fully ready to avoid ReferenceErrors on slow networks
+            authButton.disabled = true;
+
+            const enableAuthButton = () => { authButton.disabled = false; };
+
+            const renderTurnstileWhenReady = () => {
+              if (!widgetContainer || widgetContainer.dataset.rendered === '1'){
+                enableAuthButton();
+                return;
+              }
+
+              const api = window.turnstile;
+              if (api?.render){
+                api.render(widgetContainer, {
+                  sitekey: '0x4AAAAAABwCDMFGoF_Z-wjY'
+                });
+                widgetContainer.dataset.rendered = '1';
+                enableAuthButton();
+                return;
+              }
+
+              // Retry shortly after to give the async script time to load before enabling auth
+              setTimeout(renderTurnstileWhenReady, 250);
+            };
+
+            renderTurnstileWhenReady();
+
+            authButton.onclick = () => app.handleAuth(isLogin);
+            document.getElementById('auth-toggle').onclick = (e)=>{ e.preventDefault(); renderAuthScreen(!isLogin); };
+            lucide.createIcons();
+          }
+
+        // Render principal
+        function render(){
+          const screen = state.currentScreen;
+          let content = '';
+          if (screen === 'agenda') content = getAgendaScreenHTML();
+          else if (screen === 'profile') content = getProfileScreenHTML();
+          else if (screen === 'classDetails') content = getClassDetailsScreenHTML(state.selectedClassId);
+          mainContent.innerHTML = `<div class="max-w-md mx-auto">${content}</div>`;
+          updateNavButtons();
+          lucide.createIcons();
+
+          const btn = document.getElementById('enablePush');
+          if (btn){
+            btn.onclick = async () => {
+              try{
+                const user = firebase.auth().currentUser;
+                if (!user) return showToast('Inicia sesión primero', 'error');
+                if (!isPushSupported()) return showToast('Este navegador no soporta notificaciones push.', 'error');
+                btn.disabled = true;
+                await ensurePushPermissionAndToken(user);
+                showToast('Notificaciones activadas ✅', 'success');
+                scheduleRender();
+              }catch(e){
+                console.error('Enable push failed:', e);
+                showToast(e.message || 'No se pudo activar notificaciones', 'error');
+              }finally{
+                btn.disabled = false;
+              }
+            };
+          }
+
+          const tpToggle = document.getElementById('totalpass-toggle');
+          if (tpToggle){
+            tpToggle.onchange = async e => {
+              const checked = e.target.checked;
+              try{
+                await db.collection('users').doc(state.currentUser.uid).set({ totalPass: checked }, { merge: true });
+                state.isTotalPass = checked;
+                showToast('Preferencia guardada', 'success');
+              }catch(err){
+                showToast('No se pudo guardar', 'error');
+                e.target.checked = !checked;
+              }
+            };
+          }
+        }
+
+        // --- AGENDA (igual que tu implementación, con mínimos cambios)
+        function getAgendaScreenHTML(){
+          const now = Date.now();
+          const strikesRaw = Number(state.cancellationStrikes);
+          const strikeCount = Number.isFinite(strikesRaw) && strikesRaw > 0 ? Math.min(strikesRaw, 3) : 0;
+          const strikeMessage = strikeCount >= 3
+            ? 'Llegaste al límite de 3 strikes. Tu cuenta queda bloqueada temporalmente.'
+            : strikeCount === 2
+              ? 'Estás a 1 strike del bloqueo. Cancela con tiempo.'
+              : strikeCount === 1
+                ? 'Tienes 1 strike. Cancela con más de 2 horas de anticipación.'
+                : 'Evita cancelar tarde para no llegar a 3 strikes.';
+          const upcoming = state.myBookings.filter(Boolean).filter(b=>{
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+            const relatedClass = state.classes.find(cls=>cls.id===b.classId);
+            const durationRaw = b.duration ?? relatedClass?.duration;
+            const durationValue = Number(durationRaw);
+            const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
+            const endTime = startObj.getTime() + durationMinutes*60000;
+            return now <= endTime;
+          }).sort((a,b)=>{
+            const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
+            const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
+            return ta - tb;
+          });
+          const reservasHTML = upcoming.length ? upcoming.map(b=>{
+            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+            const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
+            const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
+            const hhmm = timeFmt.format(startObj);
+            const ymdLocal = dateHelper.getYYYYMMDD(startObj);
+            const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
+            const cover = coverHelper.forClassName(b.className, b.className);
+            const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
+            const showCancelButton = timeStatus !== 'en curso';
+            const safeClassName = DOMPurify.sanitize(b.className || '');
+            const safeDayText = DOMPurify.sanitize(dayText);
+            const safeClassId = DOMPurify.sanitize(b.classId);
+            const safeTimeStatus = DOMPurify.sanitize(timeStatus);
+            return `
+              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                  <div>
+                    <p class="font-bold text-lg">${safeClassName}</p>
+                    <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
+                    <p class="text-emerald-400 text-xs mt-0.5">${safeTimeStatus}</p>
+                  </div>
+                </div>
+                ${showCancelButton ? `<button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>` : ''}
+              </div>`;
+          }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No tienes reservas próximas.</div>`;
+
+          let completadasHTML = '';
+          if (state.isTotalPass) {
+            const today = dateHelper.today;
+            const completed = state.myBookings
+              .filter(Boolean)
+              .map(booking => {
+                const startObj = booking.startAt
+                  ? asDate(booking.startAt)
+                  : (booking.classDate ? new Date(`${booking.classDate}T${booking.time||'00:00'}:00Z`) : null);
+                if (!startObj) return null;
+                const ymdLocal = dateHelper.getYYYYMMDD(startObj);
+                if (ymdLocal !== today) return null;
+                const relatedClass = state.classes.find(cls => cls.id === booking.classId);
+                const durationRaw = Number(booking.duration || relatedClass?.duration || 60);
+                const duration = Number.isFinite(durationRaw) && durationRaw > 0 ? durationRaw : 60;
+                if (Date.now() <= startObj.getTime() + duration * 60000) return null;
+                return { booking, startObj, relatedClass };
+              })
+              .filter(Boolean)
+              .sort((a, b) => b.startObj.getTime() - a.startObj.getTime());
+
+              completadasHTML = completed.length ? completed.map(({ booking, startObj, relatedClass }) => {
+                const className = booking.className || relatedClass?.name || '';
+                const cover = relatedClass ? coverHelper.forClass(relatedClass) : coverHelper.forClassName(className, className);
+                const safeClassName = DOMPurify.sanitize(className);
+                const hhmm = timeFmt.format(startObj);
+                return `
+                  <div class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4">
+                    <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                    <div>
+                      <p class="font-bold text-lg">${safeClassName}</p>
+                      <p class="text-zinc-400 text-sm">Hoy • ${hhmm}</p>
+                    </div>
+                  </div>`;
+              }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">Aún no terminas clases hoy.</div>`;
+
+              const singleTokenButton = completed.length > 0 ?
+                `<button data-action="send-totalpass-daily" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg">Enviar Token del Día</button>` : '';
+
+              completadasHTML += singleTokenButton;
+          }
+
+          const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
+          const filtered = state.classes
+            .filter(cls=>{
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
+              const ymd = dateHelper.getYYYYMMDD(start);
+              return ymd===targetYMD;
+            })
+            .filter(cls=>{
+              if (state.scheduleFilter!=='today') return true;
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
+              const durationValue = Number(cls.duration);
+              const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
+              const endTime = start.getTime() + durationMinutes*60000;
+              return now <= endTime;
+            })
+            .sort((a, b) => {
+              const startA = a.startAt?.toDate ? a.startAt.toDate() : new Date(`${a.classDate}T${a.time}:00Z`);
+              const startB = b.startAt?.toDate ? b.startAt.toDate() : new Date(`${b.classDate}T${b.time}:00Z`);
+              return startA.getTime() - startB.getTime();
+            });
+
+          const horarioHTML = filtered.length ? filtered.map(cls=>{
+            const enrolled = Number(cls.enrolledCount||0);
+            const available = Number(cls.capacity||0)-enrolled;
+            const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
+            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
+            const safeId = DOMPurify.sanitize(cls.id);
+            let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+            if (isBooked) {
+              badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
+            } else if (available<=0 && !notified) {
+              // class full: show join or leave waitlist options
+              if (waitEntry) {
+                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+                badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
+              } else {
+                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md\">Unirse a lista de espera</button>`;
+              }
+            } else if (available<=0 && notified) {
+              // user has been notified of a free spot
+              badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
+            }
+            const ymdUTC = cls.classDate || targetYMD;
+            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+            const hhmm = timeFmt.format(new Date(`${ymdUTC}T${hhmmUTC}:00Z`));
+            const safeName = DOMPurify.sanitize(cls.name || '');
+            const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
+            return `
+              <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
+                <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
+                <div class="flex-1">
+                  <p class="font-bold text-lg">${safeName}</p>
+                  <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
+                  <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
+                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
+                </div>
+                <div class="text-right">${badge}</div>
+              </div>`;
+          }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
+
+          return `
+            <div class="p-6 space-y-8">
+              <header>
+                <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
+                <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
+              </header>
+              <section aria-labelledby="mis-reservas">
+                <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
+                <div class="space-y-3">${reservasHTML}</div>
+              </section>
+              ${state.isTotalPass ? `
+              <section aria-labelledby="clases-completadas">
+                <h2 id="clases-completadas" class="text-xl font-semibold mb-3">Clases Terminadas Hoy</h2>
+                <div class="space-y-3">${completadasHTML}</div>
+              </section>` : ''}
+              <section aria-labelledby="horario">
+                <div class="flex items-center justify-between mb-3">
+                  <h2 id="horario" class="text-xl font-semibold">Horario</h2>
+                  <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
+                    <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='today'?'bg-indigo-600 text-white':''}">Hoy</button>
+                    <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='tomorrow'?'bg-indigo-600 text-white':''}">Mañana</button>
+                  </div>
+                </div>
+                <div class="space-y-3">${horarioHTML}</div>
+              </section>
+              <section aria-labelledby="cancel-strikes">
+                <h2 id="cancel-strikes" class="text-xl font-semibold mb-3">Strikes por cancelación</h2>
+                <div class="bg-zinc-800 rounded-2xl p-4">
+                  <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
+                  <p class="text-sm text-zinc-400 mt-2">${strikeMessage}</p>
+                </div>
+              </section>
+            </div>`;
+        }
+
+        function getProfileScreenHTML(){
+          const safeDisplay = DOMPurify.sanitize(state.currentUser.displayName || '');
+          const safeEmail = DOMPurify.sanitize(state.currentUser.email || '');
+          const nameForText = safeDisplay || safeEmail;
+          const placeholder = (nameForText.charAt(0) || 'U').toUpperCase();
+          // true if push notifications are allowed and token saved
+          const pushEnabled = Notification.permission==='granted' && localStorage.getItem(LS_KEY);
+          return `
+            <div class="p-6 space-y-6">
+              <header class="text-center space-y-4">
+                <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${placeholder}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
+                <div class="space-y-1">
+                  <h1 class="text-2xl font-bold">${nameForText}</h1>
+                  <p class="text-sm text-zinc-400">${safeEmail}</p>
+                </div>
+              </header>
+              <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
+                <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
+                  <span>Editar Nombre</span>
+                  <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
+                </a>
+                <label for="totalpass-toggle" class="flex items-center justify-between py-3">
+                  <span>Usuario TotalPass</span>
+                  <input type="checkbox" id="totalpass-toggle" class="w-5 h-5 accent-indigo-600" ${state.isTotalPass?'checked':''}>
+                </label>
+                <button id="enablePush" class="flex items-center justify-between w-full py-3">
+                  <span>Notificaciones Push</span>
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="${pushEnabled?'bell-ring':'bell-off'}" class="w-5 h-5 ${pushEnabled?'text-emerald-400':'text-zinc-500'}"></i>
+                    <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
+                  </div>
+                </button>
+                <a href="#" data-action="logout" class="flex items-center justify-between py-3 text-rose-400">
+                  <span>Cerrar Sesión</span>
+                  <i data-lucide="log-out" class="w-5 h-5"></i>
+                </a>
+              </div>
+            </div>`;
+        }
+
+        function getClassDetailsScreenHTML(classId){
+          const cls = state.classes.find(c=>c.id===classId);
+          if (!cls) return getAgendaScreenHTML();
+          const enrolled = Number(cls.enrolledCount||0);
+          const availableSpots = Number(cls.capacity||0)-enrolled;
+          const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+          const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
+          const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
+          const durationMin = Number(cls.duration||60);
+          const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
+          const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+          const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
+          const safeName = DOMPurify.sanitize(cls.name || '');
+          const safeDesc = DOMPurify.sanitize(cls.description || '');
+          const safeId = DOMPurify.sanitize(cls.id);
+          // default booking button
+          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+          if (isBooked) {
+            // already have a booking
+            buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+          } else if (availableSpots<=0 && !notified) {
+            // class is full: either join waitlist or allow leaving
+            if (waitEntry) {
+              const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+              buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
+            } else {
+              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
+            }
+          }
+          return `
+            <div>
+              <div class="relative">
+                <img src="${coverHelper.forClass(cls)}" class="w-full h-64 object-cover" alt="${safeName}">
+                <button data-action="navigate" data-screen="agenda" class="absolute top-6 left-6 bg-black/50 p-2 rounded-full text-white">
+                  <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+              </div>
+              <div class="p-6 space-y-4 pb-40">
+                <h1 class="text-3xl font-bold">
+                  ${safeName}
+                  <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+                </h1>
+                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
+                <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
+                  <span class="font-semibold text-lg">Estado</span>
+                  <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
+                </div>
+              </div>
+              <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
+                ${buttonHTML}
+              </div>
+            </div>`;
+        }
+
+        const app = {
+          handleAuth: (isLogin)=>{
+            const turnstileApi = window.turnstile;
+            if (!turnstileApi || typeof turnstileApi.getResponse !== 'function'){
+              alert('La verificación de seguridad se está inicializando. Intenta de nuevo en unos segundos.');
+              return;
+            }
+
+            const turnstileToken = turnstileApi.getResponse();
+            const email = document.getElementById('email-input').value;
+            const pass  = document.getElementById('password-input').value;
+            if (!turnstileToken) {
+              alert('Por favor, completa la verificación de seguridad.');  
+              return;  
+            }
+            if (!email || !pass){ alert('Por favor, ingresa correo y contraseña.'); return; }
+            loadingSpinner.classList.remove('hidden');
+            const p = isLogin ? auth.signInWithEmailAndPassword(email,pass) : auth.createUserWithEmailAndPassword(email,pass);
+            p.catch(err=>{ alert(err.message); loadingSpinner.classList.add('hidden'); });
+          },
+          logout: ()=> auth.signOut(),
+          editUserName: (event)=>{
+            event.preventDefault();
+            const newName = prompt('Ingresa tu nombre y apellido:', state.currentUser.displayName || '');
+            if (newName && newName.trim()!==''){
+              loadingSpinner.classList.remove('hidden');
+              state.currentUser.updateProfile({ displayName: newName.trim() })
+                .then(()=>{ scheduleRender(); loadingSpinner.classList.add('hidden'); })
+                .catch(err=>{ alert('Error: '+err.message); loadingSpinner.classList.add('hidden'); });
+            }
+          },
+          navigateTo: (screen, data={})=>{
+            if (screen==='agenda') attachAgendaListeners(); else detachListeners();
+            state.currentScreen = screen;
+            if (data.classId) state.selectedClassId = data.classId;
+            render();
+          },
+          setScheduleFilter: (filter)=>{ state.scheduleFilter=filter; render(); },
+          confirmBooking: async (classId)=>{
+            const uid = state.currentUser.uid;
+            const classRef = db.collection('classes').doc(classId);
+            const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
+            const userRef = db.collection('users').doc(uid);
+            const waitRef = db.collection('waitlists').doc(`${classId}_${uid}`);
+            const waitEntry = state.waitlistEntries.find(w=>w.classId===classId); // user's waitlist entry
+            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // valid notification
+            try{
+              await db.runTransaction(async tx=>{
+                const [classSnap, bookingSnap, userSnap, waitSnap] = await Promise.all([
+                  tx.get(classRef), tx.get(bookingRef), tx.get(userRef), tx.get(waitRef)
+                ]);
+                if (!classSnap.exists) throw new Error('La clase ya no existe.');
+                if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
+                const userData = userSnap.exists ? userSnap.data() : {};
+                if (userData.blacklisted === true) {
+                  throw new Error('Tu cuenta está en revisión por cancelaciones tardías. Escríbenos para apoyarte.');
+                }
+                const lastCancelAt = userData.lastCancelAt ? asDate(userData.lastCancelAt) : null;
+                if (lastCancelAt && Date.now() - lastCancelAt.getTime() < FIFTEEN_MINUTES_MS) {
+                  throw new Error('Debes esperar 15 minutos después de cancelar para reservar de nuevo.');
+                }
+                const cls = classSnap.data();
+                const enrolled = Number(cls.enrolledCount||0);
+                const capacity = Number(cls.capacity||0);
+                if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
+                let startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : (cls.startAt ? new Date(cls.startAt) : null);
+                if (!startDateObj || isNaN(startDateObj.getTime())){
+                  if (cls.classDate){
+                    const hhmm = cls.time || '00:00';
+                    startDateObj = new Date(`${cls.classDate}T${hhmm}:00Z`);
+                  }
+                }
+                if (!startDateObj || isNaN(startDateObj.getTime())){
+                  throw new Error('La clase no tiene horario válido.');
+                }
+                const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(startDateObj);
+                const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
+                const time = cls.time || timeFmt.format(startDateObj);
+                tx.set(bookingRef, {
+                  classId, userId: uid,
+                  userName: state.currentUser.displayName || state.currentUser.email,
+                  startAt: startAtTs, classDate, time, className: cls.name,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
+                if (waitSnap.exists) tx.delete(waitRef);
+              });
+              if (waitEntry){
+                const q = await db.collection('waitlists')
+                  .where('classId','==',classId)
+                  .where('position','>',waitEntry.position||0)
+                  .get(); // entries behind user
+                const batch = db.batch();
+                q.forEach(doc=> batch.update(doc.ref,{ position: (doc.data().position||1)-1 })); // shift positions up
+                await batch.commit();
+              }
+              showModal({ success:true, title:'¡Reserva Exitosa!' });
+            }catch(err){ alert(`No se pudo reservar\n\n${err.message}`); }
+          },
+          cancelBooking: async (classId)=>{
+            const uid = state.currentUser.uid;
+            if (!classId) return;
+
+            const userRef = db.collection('users').doc(uid);
+
+            const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
+            const resolveStartDate = (bookingData, classData) => {
+              if (bookingData?.startAt) {
+                const fromBooking = asDate(bookingData.startAt);
+                if (isValidDate(fromBooking)) return fromBooking;
+              }
+              if (classData?.startAt) {
+                const fromClass = asDate(classData.startAt);
+                if (isValidDate(fromClass)) return fromClass;
+              }
+              const dateStr = bookingData?.classDate || classData?.classDate;
+              const timeStr = bookingData?.time || classData?.time;
+              if (dateStr && timeStr) {
+                const parsed = new Date(`${dateStr}T${timeStr}:00Z`);
+                if (isValidDate(parsed)) return parsed;
+              }
+              return null;
+            };
+
+            const localBooking = state.myBookings.find(b=>b.classId===classId);
+            const localClass = state.classes.find(cls=>cls.id===classId);
+            const estimatedStart = resolveStartDate(localBooking, localClass);
+            const startValid = isValidDate(estimatedStart);
+            const looksLate = startValid ? (estimatedStart.getTime() - Date.now()) <= TWO_HOURS_MS : true;
+
+            let currentLateCount = 0;
+            try{
+              const userSnap = await userRef.get();
+              if (userSnap.exists) currentLateCount = Number(userSnap.data()?.lateCancellations || 0);
+            }catch(err){ console.warn('No se pudo leer lateCancellations:', err); }
+
+            const upcomingStrike = Math.min(currentLateCount + 1, 3);
+            const confirmMessage = looksLate
+              ? `Cancelar a menos de 2 horas suma un strike (${upcomingStrike}/3). Si llegas a 3 tu cuenta será bloqueada temporalmente. ¿Deseas continuar?`
+              : 'Si cancelas deberás esperar 15 minutos para volver a reservar. ¿Deseas continuar?';
+            if (!confirm(confirmMessage)) return;
+
+            try{
+              const response = await cancelBookingCallable({ classId });
+              const data = response?.data || {};
+              const becameBlacklisted = data.becameBlacklisted === true;
+              const recordedLateStrike = data.recordedLateStrike === true;
+              const resultingLateCount = Number.isFinite(Number(data.resultingLateCount))
+                ? Number(data.resultingLateCount)
+                : currentLateCount;
+
+              showModal({ success:false, title:'Cancelación Exitosa' });
+
+              if (becameBlacklisted) {
+                showToast('Llegaste a 3 strikes por cancelaciones tardías. Tu cuenta fue bloqueada temporalmente.', 'error');
+              } else if (recordedLateStrike) {
+                showToast(`Cancelación tardía registrada. Strikes: ${resultingLateCount}/3`, 'error');
+              }
+              state.cancellationStrikes = Number.isFinite(resultingLateCount) && resultingLateCount > 0 ? resultingLateCount : 0;
+              scheduleRender();
+            }catch(err){
+              const errMessage = err?.details?.message || err?.message || 'Error desconocido.';
+              alert(`No se pudo cancelar\n\n${errMessage}`);
+            }
+          },
+          joinWaitlist: async (classId)=>{
+            const uid = state.currentUser.uid;
+            try{
+              await db.collection('waitlists').doc(`${classId}_${uid}`).set({
+                classId, userId: uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              showToast('Unido a la lista de espera', 'success');
+            }catch(err){ alert(`No se pudo unir a la lista de espera\n\n${err.message}`); }
+          },
+          leaveWaitlist: async (classId)=>{
+            const uid = state.currentUser.uid;
+            try{
+              await db.collection('waitlists').doc(`${classId}_${uid}`).delete();
+              showToast('Saliste de la lista de espera');
+            }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
+          }
+        };
+
+        function handleInteraction(e){
+          const target = e.target.closest('[data-action]');
+          if (!target) return;
+          const { action, screen, filter, classId } = target.dataset;
+          switch(action){
+            case 'navigate': app.navigateTo(screen); break;
+            case 'navigate-details': app.navigateTo('classDetails',{classId}); break;
+            case 'set-filter': app.setScheduleFilter(filter); break;
+            case 'edit-name': app.editUserName(e); break;
+            case 'logout': app.logout(); break;
+            case 'confirm-booking': target.disabled=true; app.confirmBooking(classId).finally(()=>target.disabled=false); break;
+            case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
+            case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
+            case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
+
+            /* RESUELTO: usar deep-link + fallback web y confirmación modal
+               Mantiene el nombre de acción existente: send-totalpass-daily */
+            case 'send-totalpass-daily': {
+              const classInfo = state.classes.find(c=>c.id===classId) || state.myBookings.find(b=>b.classId===classId);
+              const className = classInfo?.name || classInfo?.className || '';
+
+              showModal({
+                title: '¿Abrir WhatsApp?',
+                message: 'Se abrirá WhatsApp para enviar tu código de TotalPass.',
+                buttons: [
+                  { text: 'Cancelar', primary: false, callback: null },
+                  {
+                    text: 'Abrir WhatsApp',
+                    primary: true,
+                    callback: () => {
+                      const baseMsg = 'Hola! Aqui te mando mi codigo de TotalPass: ';
+                      const txt = className ? `${baseMsg} (${className})` : baseMsg;
+                      const message = encodeURIComponent(txt);
+
+                      // Deep link a la app nativa
+                      const deepLink = `whatsapp://send?phone=5215539887713&text=${message}`;
+                      // Fallback a web si la app no abre
+                      const webLink  = `https://api.whatsapp.com/send?phone=5215539887713&text=${message}`;
+
+                      const visibilityHandler = () => {
+                        document.removeEventListener('visibilitychange', visibilityHandler);
+                        clearTimeout(fallbackTimer);
+                      };
+
+                      const fallbackTimer = setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                          window.location.href = webLink;
+                        }
+                      }, 600);
+
+                      document.addEventListener('visibilitychange', visibilityHandler);
+                      window.location.href = deepLink;
+                      showToast('WhatsApp abierto para enviar token', 'success');
+                    }
+                  }
+                ]
+              });
+              break;
+            }
+          }
+        }
+        document.addEventListener('click', handleInteraction);
+        navBar.addEventListener('click', e=>{
+          const target = e.target.closest('.nav-button');
+          if (target) app.navigateTo(target.dataset.screen);
+        });
+
+        const genericModal = document.getElementById('generic-modal');
+        const modalContent = document.getElementById('modal-content');
+
+        function showModal({success, title, message, buttons}){
+          const fabs = document.getElementById('social-fabs');
+          if (fabs) fabs.classList.add('opacity-0','pointer-events-none');
+          const safeTitle = DOMPurify.sanitize(title);
+          const safeMessage = message ? DOMPurify.sanitize(message) : '';
+
+          if (!buttons) {
+            modalContent.innerHTML = `
+              <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
+              </div>
+              <h2 class="text-2xl font-bold">${safeTitle}</h2>
+              ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
+              <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
+            document.getElementById('modal-close-btn').onclick = hideModal;
+          } else {
+            const buttonsHTML = buttons.map((btn, index) =>
+              `<button id="modal-btn-${index}" class="flex-1 ${btn.primary ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-300'} font-semibold py-3 rounded-lg">${DOMPurify.sanitize(btn.text)}</button>`
+            ).join('');
+
+            modalContent.innerHTML = `
+              <div class="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="message-circle" class="w-10 h-10"></i>
+              </div>
+              <h2 class="text-2xl font-bold">${safeTitle}</h2>
+              ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
+              <div class="flex gap-3 mt-4">${buttonsHTML}</div>`;
+
+            buttons.forEach((btn, index) => {
+              document.getElementById(`modal-btn-${index}`).onclick = () => {
+                if (btn.callback) btn.callback();
+                hideModal();
+              };
+            });
+          }
+
+          genericModal.classList.remove('hidden');
+          setTimeout(()=>modalContent.classList.remove('scale-95','opacity-0'),10);
+          lucide.createIcons();
+        }
+        function hideModal(){
+          const fabs = document.getElementById('social-fabs');
+          modalContent.classList.add('scale-95','opacity-0');
+          setTimeout(()=>{
+            genericModal.classList.add('hidden');
+            if (fabs) fabs.classList.remove('opacity-0','pointer-events-none');
+            app.navigateTo(state.currentScreen==='classDetails'?'agenda':state.currentScreen);
+          },200);
+        }
+        function updateNavButtons(){
+          const navButtons = navBar.querySelectorAll('.nav-button');
+          navButtons.forEach(btn=>{
+            const isActive = btn.dataset.screen===state.currentScreen;
+            btn.classList.toggle('active-nav', isActive);
+            btn.classList.toggle('text-indigo-400', isActive);
+            btn.classList.toggle('text-zinc-400', !isActive);
+          });
+        }
+
+        // Íconos
+        lucide.createIcons();
+      });
+    </script>
+
+    <!-- Service worker registration (scope fijo para GH Pages) -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', async () => {
+          try {
+            const reg = await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+            window._msgSW = reg;
+          } catch (err) {
+            console.error('SW fail', err);
+          }
+        });
+      }
+    </script>
+  </body>
 </html>
