@@ -40,6 +40,7 @@
         grid-template-columns: 70px repeat(7, minmax(0, 1fr));
         gap: 0.5rem;
         align-items: stretch;
+        position: relative;
       }
       .time-column {
         position: relative;
@@ -98,7 +99,7 @@
       .current-time-line::before {
         content: '';
         position: absolute;
-        left: 12px;
+        left: var(--current-time-indicator-x, 12px);
         top: 50%;
         transform: translateY(-50%);
         width: 10px;
@@ -1256,23 +1257,17 @@
 
         // Keeps the current-time indicator aligned with the Mexico City schedule.
         updateCurrentTimeIndicator(){
-          const dayContainers = this.getCalendarDayContainers();
-          Object.values(dayContainers).forEach(container => {
-            if (!container) return;
-            const existing = container.querySelector('.current-time-line');
-            if (existing) existing.remove();
-          });
+          const calendarGrid = document.querySelector('.calendar-grid');
+          if (!calendarGrid) return;
+
+          const existing = calendarGrid.querySelector('.current-time-line');
+          if (existing) existing.remove();
 
           const todayStr = this.dateHelper.today();
           if (!todayStr) return;
 
           const today = new Date(`${todayStr}T00:00:00-06:00`);
           const dow = Number.isNaN(today.getTime()) ? null : today.getUTCDay();
-          if (dow === null) return;
-
-          const target = dayContainers[dow];
-          if (!target) return;
-
           const timeParts = this.timePartsFmt.formatToParts(new Date());
           const hourPart = timeParts.find(p => p.type === 'hour');
           const minutePart = timeParts.find(p => p.type === 'minute');
@@ -1292,7 +1287,18 @@
           line.className = 'current-time-line';
           line.style.top = `${offsetPx}px`;
           line.setAttribute('aria-hidden', 'true');
-          target.appendChild(line);
+          if (dow !== null){
+            const dayContainers = this.getCalendarDayContainers();
+            const todayContainer = dayContainers[dow];
+            if (todayContainer){
+              const gridRect = calendarGrid.getBoundingClientRect();
+              const dayRect = todayContainer.getBoundingClientRect();
+              const dotOffset = dayRect && gridRect ? (dayRect.left - gridRect.left) + (dayRect.width / 2) : 12;
+              line.style.setProperty('--current-time-indicator-x', `${Math.max(dotOffset, 12)}px`);
+            }
+          }
+
+          calendarGrid.appendChild(line);
         },
 
         ensureCurrentTimeTicker(){
@@ -1308,12 +1314,11 @@
             clearInterval(this.currentTimeTicker);
             this.currentTimeTicker = null;
           }
-          const containers = this.getCalendarDayContainers();
-          Object.values(containers).forEach(container => {
-            if (!container) return;
-            const indicator = container.querySelector('.current-time-line');
+          const calendarGrid = document.querySelector('.calendar-grid');
+          if (calendarGrid){
+            const indicator = calendarGrid.querySelector('.current-time-line');
             if (indicator) indicator.remove();
-          });
+          }
         },
 
         renderCalendarGrid(){
