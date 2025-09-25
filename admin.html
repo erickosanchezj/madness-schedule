@@ -1268,7 +1268,6 @@
 
           const today = new Date(`${todayStr}T00:00:00-06:00`);
           const dow = Number.isNaN(today.getTime()) ? null : today.getUTCDay();
-
           const timeParts = this.timePartsFmt.formatToParts(new Date());
           const hourPart = timeParts.find(p => p.type === 'hour');
           const minutePart = timeParts.find(p => p.type === 'minute');
@@ -1288,7 +1287,6 @@
           line.className = 'current-time-line';
           line.style.top = `${offsetPx}px`;
           line.setAttribute('aria-hidden', 'true');
-
           if (dow !== null){
             const dayContainers = this.getCalendarDayContainers();
             const todayContainer = dayContainers[dow];
