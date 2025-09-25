@@ -40,6 +40,7 @@
         grid-template-columns: 70px repeat(7, minmax(0, 1fr));
         gap: 0.5rem;
         align-items: stretch;
+        position: relative;
       }
       .time-column {
         position: relative;
@@ -84,6 +85,29 @@
           transparent var(--hour-height)
         );
         pointer-events: none;
+      }
+      .current-time-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent 5%, rgba(129, 140, 248, 0.9) 35%, rgba(16, 185, 129, 0.95) 65%, transparent 95%);
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
+        z-index: 5;
+        pointer-events: none;
+      }
+      .current-time-line::before {
+        content: '';
+        position: absolute;
+        left: var(--current-time-indicator-x, 12px);
+        top: 50%;
+        transform: translateY(-50%);
+        width: 10px;
+        height: 10px;
+        border-radius: 9999px;
+        background: #22d3ee;
+        border: 2px solid rgba(24, 24, 27, 0.9);
+        box-shadow: 0 0 8px rgba(34, 211, 238, 0.55);
       }
       .class-block {
         position: absolute;
@@ -540,6 +564,9 @@
         functions: null,
         FACILITY_MAX_CAPACITY: 75,
         DEFAULT_TICKET_PRICE: 120,
+        calendarStartHour: 6,
+        calendarEndHour: 22,
+        currentTimeTicker: null,
         state: {
           classes: [],
           bookingsMap: new Map(),
@@ -779,6 +806,7 @@
               if (this.state.unsubRecentNotifs) this.state.unsubRecentNotifs();
               this.state.recentNotifications = [];
               this.renderRecentNotifications();
+              this.stopCurrentTimeTicker();
             }
           });
 
@@ -1204,6 +1232,18 @@
           return { hour:null, minutes:null };
         },
 
+        getCalendarDayContainers(){
+          return {
+            1: document.getElementById('monday-grid'),
+            2: document.getElementById('tuesday-grid'),
+            3: document.getElementById('wednesday-grid'),
+            4: document.getElementById('thursday-grid'),
+            5: document.getElementById('friday-grid'),
+            6: document.getElementById('saturday-grid'),
+            0: document.getElementById('sunday-grid')
+          };
+        },
+
         highlightTodayColumn(){
           const todayStr = this.dateHelper.today();
           const today = new Date(`${todayStr}T00:00:00-06:00`);
@@ -1213,6 +1253,74 @@
             if (index === dow){ grid.classList.add('today-column'); }
             else { grid.classList.remove('today-column'); }
           });
+        },
+
+        // Keeps the current-time indicator aligned with the Mexico City schedule.
+        updateCurrentTimeIndicator(){
+          const calendarGrid = document.querySelector('.calendar-grid');
+          if (!calendarGrid) return;
+
+          const existing = calendarGrid.querySelector('.current-time-line');
+          if (existing) existing.remove();
+
+          const todayStr = this.dateHelper.today();
+          if (!todayStr) return;
+
+          const today = new Date(`${todayStr}T00:00:00-06:00`);
+          const dow = Number.isNaN(today.getTime()) ? null : today.getUTCDay();
+
+          const timeParts = this.timePartsFmt.formatToParts(new Date());
+          const hourPart = timeParts.find(p => p.type === 'hour');
+          const minutePart = timeParts.find(p => p.type === 'minute');
+          const hour = hourPart ? Number(hourPart.value) : NaN;
+          const minutes = minutePart ? Number(minutePart.value) : NaN;
+          if (!Number.isFinite(hour) || !Number.isFinite(minutes)) return;
+
+          const minutesFromStart = ((hour * 60) + minutes) - (this.calendarStartHour * 60);
+          const totalMinutes = (this.calendarEndHour - this.calendarStartHour) * 60;
+          if (minutesFromStart < 0 || minutesFromStart > totalMinutes) return;
+
+          const hourHeightRaw = getComputedStyle(document.documentElement).getPropertyValue('--hour-height');
+          const hourHeight = Number.parseFloat(hourHeightRaw) || 64;
+          const offsetPx = (minutesFromStart / 60) * hourHeight;
+
+          const line = document.createElement('div');
+          line.className = 'current-time-line';
+          line.style.top = `${offsetPx}px`;
+          line.setAttribute('aria-hidden', 'true');
+
+          if (dow !== null){
+            const dayContainers = this.getCalendarDayContainers();
+            const todayContainer = dayContainers[dow];
+            if (todayContainer){
+              const gridRect = calendarGrid.getBoundingClientRect();
+              const dayRect = todayContainer.getBoundingClientRect();
+              const dotOffset = dayRect && gridRect ? (dayRect.left - gridRect.left) + (dayRect.width / 2) : 12;
+              line.style.setProperty('--current-time-indicator-x', `${Math.max(dotOffset, 12)}px`);
+            }
+          }
+
+          calendarGrid.appendChild(line);
+        },
+
+        ensureCurrentTimeTicker(){
+          if (this.currentTimeTicker) return;
+          this.currentTimeTicker = setInterval(() => {
+            this.highlightTodayColumn();
+            this.updateCurrentTimeIndicator();
+          }, 60000);
+        },
+
+        stopCurrentTimeTicker(){
+          if (this.currentTimeTicker){
+            clearInterval(this.currentTimeTicker);
+            this.currentTimeTicker = null;
+          }
+          const calendarGrid = document.querySelector('.calendar-grid');
+          if (calendarGrid){
+            const indicator = calendarGrid.querySelector('.current-time-line');
+            if (indicator) indicator.remove();
+          }
         },
 
         renderCalendarGrid(){
@@ -1225,15 +1333,7 @@
             });
           }
 
-          const dayContainers = {
-            1: document.getElementById('monday-grid'),
-            2: document.getElementById('tuesday-grid'),
-            3: document.getElementById('wednesday-grid'),
-            4: document.getElementById('thursday-grid'),
-            5: document.getElementById('friday-grid'),
-            6: document.getElementById('saturday-grid'),
-            0: document.getElementById('sunday-grid')
-          };
+          const dayContainers = this.getCalendarDayContainers();
 
           const dayEvents = {};
           Object.values(dayContainers).forEach(container => {
@@ -1249,9 +1349,9 @@
             return sa - sb;
           });
 
-          const START_HOUR = 6;
-          const END_HOUR = 22;
-          const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
+          const START_HOUR = this.calendarStartHour;
+          const END_HOUR = this.calendarEndHour;
+          const TOTAL_MINUTES = Math.max((END_HOUR - START_HOUR) * 60, 1);
           const hourHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour-height')) || 64;
 
           for (const cls of sorted){
@@ -1368,6 +1468,8 @@
           });
 
           this.highlightTodayColumn();
+          this.updateCurrentTimeIndicator();
+          this.ensureCurrentTimeTicker();
         },
 
         renderDailyBookings(){
@@ -3071,7 +3173,11 @@
                 turnstile.reset();
             });
         },
-        logout(){ this.auth.signOut(); this.showToast({ title:'Sesión cerrada' }); },
+        logout(){
+          this.stopCurrentTimeTicker();
+          this.auth.signOut();
+          this.showToast({ title:'Sesión cerrada' });
+        },
 
         // ---- CRUD Clase ----
         async saveClass(){
