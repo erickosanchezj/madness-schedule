@@ -123,32 +123,49 @@
       </section>
 
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="asistencia-title">
-        <h2 id="asistencia-title" class="text-2xl font-bold mb-2">Reporte de Asistencia y Proyección</h2>
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 mb-3 gap-2">
-          <div class="flex items-center gap-4">
-            <span id="att-last">Última actualización: —</span>
-            <span id="att-next">Próxima actualización en: —</span>
-          </div>
-          <button id="att-refresh" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
-            <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
+        <div class="flex items-center justify-between gap-4 mb-2">
+          <h2 id="asistencia-title" class="text-2xl font-bold">Reporte de Asistencia y Proyección</h2>
+          <button
+            type="button"
+            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+            data-toggle-target="attendance-section-body"
+            data-expanded-label="Colapsar"
+            data-collapsed-label="Expandir"
+            aria-controls="attendance-section-body"
+            aria-expanded="true"
+          >
+            <span data-toggle-label>Colapsar</span>
           </button>
         </div>
-        <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
-          <label for="att-start-date">Desde:</label>
-          <input type="date" id="att-start-date" class="bg-zinc-700 text-white p-1 rounded-md" />
-          <label for="att-end-date">Hasta:</label>
-          <input type="date" id="att-end-date" class="bg-zinc-700 text-white p-1 rounded-md" />
-          <label for="facility-capacity">Capacidad:</label>
-          <input type="number" id="facility-capacity" class="bg-zinc-700 text-white p-1 rounded-md w-20" min="1" />
-          <button id="att-export" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-2 rounded-md">Exportar</button>
+        <div id="attendance-section-body" class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 gap-2">
+            <div class="flex items-center gap-4">
+              <span id="att-last">Última actualización: —</span>
+              <span id="att-next">Próxima actualización en: —</span>
+            </div>
+            <button id="att-refresh" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
+              <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <label for="att-start-date">Desde:</label>
+            <input type="date" id="att-start-date" class="bg-zinc-700 text-white p-1 rounded-md" />
+            <label for="att-end-date">Hasta:</label>
+            <input type="date" id="att-end-date" class="bg-zinc-700 text-white p-1 rounded-md" />
+            <label for="facility-capacity">Capacidad:</label>
+            <input type="number" id="facility-capacity" class="bg-zinc-700 text-white p-1 rounded-md w-20" min="1" />
+            <button id="att-export" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-2 rounded-md">Exportar</button>
+          </div>
+          <div>
+            <div class="w-full bg-zinc-700 h-2 rounded">
+              <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="relative">
+            <canvas id="attendanceChart"></canvas>
+          </div>
+          <div id="attendance-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
         </div>
-        <div class="w-full bg-zinc-700 h-2 rounded mb-4">
-          <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>
-        </div>
-        <div class="relative">
-          <canvas id="attendanceChart"></canvas>
-        </div>
-        <div id="attendance-details" class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
       </section>
 
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
@@ -191,7 +208,20 @@
         <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="notifs-title">
-        <h2 id="notifs-title" class="text-2xl font-bold mb-4">Últimas notificaciones</h2>
+        <div class="flex items-center justify-between gap-4 mb-4">
+          <h2 id="notifs-title" class="text-2xl font-bold">Últimas 10 notificaciones</h2>
+          <button
+            type="button"
+            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+            data-toggle-target="recent-notifs"
+            data-expanded-label="Colapsar"
+            data-collapsed-label="Expandir"
+            aria-controls="recent-notifs"
+            aria-expanded="true"
+          >
+            <span data-toggle-label>Colapsar</span>
+          </button>
+        </div>
         <ul id="recent-notifs" class="space-y-2 text-sm"></ul>
       </section>
     </div>
@@ -316,6 +346,38 @@
           return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
         },
 
+        setupSectionToggles(){
+          const buttons = document.querySelectorAll('[data-toggle-target]');
+          buttons.forEach((btn) => {
+            const targetId = btn.dataset.toggleTarget;
+            if (!targetId) return;
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const labelEl = btn.querySelector('[data-toggle-label]');
+            const expandedLabel = btn.dataset.expandedLabel || 'Colapsar';
+            const collapsedLabel = btn.dataset.collapsedLabel || 'Expandir';
+
+            const updateState = (expanded) => {
+              btn.setAttribute('aria-expanded', String(expanded));
+              if (labelEl) labelEl.textContent = expanded ? expandedLabel : collapsedLabel;
+            };
+
+            const isInitiallyHidden = target.classList.contains('hidden');
+            updateState(!isInitiallyHidden);
+
+            btn.addEventListener('click', () => {
+              const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+              if (isExpanded) {
+                target.classList.add('hidden');
+                updateState(false);
+              } else {
+                target.classList.remove('hidden');
+                updateState(true);
+              }
+            });
+          });
+        },
+
         // --- TOASTS ---
         showToast({ title='Hecho', message='', variant='success', timeout=3000 }){
           const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';
@@ -388,6 +450,8 @@
           if (exportBtn){
             exportBtn.onclick = () => this.exportCapacityReport();
           }
+
+          this.setupSectionToggles();
 
           // Users: find + list
           document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
