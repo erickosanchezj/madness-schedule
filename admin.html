@@ -578,6 +578,7 @@
         timePartsFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', hour:'2-digit',minute:'2-digit',hour12:false }),
         dayFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long',day:'2-digit',month:'short' }),
         dayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', day:'2-digit',month:'short' }),
+        weekdayNameFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long' }),
         dateHelper: {
           ymd(date){ return new Intl.DateTimeFormat('en-CA',{ timeZone: 'America/Mexico_City', year:'numeric', month:'2-digit', day:'2-digit' }).format(date); },
           today(){ return this.ymd(new Date()); },
@@ -586,6 +587,15 @@
         },
         normalizeStr(s=''){
           return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+        },
+        formatWeekdayLabel(dateStr=''){
+          // Converts an ISO date into "Lunes - 26" so the calendar headers show the active day number.
+          if (!dateStr) return null;
+          const base = new Date(`${dateStr}T00:00:00`);
+          if (Number.isNaN(base.getTime())) return null;
+          const weekdayRaw = this.weekdayNameFmt.format(base) || '';
+          const prettyWeekday = weekdayRaw ? `${weekdayRaw.charAt(0).toUpperCase()}${weekdayRaw.slice(1)}` : '';
+          return `${prettyWeekday} - ${base.getDate()}`.trim();
         },
 
         setupSectionToggles(){
@@ -1206,6 +1216,15 @@
         },
 
         renderCalendarGrid(){
+          const headerLabels = document.querySelectorAll('.calendar-header .day-label');
+          if (headerLabels.length){
+            const fallbackLabels = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+            headerLabels.forEach((label, index) => {
+              const labelText = this.formatWeekdayLabel(this.state.weekDates[index]) || fallbackLabels[index] || label.textContent;
+              label.textContent = labelText;
+            });
+          }
+
           const dayContainers = {
             1: document.getElementById('monday-grid'),
             2: document.getElementById('tuesday-grid'),
