@@ -147,22 +147,107 @@
               <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
             </button>
           </div>
-          <div class="flex flex-wrap items-center gap-2 text-xs">
-            <label for="att-start-date">Desde:</label>
-            <input type="date" id="att-start-date" class="bg-zinc-700 text-white p-1 rounded-md" />
-            <label for="att-end-date">Hasta:</label>
-            <input type="date" id="att-end-date" class="bg-zinc-700 text-white p-1 rounded-md" />
-            <label for="facility-capacity">Capacidad:</label>
-            <input type="number" id="facility-capacity" class="bg-zinc-700 text-white p-1 rounded-md w-20" min="1" />
-            <button id="att-export" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-2 rounded-md">Exportar</button>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 text-xs">
+            <div class="flex flex-wrap items-center gap-2">
+              <label for="att-start-date">Desde:</label>
+              <input type="date" id="att-start-date" class="bg-zinc-700 text-white p-1 rounded-md" />
+              <label for="att-end-date">Hasta:</label>
+              <input type="date" id="att-end-date" class="bg-zinc-700 text-white p-1 rounded-md" />
+              <label for="att-period">Periodo:</label>
+              <select id="att-period" class="bg-zinc-700 text-white p-1 rounded-md">
+                <option value="range">Rango seleccionado</option>
+                <option value="daily">Diario</option>
+                <option value="weekly">Semanal</option>
+                <option value="monthly">Mensual</option>
+              </select>
+              <label for="facility-capacity">Capacidad:</label>
+              <input type="number" id="facility-capacity" class="bg-zinc-700 text-white p-1 rounded-md w-20" min="1" />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label for="class-filter">Tipo de clase:</label>
+              <select id="class-filter" class="bg-zinc-700 text-white p-1 rounded-md min-w-[8rem]">
+                <option value="all">Todas</option>
+              </select>
+              <label for="instructor-filter">Instructor:</label>
+              <select id="instructor-filter" class="bg-zinc-700 text-white p-1 rounded-md min-w-[8rem]">
+                <option value="all">Todos</option>
+              </select>
+              <label for="att-export-format">Exportar:</label>
+              <select id="att-export-format" class="bg-zinc-700 text-white p-1 rounded-md">
+                <option value="capacity">Capacidad</option>
+                <option value="demographics">Demográficos</option>
+                <option value="instructors">Instructores</option>
+                <option value="revenue">Ingresos</option>
+                <option value="optimization">Optimización</option>
+                <option value="custom-range">Rango personalizado</option>
+              </select>
+              <button id="att-export" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-2 rounded-md">Exportar</button>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 xl:col-span-2">
+              <span>Métricas:</span>
+              <label class="inline-flex items-center gap-1">
+                <input type="checkbox" id="metric-attended" class="bg-zinc-700" checked /> Asistencias
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <input type="checkbox" id="metric-absent" class="bg-zinc-700" checked /> Ausencias
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <input type="checkbox" id="metric-booked" class="bg-zinc-700" checked /> Reservas
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <input type="checkbox" id="metric-utilization" class="bg-zinc-700" checked /> Utilización
+              </label>
+              <label class="inline-flex items-center gap-1">
+                <input type="checkbox" id="metric-revenue" class="bg-zinc-700" checked /> Ingresos
+              </label>
+            </div>
           </div>
-          <div>
+          <div id="dashboard-loading" class="hidden bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm p-3 rounded-md">
+            Calculando métricas avanzadas…
+          </div>
+          <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-3">
             <div class="w-full bg-zinc-700 h-2 rounded">
               <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>
             </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-zinc-300">
+              <div>
+                <p class="text-zinc-500">Tendencia 7 días</p>
+                <p id="capacity-trend" class="font-semibold">—</p>
+              </div>
+              <div>
+                <p class="text-zinc-500">Alertas</p>
+                <p id="capacity-alert" class="font-semibold">—</p>
+              </div>
+              <div>
+                <p class="text-zinc-500">Vs. semana pasada</p>
+                <p id="capacity-compare" class="font-semibold">—</p>
+              </div>
+              <div>
+                <p class="text-zinc-500">Proyección día</p>
+                <p id="capacity-projection" class="font-semibold">—</p>
+              </div>
+            </div>
           </div>
-          <div class="relative">
-            <canvas id="attendanceChart"></canvas>
+          <div class="space-y-4">
+            <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+              <canvas id="attendanceTrendChart"></canvas>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                <div id="capacity-heatmap" class="grid grid-cols-1 gap-2 text-xs text-zinc-300 min-h-[180px]"></div>
+              </div>
+              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                <canvas id="revenueChart"></canvas>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                <canvas id="retentionChart"></canvas>
+              </div>
+              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                <canvas id="popularityChart"></canvas>
+              </div>
+            </div>
           </div>
           <div id="attendance-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
         </div>
@@ -311,6 +396,7 @@
         auth: null,
         functions: null,
         FACILITY_MAX_CAPACITY: 75,
+        DEFAULT_TICKET_PRICE: 120,
         state: {
           classes: [],
           bookingsMap: new Map(),
@@ -320,7 +406,7 @@
           recentNotifications: [],
           currentAttendance: {},
           selectedClass: null,
-          attendanceChartInstance: null,
+          attendanceCharts: {},
           unsubClasses: null,
           unsubBookings: [],
           unsubWaitlists: [],
@@ -330,7 +416,18 @@
           unsubCapacity: null,
           attendanceTickTimer: null,
           userSearchResults: [],
-          blacklistedUsers: []
+          blacklistedUsers: [],
+          analyticsTracker: {
+            bookingTimeline: {},
+            userBehavior: {},
+            cancellationTimeline: [],
+            switches: []
+          },
+          selectedMetrics: new Set(['attended','absent','booked','utilization','revenue']),
+          selectedPeriod: 'range',
+          selectedClassType: 'all',
+          selectedInstructor: 'all',
+          selectedExportFormat: 'capacity'
         },
 
         // --- Helpers ---
@@ -435,6 +532,17 @@
           const eEl = document.getElementById('att-end-date');
           const capEl = document.getElementById('facility-capacity');
           const exportBtn = document.getElementById('att-export');
+          const periodEl = document.getElementById('att-period');
+          const classFilter = document.getElementById('class-filter');
+          const instructorFilter = document.getElementById('instructor-filter');
+          const exportFormatEl = document.getElementById('att-export-format');
+          const metricCheckboxes = [
+            { id:'metric-attended', key:'attended' },
+            { id:'metric-absent', key:'absent' },
+            { id:'metric-booked', key:'booked' },
+            { id:'metric-utilization', key:'utilization' },
+            { id:'metric-revenue', key:'revenue' }
+          ];
           if (sEl && eEl){
             sEl.value = range.start;
             eEl.value = range.end;
@@ -446,6 +554,38 @@
             capEl.addEventListener('change',()=>{
               this.FACILITY_MAX_CAPACITY = Number(capEl.value)||0;
               this.fetchAttendanceData(true);
+            });
+          }
+          if (periodEl){
+            periodEl.addEventListener('change',()=>{
+              this.state.selectedPeriod = periodEl.value;
+              this.fetchAttendanceData(true);
+            });
+          }
+          if (classFilter){
+            classFilter.addEventListener('change',()=>{
+              this.state.selectedClassType = classFilter.value;
+              this.fetchAttendanceData(true);
+            });
+          }
+          if (instructorFilter){
+            instructorFilter.addEventListener('change',()=>{
+              this.state.selectedInstructor = instructorFilter.value;
+              this.fetchAttendanceData(true);
+            });
+          }
+          metricCheckboxes.forEach(meta=>{
+            const el = document.getElementById(meta.id);
+            if (!el) return;
+            el.addEventListener('change',()=>{
+              if (el.checked){ this.state.selectedMetrics.add(meta.key); }
+              else this.state.selectedMetrics.delete(meta.key);
+              this.renderAttendanceDashboardFromCache();
+            });
+          });
+          if (exportFormatEl){
+            exportFormatEl.addEventListener('change',()=>{
+              this.state.selectedExportFormat = exportFormatEl.value;
             });
           }
           if (exportBtn){
@@ -520,7 +660,7 @@
             this.mountBookingsListenersForVisibleClasses();
             this.mountWaitlistListenersForVisibleClasses();
             this.renderAll();
-            this.renderAttendanceChartFromCache();
+            this.renderAttendanceDashboardFromCache();
             return;
           }
 
@@ -541,7 +681,8 @@
               this.mountBookingsListenersForVisibleClasses();
               this.mountWaitlistListenersForVisibleClasses();
               this.renderAll();
-              this.renderAttendanceChartFromCache();
+              this.refreshAttendanceFilters();
+              this.renderAttendanceDashboardFromCache();
             }, err=>{
               console.error(err);
               this.showToast({ title:'Error listando clases', message: err.message, variant:'error' });
@@ -569,15 +710,42 @@
             const unsub = this.db.collection('bookings')
               .where('classId','in',batch)
               .onSnapshot((snap)=>{
-                batch.forEach(cid => this.state.bookingsMap.delete(cid));
+                const tracker = this.state.analyticsTracker;
+                batch.forEach(cid => {
+                  this.state.bookingsMap.delete(cid);
+                  tracker.bookingTimeline[cid] = [];
+                });
                 snap.docs.forEach(doc=>{
                   const b = doc.data();
                   const arr = this.state.bookingsMap.get(b.classId) || [];
-                  arr.push({ id:doc.id, ...b });
+                  const record = { id:doc.id, ...b };
+                  arr.push(record);
                   this.state.bookingsMap.set(b.classId, arr);
+                  const createdAt = b.createdAt?.toDate ? b.createdAt.toDate() : (b.createdAt ? new Date(b.createdAt) : null);
+                  if (!tracker.bookingTimeline[b.classId]) tracker.bookingTimeline[b.classId] = [];
+                  if (createdAt && !Number.isNaN(createdAt.getTime())){
+                    tracker.bookingTimeline[b.classId].push(createdAt.getTime());
+                  }
+                  const userKey = b.userId || b.userEmail || b.userName || doc.id;
+                  if (!tracker.userBehavior[userKey]){
+                    tracker.userBehavior[userKey] = { bookingsSet:new Set(), cancellationIds:new Set(), switchIds:new Set(), bookings:0, cancellations:0, switches:0, lastClassId:null };
+                  }
+                  tracker.userBehavior[userKey].bookingsSet.add(doc.id);
+                  tracker.userBehavior[userKey].bookings = tracker.userBehavior[userKey].bookingsSet.size;
+                  if ((b.status && b.status==='cancelled') || b.cancelledAt){
+                    tracker.userBehavior[userKey].cancellationIds.add(doc.id);
+                    tracker.userBehavior[userKey].cancellations = tracker.userBehavior[userKey].cancellationIds.size;
+                    this.recordCancellationTiming(b);
+                  }
+                  if (b.previousClassId && b.previousClassId !== b.classId){
+                    tracker.userBehavior[userKey].switchIds.add(`${doc.id}:${b.previousClassId}->${b.classId}`);
+                    tracker.userBehavior[userKey].switches = tracker.userBehavior[userKey].switchIds.size;
+                    this.recordClassSwitch(b);
+                  }
+                  tracker.userBehavior[userKey].lastClassId = b.classId;
                 });
                 this.renderAll();
-                this.renderAttendanceChartFromCache();
+                this.renderAttendanceDashboardFromCache();
               });
             this.state.unsubBookings.push(unsub);
           }
@@ -612,6 +780,44 @@
               });
             this.state.unsubWaitlists.push(unsub);
           }
+        },
+
+        recordCancellationTiming(booking){
+          const tracker = this.state.analyticsTracker;
+          if (!tracker) return;
+          const cancelledAtRaw = booking.cancelledAt?.toDate ? booking.cancelledAt.toDate() : (booking.cancelledAt ? new Date(booking.cancelledAt) : null);
+          const createdAtRaw = booking.createdAt?.toDate ? booking.createdAt.toDate() : (booking.createdAt ? new Date(booking.createdAt) : null);
+          const classDate = booking.classDate || '';
+          const classTime = booking.classTime || booking.time || '';
+          let classStart = null;
+          if (classDate && classTime){
+            classStart = new Date(`${classDate}T${(classTime.length===5?classTime:classTime.slice(0,5))}:00Z`);
+          }
+          let hoursBefore = null;
+          if (cancelledAtRaw && classStart && !Number.isNaN(cancelledAtRaw.getTime()) && !Number.isNaN(classStart.getTime())){
+            const diff = (classStart.getTime() - cancelledAtRaw.getTime()) / 3600000;
+            hoursBefore = Math.round(diff*10)/10;
+          }
+          tracker.cancellationTimeline.push({
+            classId: booking.classId,
+            classDate,
+            cancelledAt: cancelledAtRaw ? cancelledAtRaw.toISOString() : null,
+            createdAt: createdAtRaw ? createdAtRaw.toISOString() : null,
+            hoursBefore
+          });
+          if (tracker.cancellationTimeline.length>200) tracker.cancellationTimeline.shift();
+        },
+
+        recordClassSwitch(booking){
+          const tracker = this.state.analyticsTracker;
+          if (!tracker) return;
+          const createdAtRaw = booking.createdAt?.toDate ? booking.createdAt.toDate() : (booking.createdAt ? new Date(booking.createdAt) : null);
+          tracker.switches.push({
+            from: booking.previousClassId,
+            to: booking.classId,
+            when: createdAtRaw ? createdAtRaw.toISOString() : null
+          });
+          if (tracker.switches.length>200) tracker.switches.shift();
         },
 
         // --- NOTIFICATIONS ---
@@ -956,6 +1162,453 @@
           });
         },
 
+        refreshAttendanceFilters(){
+          const classFilter = document.getElementById('class-filter');
+          const instructorFilter = document.getElementById('instructor-filter');
+          if (!classFilter || !instructorFilter) return;
+          const classTypes = new Set(['all']);
+          const instructors = new Set(['all']);
+          this.state.classes.forEach(cls=>{
+            if (cls.type) classTypes.add(cls.type);
+            else if (cls.category) classTypes.add(cls.category);
+            else if (cls.icon) classTypes.add(`Icono ${cls.icon}`);
+            if (cls.instructor) instructors.add(cls.instructor);
+          });
+          const classValue = classFilter.value || this.state.selectedClassType;
+          const instructorValue = instructorFilter.value || this.state.selectedInstructor;
+          classFilter.innerHTML = Array.from(classTypes).map(val=>{
+            const safe = DOMPurify.sanitize(val);
+            const label = val === 'all' ? 'Todas' : safe;
+            const selected = val === classValue ? 'selected' : '';
+            return `<option value="${safe}" ${selected}>${label}</option>`;
+          }).join('');
+          instructorFilter.innerHTML = Array.from(instructors).map(val=>{
+            const safe = DOMPurify.sanitize(val);
+            const label = val === 'all' ? 'Todos' : safe;
+            const selected = val === instructorValue ? 'selected' : '';
+            return `<option value="${safe}" ${selected}>${label}</option>`;
+          }).join('');
+          this.state.selectedClassType = classFilter.value;
+          this.state.selectedInstructor = instructorFilter.value;
+        },
+
+        estimateClassRevenue(cls={}, quantity){
+          const basePrice = Number(cls.price || this.DEFAULT_TICKET_PRICE || 120);
+          return Math.round(Math.max(quantity,0) * basePrice);
+        },
+
+        calculateBookingVelocityScore(classId, seatsBooked){
+          const tracker = this.state.analyticsTracker;
+          if (!tracker || !tracker.bookingTimeline) return 0;
+          const raw = tracker.bookingTimeline[classId] || [];
+          if (!raw.length) return 0;
+          const sorted = [...raw].sort((a,b)=>a-b);
+          const first = sorted[0];
+          const last = sorted[sorted.length-1];
+          const hours = Math.max((last-first)/3600000, 1/12);
+          const velocity = seatsBooked/Math.max(hours, 0.1);
+          return Math.min(Math.round(velocity*15), 60);
+        },
+
+        calculateDaySnapshot({ day, base, classList, bookingsByClass, userStats, cancellationsByDay, aggregates }){
+          const stats = userStats instanceof Map ? userStats : new Map();
+          const snapshot = {
+            ...base,
+            booked: 0,
+            totalCapacity: 0,
+            utilizationRate: 0,
+            revenue: 0,
+            revenueTarget: 0,
+            repeatBookings: 0,
+            newMembers: 0,
+            cancellations: cancellationsByDay?.[day] || 0,
+            noShows: base.absent || 0,
+            popularityScore: 0,
+            instructorMetrics: {},
+            peakHours: {},
+            memberRetention: 0,
+            details: { ...base.details, booked:{} }
+          };
+          let popularityAccumulator = 0;
+          let classesConsidered = 0;
+          const filterType = this.state.selectedClassType;
+          const filterInstructor = this.state.selectedInstructor;
+          classList.forEach(cls=>{
+            if (!cls) return;
+            const matchesType = filterType === 'all'
+              || cls.type === filterType
+              || cls.category === filterType
+              || (`Icono ${cls.icon}` === filterType);
+            const matchesInstructor = filterInstructor === 'all'
+              || (cls.instructor === filterInstructor);
+            if (!matchesType || !matchesInstructor) return;
+            classesConsidered++;
+            const liveBookings = this.state.bookingsMap.get(cls.id) || [];
+            const storedBookings = bookingsByClass?.[cls.id] || [];
+            const rosterSource = liveBookings.length ? liveBookings : storedBookings;
+            const labelTime = cls.localTime || cls.time || '';
+            const labelName = cls.name || 'Clase';
+            const label = `${labelTime} - ${labelName}`.trim();
+            const rosterNames = rosterSource.map(x=>DOMPurify.sanitize(x.userName || x.userEmail || x.userId || 'Anónimo'));
+            if (rosterNames.length) snapshot.details.booked[label] = rosterNames;
+            const capacity = Number(cls.capacity||0);
+            snapshot.totalCapacity += capacity;
+            snapshot.booked += rosterSource.length;
+            snapshot.revenue += this.estimateClassRevenue(cls, rosterSource.length);
+            snapshot.revenueTarget += this.estimateClassRevenue(cls, capacity);
+            const hourLabel = labelTime ? labelTime.slice(0,5) : 'N/D';
+            snapshot.peakHours[hourLabel] = (snapshot.peakHours[hourLabel]||0) + rosterSource.length;
+            const instructor = cls.instructor || 'Sin asignar';
+            if (!snapshot.instructorMetrics[instructor]){
+              snapshot.instructorMetrics[instructor] = { classes:0, attendees:0, utilizationSum:0 };
+            }
+            snapshot.instructorMetrics[instructor].classes++;
+            snapshot.instructorMetrics[instructor].attendees += rosterSource.length;
+            const utilizationPct = capacity ? (rosterSource.length/Math.max(capacity,1))*100 : 0;
+            snapshot.instructorMetrics[instructor].utilizationSum += utilizationPct;
+            let classRepeats = 0;
+            let classNew = 0;
+            rosterSource.forEach(rec=>{
+              const userKey = rec.userId || rec.userEmail || rec.userName || rec.id;
+              const stat = stats.get ? stats.get(userKey) : undefined;
+              if (!stat) return;
+              if (stat.count>1 && stat.firstDate && stat.firstDate < day) classRepeats++;
+              else if (stat.count===1 && stat.firstDate === day) classNew++;
+            });
+            snapshot.repeatBookings += classRepeats;
+            snapshot.newMembers += classNew;
+            const basePopularity = capacity ? (rosterSource.length/Math.max(capacity,1))*100 : rosterSource.length*5;
+            const velocityScore = this.calculateBookingVelocityScore(cls.id, rosterSource.length);
+            const classScore = Math.round(basePopularity + velocityScore);
+            popularityAccumulator += classScore;
+            if (aggregates?.classPopularity){
+              if (!aggregates.classPopularity.has(cls.id)){
+                aggregates.classPopularity.set(cls.id,{ id:cls.id, label, instructor, totalScore:0, occurrences:0 });
+              }
+              const entry = aggregates.classPopularity.get(cls.id);
+              entry.totalScore += classScore;
+              entry.occurrences += 1;
+            }
+          });
+          if (classesConsidered>0){
+            snapshot.popularityScore = Math.round(popularityAccumulator/classesConsidered);
+            Object.values(snapshot.instructorMetrics).forEach(metrics=>{
+              metrics.utilization = metrics.classes ? Math.round(metrics.utilizationSum/metrics.classes) : 0;
+            });
+          } else {
+            snapshot.popularityScore = 0;
+          }
+          snapshot.utilizationRate = snapshot.totalCapacity>0 ? Math.round((snapshot.booked/Math.max(snapshot.totalCapacity,1))*100) : 0;
+          if (snapshot.utilizationRate>85) snapshot.warning='Capacidad crítica';
+          else if (snapshot.utilizationRate>60) snapshot.warning='Capacidad alta';
+          else snapshot.warning='Capacidad estable';
+          snapshot.memberRetention = snapshot.booked>0 ? Math.round((snapshot.repeatBookings/Math.max(snapshot.booked,1))*100) : 0;
+          if (aggregates){
+            aggregates.heatmap[day] = snapshot.peakHours;
+            aggregates.totals.revenue += snapshot.revenue;
+            aggregates.totals.target += snapshot.revenueTarget;
+            aggregates.totals.repeat += snapshot.repeatBookings;
+            aggregates.totals.newMembers += snapshot.newMembers;
+            aggregates.totals.cancellations += snapshot.cancellations;
+            aggregates.totals.noShows += snapshot.noShows;
+            Object.entries(snapshot.instructorMetrics).forEach(([name,metrics])=>{
+              if (!aggregates.instructorTotals[name]){
+                aggregates.instructorTotals[name] = { classes:0, attendees:0, utilizationSum:0 };
+              }
+              aggregates.instructorTotals[name].classes += metrics.classes;
+              aggregates.instructorTotals[name].attendees += metrics.attendees;
+              aggregates.instructorTotals[name].utilizationSum += metrics.utilizationSum;
+            });
+          }
+          return snapshot;
+        },
+
+        aggregateReportByPeriod(dataCache, period){
+          const { report, labels } = dataCache;
+          if (period === 'range' || period === 'daily'){
+            return labels.map(l=>({ label:l.label, key:l.date, data: report[l.date] }));
+          }
+          const grouped = new Map();
+          labels.forEach(l=>{
+            const baseDate = new Date(`${l.date}T00:00:00-06:00`);
+            if (Number.isNaN(baseDate.getTime())) return;
+            let key = l.date;
+            let labelTxt = l.label;
+            if (period === 'weekly'){
+              const monday = new Date(baseDate);
+              const day = monday.getDay();
+              const diff = day === 0 ? 6 : day-1;
+              monday.setDate(monday.getDate()-diff);
+              const sunday = new Date(monday);
+              sunday.setDate(monday.getDate()+6);
+              key = `${monday.toISOString().slice(0,10)}_${sunday.toISOString().slice(0,10)}`;
+              labelTxt = `${this.dayShortFmt.format(monday)} - ${this.dayShortFmt.format(sunday)}`;
+            } else if (period === 'monthly'){
+              key = `${baseDate.getFullYear()}-${String(baseDate.getMonth()+1).padStart(2,'0')}`;
+              labelTxt = baseDate.toLocaleString('es-MX',{ month:'short', year:'numeric' });
+            }
+            if (!grouped.has(key)){
+              grouped.set(key,{ label:labelTxt, keys:[], data:{ attended:0, absent:0, booked:0, totalCapacity:0, revenue:0, revenueTarget:0, repeatBookings:0, newMembers:0, cancellations:0, noShows:0, popularityScore:0 } });
+            }
+            const bucket = grouped.get(key);
+            bucket.keys.push(l.date);
+            const dayData = report[l.date];
+            ['attended','absent','booked','totalCapacity','revenue','revenueTarget','repeatBookings','newMembers','cancellations','noShows'].forEach(field=>{
+              bucket.data[field] += dayData?.[field] || 0;
+            });
+            bucket.data.popularityScore += dayData?.popularityScore || 0;
+          });
+          return Array.from(grouped.values()).map(bucket=>{
+            const count = bucket.keys.length || 1;
+            bucket.data.popularityScore = Math.round(bucket.data.popularityScore/count);
+            bucket.data.utilizationRate = bucket.data.totalCapacity>0 ? Math.round((bucket.data.booked/Math.max(bucket.data.totalCapacity,1))*100) : 0;
+            bucket.data.memberRetention = bucket.data.booked>0 ? Math.round((bucket.data.repeatBookings/Math.max(bucket.data.booked,1))*100) : 0;
+            return { label: bucket.label, key: bucket.keys[0], data: bucket.data };
+          });
+        },
+
+        buildAttendanceAggregates({ labels, report, aggregateContext, userStats }){
+          const popularity = Array.from(aggregateContext.classPopularity.values()).map(entry=>{
+            const avgScore = entry.occurrences ? Math.round(entry.totalScore/entry.occurrences) : 0;
+            return { id: entry.id, label: entry.label, score: avgScore, instructor: entry.instructor };
+          }).sort((a,b)=>b.score-a.score);
+          const instructorMetrics = {};
+          Object.entries(aggregateContext.instructorTotals).forEach(([name,metrics])=>{
+            instructorMetrics[name] = {
+              classes: metrics.classes,
+              attendees: metrics.attendees,
+              avgUtilization: metrics.classes ? Math.round(metrics.utilizationSum/metrics.classes) : 0
+            };
+          });
+          const totals = aggregateContext.totals;
+          const retentionRate = Math.round((totals.repeat/Math.max(totals.repeat + totals.newMembers,1))*100);
+          const revenueSeries = labels.map(l=>({
+            date: l.date,
+            revenue: report[l.date]?.revenue || 0,
+            target: report[l.date]?.revenueTarget || 0
+          }));
+          const behavior = {
+            cancellationTimeline: [...(this.state.analyticsTracker?.cancellationTimeline || [])],
+            switches: [...(this.state.analyticsTracker?.switches || [])]
+          };
+          const bi = {
+            lifetimeValue: this.calculateMemberLifetimeValue({ userStats }),
+            classProfitability: this.analyzeClassProfitability(popularity, report),
+            optimalScheduling: this.recommendOptimalScheduling(report),
+            capacityVsDemand: this.calculateCapacityVsDemand(report),
+            instructorUtilization: this.calculateInstructorUtilization(instructorMetrics)
+          };
+          return {
+            totals,
+            instructorMetrics,
+            popularity,
+            heatmap: aggregateContext.heatmap,
+            retention: { newMembers: totals.newMembers, repeatMembers: totals.repeat, retentionRate },
+            revenueSeries,
+            behavior,
+            bi
+          };
+        },
+
+        destroyAttendanceCharts(){
+          if (!this.state.attendanceCharts) this.state.attendanceCharts = {};
+          Object.values(this.state.attendanceCharts).forEach(chart=>{
+            try{ chart?.destroy?.(); }catch{}
+          });
+          this.state.attendanceCharts = {};
+        },
+
+        renderCapacityHeatmap(heatmapData){
+          const container = document.getElementById('capacity-heatmap');
+          if (!container) return;
+          const dayEntries = Object.entries(heatmapData || {});
+          if (!dayEntries.length){
+            container.innerHTML = '<p class="text-zinc-500">Sin datos de horario.</p>';
+            return;
+          }
+          const hours = new Set();
+          dayEntries.forEach(([,hoursObj])=>{
+            Object.keys(hoursObj || {}).forEach(h=>hours.add(h));
+          });
+          const hourList = Array.from(hours).sort();
+          const maxVal = Math.max(...dayEntries.flatMap(([,hoursObj])=>Object.values(hoursObj || {})), 1);
+          const columns = hourList.length + 1;
+          const rows = [];
+          const header = ['<div class="font-semibold">Día</div>', ...hourList.map(h=>`<div class="text-center">${DOMPurify.sanitize(h)}</div>`)];
+          const gridStyle = `style="display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:0.25rem;"`;
+          rows.push(`<div ${gridStyle}>${header.join('')}</div>`);
+          dayEntries.sort(([a],[b])=>a.localeCompare(b)).forEach(([day, hoursObj])=>{
+            const labelDate = new Date(`${day}T00:00:00-06:00`);
+            const dayLabel = Number.isNaN(labelDate.getTime()) ? day : this.dayShortFmt.format(labelDate);
+            const cells = [`<div class="text-zinc-400">${DOMPurify.sanitize(dayLabel)}</div>`];
+            hourList.forEach(h=>{
+              const value = hoursObj?.[h] || 0;
+              const intensity = Math.min(1, value/Math.max(maxVal,1));
+              const bg = `rgba(129,140,248,${(0.15 + intensity*0.75).toFixed(2)})`;
+              cells.push(`<div class="text-center rounded-sm" style="background:${bg}">${value}</div>`);
+            });
+            rows.push(`<div ${gridStyle}>${cells.join('')}</div>`);
+          });
+          container.innerHTML = rows.join('');
+        },
+
+        renderAttendanceDashboardFromCache(){
+          const trendCtx = document.getElementById('attendanceTrendChart')?.getContext('2d');
+          const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
+          const retentionCtx = document.getElementById('retentionChart')?.getContext('2d');
+          const popularityCtx = document.getElementById('popularityChart')?.getContext('2d');
+          const details = document.getElementById('attendance-details');
+          const loadingEl = document.getElementById('dashboard-loading');
+          if (loadingEl) loadingEl.classList.add('hidden');
+          if (!trendCtx || !details){ return; }
+          const dataCache = this.state.attendanceData;
+          if (!dataCache){
+            details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
+            return;
+          }
+          this.injectBookingsIntoReport();
+          const periodBuckets = this.aggregateReportByPeriod(dataCache, this.state.selectedPeriod);
+          if (!periodBuckets.length){
+            this.destroyAttendanceCharts();
+            details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">No hay datos en el rango seleccionado.</div>`;
+            this.renderCapacityHeatmap({});
+            return;
+          }
+          const labels = periodBuckets.map(b=>b.label);
+          const metrics = periodBuckets.map(b=>b.data);
+          const selected = this.state.selectedMetrics || new Set();
+          const datasets = [];
+          if (selected.has('attended')){
+            datasets.push({ label:'Asistencias', data: metrics.map(m=>m.attended||0), backgroundColor:'rgba(16,185,129,0.6)', stack:'counts' });
+          }
+          if (selected.has('absent')){
+            datasets.push({ label:'Ausencias', data: metrics.map(m=>m.absent||0), backgroundColor:'rgba(244,63,94,0.6)', stack:'counts' });
+          }
+          if (selected.has('booked')){
+            datasets.push({ label:'Reservas', data: metrics.map(m=>m.booked||0), backgroundColor:'rgba(59,130,246,0.6)', stack:'counts' });
+          }
+          if (selected.has('utilization')){
+            datasets.push({ label:'Utilización %', data: metrics.map(m=>m.utilizationRate||0), type:'line', yAxisID:'y1', borderColor:'#a855f7', tension:0.2, fill:false, pointBackgroundColor:'#a855f7' });
+          }
+          if (selected.has('revenue')){
+            datasets.push({ label:'Ingresos', data: metrics.map(m=>m.revenue||0), type:'line', yAxisID:'y2', borderColor:'#fbbf24', tension:0.2, fill:false, pointBackgroundColor:'#fbbf24' });
+          }
+          this.destroyAttendanceCharts();
+          this.state.attendanceCharts.trend = new Chart(trendCtx, {
+            type:'bar',
+            data:{ labels, datasets },
+            options:{
+              responsive:true,
+              scales:{
+                x:{ stacked:true, ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } },
+                y:{ stacked:true, ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } },
+                y1:{ position:'right', beginAtZero:true, ticks:{ color:'#c4b5fd', callback:v=>v+'%' }, grid:{ drawOnChartArea:false } },
+                y2:{ position:'right', beginAtZero:true, ticks:{ color:'#facc15', callback:v=>`$${v}` }, grid:{ drawOnChartArea:false } }
+              },
+              plugins:{ legend:{ labels:{ color:'#e4e4e7' } } }
+            }
+          });
+
+          if (revenueCtx){
+            const revenueSeries = dataCache.aggregates?.revenueSeries || [];
+            const revenueLabels = revenueSeries.map(r=>{
+              const dateObj = new Date(`${r.date}T00:00:00-06:00`);
+              return Number.isNaN(dateObj.getTime()) ? (r.date || '') : this.dayShortFmt.format(dateObj);
+            });
+            this.state.attendanceCharts.revenue = new Chart(revenueCtx, {
+              type:'bar',
+              data:{
+                labels: revenueLabels,
+                datasets:[
+                  { label:'Ingresos', data: revenueSeries.map(r=>r.revenue), backgroundColor:'rgba(34,197,94,0.7)' },
+                  { label:'Meta', data: revenueSeries.map(r=>r.target), backgroundColor:'rgba(244,114,182,0.4)' }
+                ]
+              },
+              options:{
+                responsive:true,
+                scales:{ x:{ ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } }, y:{ ticks:{ color:'#a1a1aa', callback:v=>`$${v}` }, grid:{ color:'#3f3f46' } } },
+                plugins:{ legend:{ labels:{ color:'#e4e4e7' } } }
+              }
+            });
+          }
+
+          if (retentionCtx){
+            const retention = dataCache.aggregates?.retention || { newMembers:0, repeatMembers:0, retentionRate:0 };
+            this.state.attendanceCharts.retention = new Chart(retentionCtx, {
+              type:'bar',
+              data:{
+                labels:['Nuevos','Recurrentes','Retención %'],
+                datasets:[{
+                  data:[retention.newMembers, retention.repeatMembers, retention.retentionRate],
+                  backgroundColor:['rgba(59,130,246,0.6)','rgba(16,185,129,0.6)','rgba(250,204,21,0.6)']
+                }]
+              },
+              options:{
+                responsive:true,
+                scales:{ x:{ ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } }, y:{ beginAtZero:true, ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } } },
+                plugins:{ legend:{ display:false } }
+              }
+            });
+          }
+
+          if (popularityCtx){
+            const topClasses = (dataCache.aggregates?.popularity || []).slice(0,8);
+            this.state.attendanceCharts.popularity = new Chart(popularityCtx, {
+              type:'bar',
+              data:{
+                labels: topClasses.map(item=>item.label),
+                datasets:[{
+                  label:'Popularidad',
+                  data: topClasses.map(item=>item.score),
+                  backgroundColor:'rgba(129,140,248,0.7)'
+                }]
+              },
+              options:{
+                indexAxis:'y',
+                scales:{ x:{ ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } }, y:{ ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } } },
+                plugins:{ legend:{ display:false } }
+              }
+            });
+          }
+
+          this.renderCapacityHeatmap(dataCache.aggregates?.heatmap || {});
+
+          const renderList = (obj)=>{
+            const names = Object.keys(obj||{}).sort();
+            if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
+            return names.map(n=>{
+              const people = (obj[n]||[]).map(p=>`<li>${DOMPurify.sanitize(p)}</li>`).join('');
+              return `
+                <div class="font-semibold text-zinc-300 mt-1">${DOMPurify.sanitize(n)}:</div>
+                <ul class="list-disc list-inside text-zinc-400">${people}</ul>
+              `;
+            }).join('');
+          };
+
+          details.innerHTML = dataCache.labels.map(l=>{
+            const d = dataCache.report[l.date];
+            const warnColor = d.utilizationRate>85?'text-rose-400': d.utilizationRate>60?'text-amber-400':'text-emerald-400';
+            const peak = Object.entries(d.peakHours||{}).sort((a,b)=>b[1]-a[1])[0];
+            const peakLabel = peak ? `${peak[0]} (${peak[1]} asistentes)` : '—';
+            return `
+              <div class="bg-zinc-900 p-3 rounded-md">
+                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(l.label)}</h4>
+                <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>
+                ${renderList(d.details.booked)}
+                <div class="text-sm mt-2">Capacidad total: ${d.totalCapacity||0}</div>
+                <div class="text-sm">Ingresos: $${d.revenue||0} / Meta $${d.revenueTarget||0}</div>
+                <div class="text-sm">Retención: ${d.memberRetention||0}%</div>
+                <div class="${warnColor} text-sm">${DOMPurify.sanitize(d.warning||'')}</div>
+                <div class="text-sm mt-1">Hora pico: ${DOMPurify.sanitize(peakLabel)}</div>
+                <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended||0})</div>
+                ${renderList(d.details.attended)}
+                <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>
+                ${renderList(d.details.absent)}
+              </div>
+            `;
+          }).join('');
+        },
+
         // ====== ASISTENCIA (POLLING CADA 15 MIN) ======
         getDefaultAttendanceRange(){
           const today = this.dateHelper.today();
@@ -994,17 +1647,33 @@
         },
 
         async fetchAttendanceData(){
+          const loadingEl = document.getElementById('dashboard-loading');
+          if (loadingEl) loadingEl.classList.remove('hidden');
           const now = Date.now();
           const { start, end } = this.getSelectedAttendanceRange();
           const report = {};
           const labels = [];
-          // Parse selected range in Mexico City time to avoid UTC date shifts
+          const aggregateContext = {
+            classPopularity: new Map(),
+            heatmap: {},
+            instructorTotals: {},
+            totals: { revenue:0, target:0, repeat:0, newMembers:0, cancellations:0, noShows:0 }
+          };
+          const userStatsMap = new Map();
+          const cancellationsByDay = {};
           const startDate = new Date(`${start}T00:00:00-06:00`);
           const endDate = new Date(`${end}T00:00:00-06:00`);
           for (let dt = new Date(startDate); dt <= endDate; dt.setDate(dt.getDate()+1)){
-            const d = this.dateHelper.ymd(dt);
-            report[d] = { attended:0, absent:0, booked:0, totalCapacity:0, utilizationRate:0, warning:'', details:{ attended:{}, absent:{}, booked:{} } };
-            labels.push({ date:d, label:this.dayShortFmt.format(new Date(dt)) });
+            const clone = new Date(dt);
+            const dayKey = this.dateHelper.ymd(clone);
+            report[dayKey] = {
+              attended:0, absent:0, booked:0, totalCapacity:0, utilizationRate:0, warning:'',
+              details:{ attended:{}, absent:{}, booked:{} },
+              revenue:0, revenueTarget:0, repeatBookings:0, newMembers:0,
+              cancellations:0, noShows:0, popularityScore:0,
+              instructorMetrics:{}, peakHours:{}, memberRetention:0
+            };
+            labels.push({ date: dayKey, label: this.dayShortFmt.format(clone) });
           }
           try {
             const [attendanceSnap, classesSnap, bookingsSnap] = await Promise.all([
@@ -1023,14 +1692,14 @@
             ]);
 
             attendanceSnap.forEach(doc=>{
-              const r = doc.data();
-              if (!report[r.classDate]) return;
-              const cat = r.status==='attended' ? 'attended' : 'absent';
-              report[r.classDate][cat]++;
-              const labelBase = r.classTime ?? r.className;
-              const key = `${labelBase} - ${r.className}`;
-              if (!report[r.classDate].details[cat][key]) report[r.classDate].details[cat][key] = [];
-              report[r.classDate].details[cat][key].push(r.userName);
+              const rec = doc.data();
+              if (!rec.classDate || !report[rec.classDate]) return;
+              const cat = rec.status==='attended' ? 'attended' : 'absent';
+              report[rec.classDate][cat]++;
+              const labelBase = rec.classTime ?? rec.className ?? '';
+              const key = `${labelBase} - ${rec.className || ''}`.trim();
+              if (!report[rec.classDate].details[cat][key]) report[rec.classDate].details[cat][key] = [];
+              report[rec.classDate].details[cat][key].push(rec.userName || rec.userId || 'Anónimo');
             });
 
             const classesByDay = {};
@@ -1060,6 +1729,18 @@
               if (!data.classId) return;
               if (!bookingsByClass[data.classId]) bookingsByClass[data.classId] = [];
               bookingsByClass[data.classId].push(data);
+              const userKey = data.userId || data.userEmail || data.userName || data.id;
+              if (!userStatsMap.has(userKey)){
+                userStatsMap.set(userKey,{ count:0, firstDate:data.classDate || '', revenue:0, cancellations:0 });
+              }
+              const stat = userStatsMap.get(userKey);
+              stat.count += 1;
+              if (data.classDate && (!stat.firstDate || data.classDate < stat.firstDate)) stat.firstDate = data.classDate;
+              stat.revenue += this.estimateClassRevenue({ price:data.price },1);
+              if ((data.status && data.status==='cancelled') || data.cancelledAt){
+                stat.cancellations = (stat.cancellations||0)+1;
+                if (data.classDate){ cancellationsByDay[data.classDate] = (cancellationsByDay[data.classDate]||0)+1; }
+              }
             });
 
             const effectiveClassesByDay = {};
@@ -1074,45 +1755,40 @@
             });
 
             Object.entries(effectiveClassesByDay).forEach(([day, classList])=>{
-              const r = report[day];
-              if (!r) return;
-              let dayCapacity = 0;
-              let dayBooked = 0;
-              const bookedDetails = {};
-              classList.forEach(cls=>{
-                dayCapacity += Number(cls.capacity||0);
-                const liveBookings = this.state.bookingsMap.get(cls.id) || [];
-                const storedBookings = bookingsByClass[cls.id] || [];
-                const rosterSource = liveBookings.length ? liveBookings : storedBookings;
-                const rosterNames = rosterSource.map(x=>x.userName || x.userEmail || x.userId || 'Anónimo');
-                if (rosterNames.length){
-                  const fallbackTime = (cls.classDate && cls.time)
-                    ? this.timeFmt.format(new Date(`${cls.classDate}T${cls.time}:00Z`))
-                    : (cls.time || '');
-                  const labelTime = cls.localTime || fallbackTime;
-                  const labelName = cls.name || 'Clase';
-                  const label = `${labelTime} - ${labelName}`.trim();
-                  bookedDetails[label] = rosterNames;
-                }
-                dayBooked += rosterNames.length;
+              const base = report[day];
+              if (!base) return;
+              report[day] = this.calculateDaySnapshot({
+                day,
+                base,
+                classList,
+                bookingsByClass,
+                userStats: userStatsMap,
+                cancellationsByDay,
+                aggregates: aggregateContext
               });
-              r.totalCapacity = dayCapacity;
-              r.booked = dayBooked;
-              r.details.booked = bookedDetails;
-              const utilization = dayCapacity>0 ? Math.round((dayBooked/dayCapacity)*100) : 0;
-              r.utilizationRate = utilization;
-              if (utilization>85) r.warning='Capacidad crítica';
-              else if (utilization>60) r.warning='Capacidad alta';
-              else r.warning='Capacidad estable';
             });
 
-            this.state.attendanceData = { report, labels, classesByDay: effectiveClassesByDay, bookingsByClass };
+            const aggregates = this.buildAttendanceAggregates({ labels, report, aggregateContext, userStats: userStatsMap });
+
+            this.state.attendanceData = {
+              report,
+              labels,
+              classesByDay: effectiveClassesByDay,
+              bookingsByClass,
+              userStats: userStatsMap,
+              cancellationsByDay,
+              aggregates
+            };
             this.state.attendanceLastAt = now;
             this.updateAttendanceLegend();
-            this.renderAttendanceChartFromCache();
+            this.renderAttendanceDashboardFromCache();
             this.updateCapacityGauge();
-            console.log('Proyecciones:', this.calculateCapacityProjections());
-          } catch(e){ console.error('Error leyendo asistencia:', e); }
+            console.log('BI resumen:', aggregates.bi);
+          } catch(e){
+            console.error('Error leyendo asistencia:', e);
+          } finally {
+            if (loadingEl) loadingEl.classList.add('hidden');
+          }
         },
 
         updateAttendanceLegend(){
@@ -1128,174 +1804,284 @@
 
         updateCapacityGauge(){
           const fill = document.getElementById('capacity-gauge-fill');
+          const trendEl = document.getElementById('capacity-trend');
+          const alertEl = document.getElementById('capacity-alert');
+          const compareEl = document.getElementById('capacity-compare');
+          const projectionEl = document.getElementById('capacity-projection');
           if (!fill || !this.state.attendanceData) return;
           const today = this.dateHelper.today();
           const d = this.state.attendanceData.report[today];
-          if (!d){ fill.style.width = '0%'; return; }
-          const fallbackRate = Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100);
-          const rate = (d.utilizationRate ?? fallbackRate);
+          const fallbackRate = d ? Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100) : 0;
+          const rate = d ? (d.utilizationRate ?? fallbackRate) : 0;
           fill.style.width = Math.min(rate,100)+'%';
           fill.classList.remove('bg-emerald-500','bg-amber-500','bg-rose-500');
           if (rate>85) fill.classList.add('bg-rose-500');
           else if (rate>60) fill.classList.add('bg-amber-500');
           else fill.classList.add('bg-emerald-500');
+
+          const projections = this.calculateCapacityProjections();
+          if (trendEl && projections){
+            const pct = Math.round((projections.growthRate||0)*100);
+            trendEl.textContent = pct>0 ? `▲ ${pct}%` : pct<0 ? `▼ ${Math.abs(pct)}%` : 'Estable';
+          }
+          if (alertEl){
+            alertEl.textContent = projections?.recommendation?.summary || (rate>90 ? 'Sobrecapacidad' : rate>80 ? 'Monitorear' : 'Normal');
+          }
+          if (compareEl){
+            const prevDate = new Date(`${today}T00:00:00-06:00`);
+            if (!Number.isNaN(prevDate.getTime())){
+              prevDate.setDate(prevDate.getDate()-7);
+              const prevKey = this.dateHelper.ymd(prevDate);
+              const prevData = this.state.attendanceData.report[prevKey];
+              const prevRate = prevData ? (prevData.utilizationRate ?? Math.round((prevData.booked/Math.max(prevData.totalCapacity||0,1))*100)) : 0;
+              const diff = rate - prevRate;
+              compareEl.textContent = `${diff>=0?'+':''}${diff}% vs semana pasada`;
+            } else {
+              compareEl.textContent = '—';
+            }
+          }
+          if (projectionEl && projections){
+            projectionEl.textContent = `${Math.round(projections.projectedUtilization||projections.averageUtilization||0)}% esperado`;
+          }
         },
 
         calculateCapacityProjections(){
-          const rep = this.state.attendanceData?.report || {};
-          const arr = Object.values(rep);
-          const values = arr.map(d=>{
-            if (typeof d.utilizationRate === 'number') return d.utilizationRate;
-            return Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100);
+          const data = this.state.attendanceData;
+          if (!data) return null;
+          const entries = data.labels.map(l=>({ date:l.date, metrics: data.report[l.date] }));
+          if (!entries.length) return null;
+          const utilizations = entries.map(item=>{
+            const m = item.metrics;
+            return typeof m.utilizationRate === 'number'
+              ? m.utilizationRate
+              : Math.round((m.booked/Math.max(m.totalCapacity||0,1))*100);
           });
-          const avg = values.reduce((s,val)=>s+val,0)/(values.length||1);
-          const suggestion = avg>85?'Añadir más clases': avg>60?'Monitorear capacidad':'Capacidad adecuada';
-          return { averageUtilization: Math.round(avg), suggestion };
+          const avg = utilizations.reduce((sum,val)=>sum+val,0)/(utilizations.length||1);
+          const first = utilizations[0] || 0;
+          const last = utilizations[utilizations.length-1] || 0;
+          const growthRate = utilizations.length>1 ? ((last-first)/Math.max(first||1,1)) : 0;
+          const dayPattern = this.calculateDayOfWeekPatterns(data.report);
+          const seasonal = this.calculateSeasonalTrend(entries);
+          const projectedUtilization = Math.round(avg * (1 + (growthRate/2)));
+          const revenueForecast = this.forecastRevenue(data.aggregates?.revenueSeries || []);
+          const recommendation = this.buildCapacityRecommendations({ avgUtil:avg, growthRate, dayPattern });
+          return {
+            averageUtilization: Math.round(avg),
+            growthRate,
+            projectedUtilization,
+            topDays: dayPattern.topDays,
+            seasonal,
+            revenueForecast,
+            recommendation
+          };
+        },
+
+        calculateMemberLifetimeValue({ userStats }){
+          const stats = userStats instanceof Map ? userStats : new Map();
+          let members = 0;
+          let revenue = 0;
+          stats.forEach(stat=>{
+            members++;
+            revenue += stat.revenue || (stat.count * this.DEFAULT_TICKET_PRICE);
+          });
+          const estimatedLTV = members ? Math.round(revenue/members) : 0;
+          return { estimatedLTV, members };
+        },
+
+        analyzeClassProfitability(popularity, report){
+          const topClasses = (popularity || []).slice(0,5).map(item=>({ class:item.label, score:item.score }));
+          const totalRevenue = Object.values(report || {}).reduce((sum,d)=>sum+(d.revenue||0),0);
+          return { topClasses, totalRevenue };
+        },
+
+        recommendOptimalScheduling(report){
+          const suggestions = [];
+          let bestDay = null;
+          let bestUtil = -1;
+          let lowDay = null;
+          let lowUtil = Infinity;
+          Object.entries(report || {}).forEach(([date,d])=>{
+            const util = d.utilizationRate || 0;
+            if (util > bestUtil){ bestUtil = util; bestDay = date; }
+            if (util < lowUtil){ lowUtil = util; lowDay = date; }
+          });
+          if (bestDay) suggestions.push(`Mantener horarios fuertes en ${bestDay} (${bestUtil}% de uso).`);
+          if (lowDay && lowUtil < 50) suggestions.push(`Impulsar reservas para ${lowDay} (solo ${lowUtil}% de uso).`);
+          return { suggestions };
+        },
+
+        calculateCapacityVsDemand(report){
+          const values = Object.values(report || {});
+          if (!values.length) return { status:'Sin datos', averageUtilization:0, capacityGap:0 };
+          const average = values.reduce((sum,d)=>sum+(d.utilizationRate||0),0)/values.length;
+          const gap = values.reduce((sum,d)=>sum + Math.max((d.totalCapacity||0) - (d.booked||0),0),0);
+          const status = average>85 ? 'Alta demanda' : average<50 ? 'Capacidad ociosa' : 'Equilibrado';
+          return { status, averageUtilization: Math.round(average), capacityGap: gap };
+        },
+
+        calculateInstructorUtilization(instructorMetrics){
+          const entries = Object.entries(instructorMetrics || {});
+          if (!entries.length) return { leaders:[], underutilized:[] };
+          const sorted = entries.sort((a,b)=> (b[1].avgUtilization||0) - (a[1].avgUtilization||0));
+          const leaders = sorted.slice(0,3).map(([name])=>name);
+          const underutilized = sorted.filter(([,metrics])=> (metrics.avgUtilization||0) < 50).map(([name])=>name);
+          return { leaders, underutilized };
+        },
+
+        calculateDayOfWeekPatterns(report){
+          const map = {};
+          Object.entries(report || {}).forEach(([date,d])=>{
+            const base = new Date(`${date}T00:00:00-06:00`);
+            if (Number.isNaN(base.getTime())) return;
+            const dow = base.getDay();
+            if (!map[dow]) map[dow] = { utilization:0, count:0 };
+            map[dow].utilization += d.utilizationRate || 0;
+            map[dow].count += 1;
+          });
+          const names = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+          const averages = Object.entries(map).map(([dow,data])=>{
+            const avg = data.count ? data.utilization/data.count : 0;
+            return { day:names[dow], value: Math.round(avg) };
+          }).sort((a,b)=>b.value-a.value);
+          return { averages, topDays: averages.slice(0,2).map(item=>item.day) };
+        },
+
+        calculateSeasonalTrend(entries){
+          if (!entries.length) return { trend:'Sin datos', change:0 };
+          const half = Math.max(1, Math.floor(entries.length/2));
+          const firstAvg = entries.slice(0,half).reduce((sum,item)=>sum+(item.metrics.utilizationRate||0),0)/half;
+          const secondAvg = entries.slice(-half).reduce((sum,item)=>sum+(item.metrics.utilizationRate||0),0)/half;
+          const diff = secondAvg - firstAvg;
+          const trend = diff>3 ? 'Alza' : diff<-3 ? 'Baja' : 'Estable';
+          return { trend, change: Math.round(diff) };
+        },
+
+        forecastRevenue(series){
+          if (!Array.isArray(series) || !series.length) return 0;
+          const revenues = series.map(item=>item.revenue || 0);
+          const diffs = revenues.slice(1).map((value,idx)=> value - revenues[idx]);
+          const avgDiff = diffs.length ? diffs.reduce((sum,val)=>sum+val,0)/diffs.length : 0;
+          return Math.round((revenues[revenues.length-1] || 0) + avgDiff);
+        },
+
+        buildCapacityRecommendations({ avgUtil, growthRate, dayPattern }){
+          const suggestions = [];
+          if (avgUtil>85) suggestions.push('Agregar clases o ampliar cupos en horarios de alta demanda.');
+          if (avgUtil<50) suggestions.push('Impulsar campañas de retención y promociones para elevar la ocupación.');
+          if (growthRate>0.1) suggestions.push('Planear expansión de horarios ante el crecimiento sostenido.');
+          if (growthRate<-0.1) suggestions.push('Investigar cancelaciones y ajustar oferta para recuperar demanda.');
+          if (dayPattern?.topDays?.length){
+            suggestions.push(`Mayor demanda en ${dayPattern.topDays.join(' y ')}.`);
+          }
+          return { summary: suggestions[0] || 'Seguimiento normal', suggestions };
         },
 
         // Update report with current bookings before rendering
         injectBookingsIntoReport(){
           const data = this.state.attendanceData;
           if (!data) return;
-          const { report, classesByDay, bookingsByClass } = data;
+          const aggregateContext = {
+            classPopularity: new Map(),
+            heatmap: {},
+            instructorTotals: {},
+            totals: { revenue:0, target:0, repeat:0, newMembers:0, cancellations:0, noShows:0 }
+          };
+          const { report, classesByDay, bookingsByClass, userStats, cancellationsByDay } = data;
           Object.keys(report).forEach(day=>{
             const classList = (classesByDay && classesByDay[day]) || [];
-            if (!classList.length){
-              report[day].booked = 0;
-              report[day].details.booked = {};
-              report[day].utilizationRate = 0;
-              report[day].warning = 'Capacidad estable';
-              return;
-            }
-            let totalBooked = 0;
-            let totalCapacity = 0;
-            const bookedDetails = {};
-            classList.forEach(cls=>{
-              totalCapacity += Number(cls.capacity||0);
-              const live = this.state.bookingsMap.get(cls.id) || [];
-              const fallback = bookingsByClass?.[cls.id] || [];
-              const source = live.length ? live : fallback;
-              const names = source.map(x=>x.userName || x.userEmail || x.userId || 'Anónimo');
-              if (names.length){
-                const labelTime = cls.localTime || cls.time || '';
-                const labelName = cls.name || 'Clase';
-                const label = `${labelTime} - ${labelName}`.trim();
-                bookedDetails[label] = names;
-              }
-              totalBooked += names.length;
+            report[day] = this.calculateDaySnapshot({
+              day,
+              base: report[day],
+              classList,
+              bookingsByClass,
+              userStats,
+              cancellationsByDay,
+              aggregates: aggregateContext
             });
-            report[day].totalCapacity = totalCapacity;
-            report[day].booked = totalBooked;
-            report[day].details.booked = bookedDetails;
-            const utilization = totalCapacity>0 ? Math.round((totalBooked/totalCapacity)*100) : 0;
-            report[day].utilizationRate = utilization;
-            if (utilization>85) report[day].warning='Capacidad crítica';
-            else if (utilization>60) report[day].warning='Capacidad alta';
-            else report[day].warning='Capacidad estable';
           });
+          data.aggregates = this.buildAttendanceAggregates({ labels: data.labels, report, aggregateContext, userStats });
         },
 
         exportCapacityReport(){
           const data = this.state.attendanceData;
           if (!data) return;
-          const rows = [['Fecha','Asistieron','Faltaron','Reservaron','Capacidad','Utilización %']];
-          Object.entries(data.report).forEach(([date,d])=>{
-            rows.push([date,d.attended,d.absent,d.booked,d.totalCapacity,d.utilizationRate]);
-          });
-          const csv = rows.map(r=>r.join(',')).join('\n');
+          const format = this.state.selectedExportFormat || 'capacity';
+          const { report, aggregates, userStats } = data;
+          const start = document.getElementById('att-start-date')?.value || 'inicio';
+          const end = document.getElementById('att-end-date')?.value || 'fin';
+          let rows = [];
+          if (format === 'capacity'){
+            rows = [['Fecha','Asistieron','Faltaron','Reservaron','Capacidad','Utilización %','Ingresos','Meta','Retención %']];
+            Object.entries(report).forEach(([date,d])=>{
+              rows.push([date,d.attended,d.absent,d.booked,d.totalCapacity,d.utilizationRate,d.revenue,d.revenueTarget,d.memberRetention]);
+            });
+          } else if (format === 'demographics'){
+            rows = [['Usuario','Reservas','Primer ingreso','Ingresos estimados','Cancelaciones']];
+            if (userStats instanceof Map){
+              userStats.forEach((stat,key)=>{
+                rows.push([key,stat.count,stat.firstDate||'',stat.revenue||0,stat.cancellations||0]);
+              });
+            }
+          } else if (format === 'instructors'){
+            rows = [['Instructor','Clases','Asistentes','Utilización promedio %']];
+            Object.entries(aggregates?.instructorMetrics || {}).forEach(([name,metrics])=>{
+              rows.push([name,metrics.classes,metrics.attendees,metrics.avgUtilization]);
+            });
+          } else if (format === 'revenue'){
+            const projection = this.calculateCapacityProjections();
+            rows = [['Fecha','Ingresos','Meta','Pronóstico %']];
+            (aggregates?.revenueSeries || []).forEach(item=>{
+              rows.push([item.date,item.revenue,item.target,projection?.projectedUtilization||0]);
+            });
+          } else if (format === 'optimization'){
+            rows = [['Recomendación','Detalle']];
+            this.buildOptimizationRows(aggregates).forEach(pair=>rows.push(pair));
+          } else if (format === 'custom-range'){
+            const totals = aggregates?.totals || {};
+            rows = [['Indicador','Valor'],
+              ['Ingresos totales', totals.revenue||0],
+              ['Meta de ingresos', totals.target||0],
+              ['Retención promedio %', aggregates?.retention?.retentionRate||0],
+              ['Cancelaciones', totals.cancellations||0],
+              ['No shows', totals.noShows||0],
+              ['Periodo', `${start} a ${end}`]
+            ];
+          } else {
+            return;
+          }
+          const filename = `reporte-${format}-${start}-a-${end}.csv`;
+          this.downloadCSV(filename, rows);
+        },
+
+        downloadCSV(filename, rows){
+          const csv = rows.map(row=>row.map(val=>`"${String(val ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
           const blob = new Blob([csv],{type:'text/csv'});
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url; a.download = 'capacity-report.csv'; a.click();
+          a.href = url;
+          a.download = filename;
+          a.click();
           URL.revokeObjectURL(url);
         },
 
-        renderAttendanceChartFromCache(){
-          const ctx = document.getElementById('attendanceChart')?.getContext('2d');
-          const details = document.getElementById('attendance-details');
-          if (!ctx || !details) return;
-          const dataCache = this.state.attendanceData;
-          if (!dataCache){
-            details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
-            return;
+        buildOptimizationRows(aggregates){
+          const rows = [];
+          const bi = aggregates?.bi || {};
+          const schedule = bi.optimalScheduling?.suggestions || [];
+          const capacity = bi.capacityVsDemand?.status;
+          const instructors = bi.instructorUtilization || {};
+          schedule.forEach(text=>rows.push(['Horario', text]));
+          if (capacity) rows.push(['Capacidad vs demanda', capacity]);
+          if (Array.isArray(instructors.leaders) && instructors.leaders.length){
+            rows.push(['Instructores top', instructors.leaders.join(' | ')]);
           }
-          this.injectBookingsIntoReport();
-          const { report, labels } = dataCache;
-          const lbls = labels.map(l=>l.label);
-          const attendedData = labels.map(l=>report[l.date].attended||0);
-          const absentData   = labels.map(l=>report[l.date].absent||0);
-          const bookedData   = labels.map(l=>report[l.date].booked||0);
-          const utilData     = labels.map(l=>report[l.date].utilizationRate||0);
-          const utilColors   = utilData.map(u=>u>85?'rgba(248,113,113,1)':u>60?'rgba(251,191,36,1)':'rgba(52,211,153,1)');
-          const capLine      = labels.map(()=>this.FACILITY_MAX_CAPACITY);
-
-          const includeBooked = bookedData.some(v => v > 0);
-          const datasets = [
-            { label:'Asistieron', data:attendedData, backgroundColor:'rgba(16,185,129,.6)' },
-            { label:'Faltaron', data:absentData, backgroundColor:'rgba(244,63,94,.6)' }
-          ];
-          if (includeBooked){
-            datasets.push({ label:'Reservaron', data:bookedData, backgroundColor:'rgba(59,130,246,.6)' });
+          if (Array.isArray(instructors.underutilized) && instructors.underutilized.length){
+            rows.push(['Instructores con espacio', instructors.underutilized.join(' | ')]);
           }
-          datasets.push({ label:'Utilización %', data:utilData, type:'line', yAxisID:'y1', borderColor:'#818cf8', pointBackgroundColor:utilColors, fill:false, tension:0.1 });
-          datasets.push({ label:`Capacidad ${this.FACILITY_MAX_CAPACITY}`, data:capLine, type:'line', borderColor:'#fcd34d', borderDash:[5,5], pointRadius:0 });
-
-          if (this.state.attendanceChartInstance) this.state.attendanceChartInstance.destroy();
-          this.state.attendanceChartInstance = new Chart(ctx,{
-            type:'bar',
-            data:{ labels: lbls, datasets },
-            options:{
-              scales:{
-                y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', stepSize:1 }, grid:{ color:'#3f3f46' }, suggestedMax:this.FACILITY_MAX_CAPACITY },
-                y1:{ beginAtZero:true, position:'right', ticks:{ color:'#a1a1aa', callback:v=>v+'%' }, grid:{ drawOnChartArea:false } },
-                x:{ ticks:{ color:'#a1a1aa', autoSkip:true, maxRotation:45 }, grid:{ color:'#3f3f46' } }
-              },
-              plugins:{ legend:{ labels:{ color:'#d4d4d8' } } }
-            }
-          });
-
-          const renderList = (obj)=>{
-            const names = Object.keys(obj||{}).sort();
-            if (!names.length) return '<ul class="list-disc list-inside text-zinc-400"><li>Nadie</li></ul>';
-            return names.map(n=>{
-              const safeName = DOMPurify.sanitize(n);
-              const people = (obj[n]||[]).map(p=>`<li>${DOMPurify.sanitize(p)}</li>`).join('');
-              return `
-              <div class="font-semibold text-zinc-300 mt-1">${safeName}:</div>
-              <ul class="list-disc list-inside text-zinc-400">${people}</ul>
-            `;}).join('');
-          };
-
-          details.innerHTML = labels.map(l=>{
-            const d = report[l.date];
-            let html = `
-              <div class="bg-zinc-900 p-3 rounded-md">
-                <h4 class="font-bold text-lg mb-2">${DOMPurify.sanitize(l.label)}</h4>`;
-
-            if (d.booked){
-              html += `
-                <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>
-                ${renderList(d.details.booked)}`;
-            }
-
-            const warnColor = d.utilizationRate>85?'text-rose-400': d.utilizationRate>60?'text-amber-400':'text-emerald-400';
-            const peak = Object.entries(d.details.booked||{}).map(([k,v])=>({k,v:v.length})).reduce((a,b)=> b.v>(a?.v||0)?b:a,null);
-            const peakLabel = peak?peak.k:'—';
-            const revenue = d.booked*100;
-
-            html += `
-                <div class="text-sm mt-2">Capacidad total: ${d.totalCapacity||0}</div>
-                <div class="text-sm">Utilización: ${d.utilizationRate||0}%</div>
-                <div class="${warnColor} text-sm">${DOMPurify.sanitize(d.warning||'')}</div>
-                <div class="text-sm mt-1">Hora pico: ${DOMPurify.sanitize(peakLabel)}</div>
-                <div class="text-sm">Ingresos estimados: $${revenue}</div>
-                <div class="font-semibold text-emerald-400 mt-2">Asistieron (${d.attended||0})</div>
-                ${renderList(d.details.attended)}
-                <div class="font-semibold text-rose-400 mt-2">Faltaron (${d.absent||0})</div>
-                ${renderList(d.details.absent)}
-              </div>`;
-            return html;
-          }).join('');
+          if (!rows.length){
+            rows.push(['Resumen','Sin recomendaciones registradas']);
+          }
+          return rows;
         },
 
         // --- MODAL / Asistencia ---
