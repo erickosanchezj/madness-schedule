@@ -21,6 +21,135 @@
       .attendance-btn.selected-absent { background-color: #f43f5e; color: white; }
       #toast-container { pointer-events: none; }
       .toast { pointer-events: auto; }
+      :root { --hour-height: 64px; }
+      .calendar-header {
+        display: grid;
+        grid-template-columns: 70px repeat(7, minmax(0, 1fr));
+        gap: 0.5rem;
+        align-items: stretch;
+      }
+      .calendar-header .day-label {
+        text-align: center;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.75rem;
+        background: rgba(39, 39, 42, 0.8);
+        border: 1px solid rgba(63, 63, 70, 0.6);
+      }
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: 70px repeat(7, minmax(0, 1fr));
+        gap: 0.5rem;
+        align-items: stretch;
+      }
+      .time-column {
+        position: relative;
+        padding-top: 0.5rem;
+      }
+      .time-slot {
+        height: var(--hour-height);
+        font-size: 0.75rem;
+        color: #a1a1aa;
+        display: flex;
+        align-items: flex-start;
+        justify-content: flex-end;
+        padding-right: 0.5rem;
+      }
+      .time-slot::after {
+        content: '';
+        position: relative;
+        display: block;
+        width: 8px;
+        height: 1px;
+        margin-top: 0.5rem;
+        margin-left: 0.5rem;
+        background: rgba(113, 113, 122, 0.5);
+      }
+      .day-grid {
+        position: relative;
+        min-height: calc(var(--hour-height) * 16);
+        background: rgba(24, 24, 27, 0.7);
+        border: 1px solid rgba(63, 63, 70, 0.8);
+        border-radius: 0.75rem;
+        overflow: hidden;
+      }
+      .day-grid::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          rgba(63, 63, 70, 0.6) 0px,
+          rgba(63, 63, 70, 0.6) 1px,
+          transparent 1px,
+          transparent var(--hour-height)
+        );
+        pointer-events: none;
+      }
+      .class-block {
+        position: absolute;
+        border-radius: 0.75rem;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(129, 140, 248, 0.85));
+        border: 1px solid rgba(129, 140, 248, 0.6);
+        padding: 0.5rem;
+        color: #f4f4f5;
+        font-size: 0.75rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .class-block:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.35);
+      }
+      .class-block.running {
+        border: 2px solid rgba(16, 185, 129, 0.9);
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+      }
+      .class-block .class-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+      .class-block .class-meta span {
+        font-size: 0.7rem;
+        color: rgba(228, 228, 231, 0.95);
+      }
+      .empty-day-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #71717a;
+        font-size: 0.75rem;
+        text-align: center;
+        pointer-events: none;
+      }
+      .today-column {
+        background: rgba(67, 56, 202, 0.16);
+        border-color: rgba(99, 102, 241, 0.7);
+        box-shadow: inset 0 0 0 2px rgba(129, 140, 248, 0.35);
+      }
+      @media (max-width: 1024px) {
+        .calendar-header,
+        .calendar-grid {
+          grid-template-columns: 70px repeat(7, 180px);
+        }
+      }
+      @media (max-width: 640px) {
+        :root { --hour-height: 52px; }
+        .calendar-header,
+        .calendar-grid {
+          grid-template-columns: 60px repeat(7, 160px);
+        }
+        .class-block {
+          font-size: 0.7rem;
+          padding: 0.4rem;
+        }
+      }
     </style>
   </head>
   <body class="bg-zinc-900 text-white">
@@ -55,34 +184,48 @@
       <div class="space-y-8">
         <section aria-labelledby="week-title">
           <h2 id="week-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de la Semana</h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
-            <div class="day-column" data-day="monday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Lunes</h3>
-              <div id="monday-classes-container" class="space-y-3"></div>
-            </div>
-            <div class="day-column" data-day="tuesday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Martes</h3>
-              <div id="tuesday-classes-container" class="space-y-3"></div>
-            </div>
-            <div class="day-column" data-day="wednesday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Miércoles</h3>
-              <div id="wednesday-classes-container" class="space-y-3"></div>
-            </div>
-            <div class="day-column" data-day="thursday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Jueves</h3>
-              <div id="thursday-classes-container" class="space-y-3"></div>
-            </div>
-            <div class="day-column" data-day="friday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Viernes</h3>
-              <div id="friday-classes-container" class="space-y-3"></div>
-            </div>
-            <div class="day-column" data-day="saturday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Sábado</h3>
-              <div id="saturday-classes-container" class="space-y-3"></div>
-            </div>
-            <div class="day-column" data-day="sunday">
-              <h3 class="text-lg font-semibold text-blue-400 mb-3">Domingo</h3>
-              <div id="sunday-classes-container" class="space-y-3"></div>
+          <div class="calendar-container space-y-3">
+            <div class="overflow-x-auto pb-2">
+              <div class="min-w-[960px] space-y-2">
+                <div class="calendar-header text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                  <div class="text-right pr-2">Hora</div>
+                  <div class="day-label">Lunes</div>
+                  <div class="day-label">Martes</div>
+                  <div class="day-label">Miércoles</div>
+                  <div class="day-label">Jueves</div>
+                  <div class="day-label">Viernes</div>
+                  <div class="day-label">Sábado</div>
+                  <div class="day-label">Domingo</div>
+                </div>
+                <div class="calendar-grid">
+                  <div class="time-column">
+                    <div class="time-slot">06:00</div>
+                    <div class="time-slot">07:00</div>
+                    <div class="time-slot">08:00</div>
+                    <div class="time-slot">09:00</div>
+                    <div class="time-slot">10:00</div>
+                    <div class="time-slot">11:00</div>
+                    <div class="time-slot">12:00</div>
+                    <div class="time-slot">13:00</div>
+                    <div class="time-slot">14:00</div>
+                    <div class="time-slot">15:00</div>
+                    <div class="time-slot">16:00</div>
+                    <div class="time-slot">17:00</div>
+                    <div class="time-slot">18:00</div>
+                    <div class="time-slot">19:00</div>
+                    <div class="time-slot">20:00</div>
+                    <div class="time-slot">21:00</div>
+                    <div class="time-slot">22:00</div>
+                  </div>
+                  <div id="monday-grid" class="day-grid" data-day-index="1" aria-label="Clases del lunes"></div>
+                  <div id="tuesday-grid" class="day-grid" data-day-index="2" aria-label="Clases del martes"></div>
+                  <div id="wednesday-grid" class="day-grid" data-day-index="3" aria-label="Clases del miércoles"></div>
+                  <div id="thursday-grid" class="day-grid" data-day-index="4" aria-label="Clases del jueves"></div>
+                  <div id="friday-grid" class="day-grid" data-day-index="5" aria-label="Clases del viernes"></div>
+                  <div id="saturday-grid" class="day-grid" data-day-index="6" aria-label="Clases del sábado"></div>
+                  <div id="sunday-grid" class="day-grid" data-day-index="0" aria-label="Clases del domingo"></div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -432,6 +575,7 @@
 
         // --- Helpers ---
         timeFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', hour:'2-digit',minute:'2-digit',hour12:false }),
+        timePartsFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', hour:'2-digit',minute:'2-digit',hour12:false }),
         dayFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long',day:'2-digit',month:'short' }),
         dayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', day:'2-digit',month:'short' }),
         dateHelper: {
@@ -1018,7 +1162,7 @@
         },
 
         // --- RENDER ---
-        renderAll(){ this.renderClassCards(); this.renderDailyBookings(); },
+        renderAll(){ this.renderCalendarGrid(); this.renderDailyBookings(); },
 
         isClassRunningNow(cls){
           if (!cls || !cls.classDate || !cls.time) return false;
@@ -1030,19 +1174,54 @@
           return now>=start && now<=end;
         },
 
-        renderClassCards(){
+        getLocalTimeParts(cls){
+          if (!cls) return { hour:null, minutes:null };
+          const localMatch = /^(\d{2}):(\d{2})/.exec(cls.localTime || '');
+          if (localMatch){
+            return { hour:Number(localMatch[1]), minutes:Number(localMatch[2]) };
+          }
+          if (cls.classDate && cls.time){
+            const base = new Date(`${cls.classDate}T${cls.time}:00Z`);
+            if (!Number.isNaN(base.getTime())){
+              const parts = this.timePartsFmt.formatToParts(base);
+              const hour = Number(parts.find(p=>p.type==='hour')?.value || '0');
+              const minutes = Number(parts.find(p=>p.type==='minute')?.value || '0');
+              if (!Number.isNaN(hour) && !Number.isNaN(minutes)){
+                return { hour, minutes };
+              }
+            }
+          }
+          return { hour:null, minutes:null };
+        },
+
+        highlightTodayColumn(){
+          const todayStr = this.dateHelper.today();
+          const today = new Date(`${todayStr}T00:00:00-06:00`);
+          const dow = Number.isNaN(today.getTime()) ? -1 : today.getUTCDay();
+          document.querySelectorAll('.day-grid').forEach(grid => {
+            const index = Number(grid.dataset.dayIndex);
+            if (index === dow){ grid.classList.add('today-column'); }
+            else { grid.classList.remove('today-column'); }
+          });
+        },
+
+        renderCalendarGrid(){
           const dayContainers = {
-            1: document.getElementById('monday-classes-container'),
-            2: document.getElementById('tuesday-classes-container'),
-            3: document.getElementById('wednesday-classes-container'),
-            4: document.getElementById('thursday-classes-container'),
-            5: document.getElementById('friday-classes-container'),
-            6: document.getElementById('saturday-classes-container'),
-            0: document.getElementById('sunday-classes-container')
+            1: document.getElementById('monday-grid'),
+            2: document.getElementById('tuesday-grid'),
+            3: document.getElementById('wednesday-grid'),
+            4: document.getElementById('thursday-grid'),
+            5: document.getElementById('friday-grid'),
+            6: document.getElementById('saturday-grid'),
+            0: document.getElementById('sunday-grid')
           };
 
+          const dayEvents = {};
           Object.values(dayContainers).forEach(container => {
-            if (container) container.innerHTML = '';
+            if (container){
+              container.innerHTML = '';
+              container.classList.remove('today-column');
+            }
           });
 
           const sorted = [...this.state.classes].sort((a,b)=>{
@@ -1051,48 +1230,129 @@
             return sa - sb;
           });
 
+          const START_HOUR = 6;
+          const END_HOUR = 22;
+          const TOTAL_MINUTES = (END_HOUR - START_HOUR) * 60;
+          const hourHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour-height')) || 64;
+
           for (const cls of sorted){
             const localDateStr = cls.localDate || cls.classDate;
             if (!localDateStr) continue;
             const localDate = new Date(`${localDateStr}T00:00:00`);
             const dayOfWeek = Number.isNaN(localDate.getTime()) ? null : localDate.getDay();
-            const container = (dayOfWeek !== null) ? dayContainers[dayOfWeek] : null;
+            const container = dayOfWeek !== null ? dayContainers[dayOfWeek] : null;
             if (!container) continue;
 
-            const isRunning = this.isClassRunningNow(cls);
-            const style = isRunning ? 'bg-emerald-900 border border-emerald-600' : 'bg-zinc-800';
-            const enrolled = Number(cls.enrolledCount||0);
-            const capacity = Number(cls.capacity||0);
-            const card = document.createElement('div');
-            card.className = `p-4 rounded-lg shadow-md cursor-pointer hover:bg-zinc-700 transition-colors ${style}`;
-            card.setAttribute('role','button');
-            const safeName = DOMPurify.sanitize(cls.name || '');
-            const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
-            const safeIcon = DOMPurify.sanitize(cls.icon || '💪');
-            const safeTime = DOMPurify.sanitize(cls.localTime || cls.time || '');
-            card.setAttribute('aria-label', `Editar ${safeName} a las ${safeTime}`);
-            card.onclick = () => this.showClassModal(cls);
-            card.innerHTML = `
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="text-xl font-bold">${safeName}</p>
-                  <p class="text-sm text-zinc-400">${safeInstructor}</p>
-                </div>
-                <span class="text-2xl">${safeIcon}</span>
-              </div>
-              <div class="mt-4 flex justify-between items-center text-sm">
-                <span class="font-semibold">a las ${safeTime}</span>
-                <span class="font-bold ${enrolled>=capacity?'text-rose-400':'text-white'}">${enrolled} / ${capacity}</span>
-              </div>`;
-            container.appendChild(card);
+            const startDate = new Date(`${cls.classDate}T${cls.time}:00Z`);
+            if (Number.isNaN(startDate.getTime())) continue;
+            const durationRaw = Number(cls.duration || 60);
+            const durationMinutes = Number.isFinite(durationRaw) ? durationRaw : 60;
+            const { hour, minutes } = this.getLocalTimeParts(cls);
+            if (hour === null || minutes === null) continue;
+            const startMinutesFromStart = ((hour * 60) + minutes) - (START_HOUR * 60);
+            const event = {
+              cls,
+              startMs: startDate.getTime(),
+              endMs: startDate.getTime() + (durationMinutes * 60000),
+              durationMinutes,
+              startMinutesFromStart,
+              column: 0,
+              overlapSpan: 1
+            };
+            if (!dayEvents[dayOfWeek]) dayEvents[dayOfWeek] = [];
+            dayEvents[dayOfWeek].push(event);
           }
 
-          Object.values(dayContainers).forEach(container => {
+          Object.entries(dayContainers).forEach(([dayKey, container]) => {
             if (!container) return;
+            const events = (dayEvents[dayKey] || []).sort((a,b)=>a.startMs - b.startMs);
+            if (!events.length){
+              container.innerHTML = '<div class="empty-day-message">Sin clases</div>';
+              return;
+            }
+
+            const columns = [];
+            const active = [];
+            events.forEach(event => {
+              for (let i = active.length - 1; i >= 0; i--){
+                if (active[i].endMs <= event.startMs){ active.splice(i,1); }
+              }
+              let columnIndex = columns.findIndex(end => end <= event.startMs);
+              if (columnIndex === -1){
+                columnIndex = columns.length;
+                columns.push(event.endMs);
+              } else {
+                columns[columnIndex] = event.endMs;
+              }
+              event.column = columnIndex;
+              event.overlapSpan = Math.max(active.length + 1, 1);
+              active.push(event);
+              const overlapSize = active.length;
+              active.forEach(item => {
+                item.overlapSpan = Math.max(item.overlapSpan || 1, overlapSize);
+              });
+            });
+
+            const fragment = document.createDocumentFragment();
+            events.forEach(event => {
+              const { cls } = event;
+              const eventStart = event.startMinutesFromStart;
+              const eventEnd = event.startMinutesFromStart + event.durationMinutes;
+              const visibleStart = Math.max(eventStart, 0);
+              const visibleEnd = Math.min(eventEnd, TOTAL_MINUTES);
+              if (visibleEnd <= 0 || visibleStart >= TOTAL_MINUTES) return;
+
+              const topPx = (visibleStart / 60) * hourHeight;
+              const heightPx = Math.max(((visibleEnd - visibleStart) / 60) * hourHeight, 34);
+              const widthPercent = 100 / Math.max(event.overlapSpan || 1, 1);
+              const leftPercent = widthPercent * event.column;
+
+              const block = document.createElement('div');
+              block.className = 'class-block';
+              if (this.isClassRunningNow(cls)) block.classList.add('running');
+              block.style.top = `${topPx}px`;
+              block.style.height = `${heightPx}px`;
+              block.style.left = `calc(${leftPercent}% + 3px)`;
+              block.style.width = `calc(${widthPercent}% - 6px)`;
+              block.setAttribute('role','button');
+              block.tabIndex = 0;
+
+              const enrolled = Number(cls.enrolledCount || 0);
+              const capacity = Number(cls.capacity || 0);
+              const safeName = DOMPurify.sanitize(cls.name || '');
+              const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
+              const safeIcon = DOMPurify.sanitize(cls.icon || '💪');
+              const startLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.startMs)));
+              const endLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.endMs)));
+              const capacityClass = enrolled >= capacity && capacity > 0 ? 'text-rose-200' : 'text-emerald-200';
+              block.setAttribute('aria-label', `Editar ${safeName} de ${startLabel} a ${endLabel}`);
+
+              block.innerHTML = `
+                <div class="class-meta">
+                  <strong class="text-sm text-white leading-tight">${safeName}</strong>
+                  <span class="text-lg">${safeIcon}</span>
+                </div>
+                <span>${startLabel} - ${endLabel}</span>
+                <span class="text-xs text-zinc-200">${safeInstructor || 'Instructor por asignar'}</span>
+                <span class="text-xs font-semibold ${capacityClass}">${enrolled} / ${capacity || '—'}</span>
+              `;
+              block.onclick = () => this.showClassModal(cls);
+              block.onkeydown = (evt) => {
+                if (evt.key === 'Enter' || evt.key === ' '){
+                  evt.preventDefault();
+                  this.showClassModal(cls);
+                }
+              };
+              fragment.appendChild(block);
+            });
+
+            container.appendChild(fragment);
             if (!container.children.length){
-              container.innerHTML = '<p class="text-zinc-500 text-sm">No hay clases programadas.</p>';
+              container.innerHTML = '<div class="empty-day-message">Sin clases</div>';
             }
           });
+
+          this.highlightTodayColumn();
         },
 
         renderDailyBookings(){
