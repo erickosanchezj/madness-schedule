@@ -235,6 +235,10 @@ exports.onWaitlistExpiration = waitlistNotifications.onWaitlistExpiration;
 const generateDailyClasses = require("./src/generateDailyClasses");
 exports.generateDailyClasses = generateDailyClasses.generateDailyClasses;
 
+const userUnlockNotifications = require("./src/userUnlockNotifications");
+exports.onUserUnlockNotification =
+  userUnlockNotifications.onUserUnlockNotification;
+
 exports.automaticWhitelisting = onSchedule(
   {
     region: "us-central1",
