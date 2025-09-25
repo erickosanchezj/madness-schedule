@@ -1340,7 +1340,6 @@
               const capacity = Number(cls.capacity || 0);
               const safeName = DOMPurify.sanitize(cls.name || '');
               const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
-              const safeIcon = DOMPurify.sanitize(cls.icon || '💪');
               const startLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.startMs)));
               const endLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.endMs)));
               const capacityClass = enrolled >= capacity && capacity > 0 ? 'text-rose-200' : 'text-emerald-200';
@@ -1348,12 +1347,9 @@
 
               block.innerHTML = `
                 <div class="class-meta">
-                  <strong class="text-sm text-white leading-tight">${safeName}</strong>
-                  <span class="text-lg">${safeIcon}</span>
+                  <strong class="text-sm text-white leading-tight">${safeName} (${startLabel} - ${endLabel})</strong>
                 </div>
-                <span>${startLabel} - ${endLabel}</span>
-                <span class="text-xs text-zinc-200">${safeInstructor || 'Instructor por asignar'}</span>
-                <span class="text-xs font-semibold ${capacityClass}">${enrolled} / ${capacity || '—'}</span>
+                <span class="text-xs font-semibold ${capacityClass}">${safeInstructor || 'Instructor por asignar'} - ${enrolled} / ${capacity || '—'}</span>
               `;
               block.onclick = () => this.showClassModal(cls);
               block.onkeydown = (evt) => {
