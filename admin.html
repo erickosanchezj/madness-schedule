@@ -606,6 +606,7 @@
         dayFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long',day:'2-digit',month:'short' }),
         dayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', day:'2-digit',month:'short' }),
         weekdayNameFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long' }),
+        weekdayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'short' }),
         dateHelper: {
           ymd(date){ return new Intl.DateTimeFormat('en-CA',{ timeZone: 'America/Mexico_City', year:'numeric', month:'2-digit', day:'2-digit' }).format(date); },
           today(){ return this.ymd(new Date()); },
@@ -623,6 +624,17 @@
           const weekdayRaw = this.weekdayNameFmt.format(base) || '';
           const prettyWeekday = weekdayRaw ? `${weekdayRaw.charAt(0).toUpperCase()}${weekdayRaw.slice(1)}` : '';
           return `${prettyWeekday} - ${base.getDate()}`.trim();
+        },
+
+        formatWeekdayShortLabel(dateStr=''){
+          // Returns a short weekday string (e.g. "Lun") for chart labels.
+          if (!dateStr) return '';
+          const base = new Date(`${dateStr}T00:00:00-06:00`);
+          if (Number.isNaN(base.getTime())) return '';
+          const raw = this.weekdayShortFmt.format(base) || '';
+          const cleaned = raw.replace('.', '');
+          if (!cleaned) return '';
+          return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
         },
 
         setupSectionToggles(){
@@ -1608,6 +1620,7 @@
           let classesConsidered = 0;
           const filterType = this.state.selectedClassType;
           const filterInstructor = this.state.selectedInstructor;
+          const weekdayShort = this.formatWeekdayShortLabel(day);
           classList.forEach(cls=>{
             if (!cls) return;
             const matchesType = filterType === 'all'
@@ -1658,11 +1671,17 @@
             popularityAccumulator += classScore;
             if (aggregates?.classPopularity){
               if (!aggregates.classPopularity.has(cls.id)){
-                aggregates.classPopularity.set(cls.id,{ id:cls.id, label, instructor, totalScore:0, occurrences:0 });
+                aggregates.classPopularity.set(cls.id,{ id:cls.id, label, instructor, totalScore:0, occurrences:0, weekdays:new Set() });
               }
               const entry = aggregates.classPopularity.get(cls.id);
+              if (!entry.weekdays || !(entry.weekdays instanceof Set)){
+                entry.weekdays = new Set(entry.weekdays ? [].concat(entry.weekdays) : []);
+              }
               entry.totalScore += classScore;
               entry.occurrences += 1;
+              if (weekdayShort){
+                entry.weekdays.add(weekdayShort);
+              }
             }
           });
           if (classesConsidered>0){
@@ -1745,7 +1764,13 @@
         buildAttendanceAggregates({ labels, report, aggregateContext, userStats }){
           const popularity = Array.from(aggregateContext.classPopularity.values()).map(entry=>{
             const avgScore = entry.occurrences ? Math.round(entry.totalScore/entry.occurrences) : 0;
-            return { id: entry.id, label: entry.label, score: avgScore, instructor: entry.instructor };
+            const weekdayList = entry.weekdays instanceof Set
+              ? Array.from(entry.weekdays)
+              : Array.isArray(entry.weekdays)
+                ? [...entry.weekdays]
+                : [];
+            weekdayList.sort((a,b)=>a.localeCompare(b,'es'));
+            return { id: entry.id, label: entry.label, score: avgScore, instructor: entry.instructor, weekdays: weekdayList };
           }).sort((a,b)=>b.score-a.score);
           const instructorMetrics = {};
           Object.entries(aggregateContext.instructorTotals).forEach(([name,metrics])=>{
@@ -1928,10 +1953,15 @@
 
           if (popularityCtx){
             const topClasses = (dataCache.aggregates?.popularity || []).slice(0,8);
+            const popularityLabels = topClasses.map(item=>{
+              const days = Array.isArray(item.weekdays) ? item.weekdays.filter(Boolean) : [];
+              const suffix = days.length ? ` (${days.join(', ')})` : '';
+              return `${item.label}${suffix}`;
+            });
             this.state.attendanceCharts.popularity = new Chart(popularityCtx, {
               type:'bar',
               data:{
-                labels: topClasses.map(item=>item.label),
+                labels: popularityLabels,
                 datasets:[{
                   label:'Popularidad',
                   data: topClasses.map(item=>item.score),
