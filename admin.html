@@ -3407,9 +3407,11 @@
             const currentBookings = this.state.bookingsMap.get(classId) || [];
             const currentCount = currentBookings.length;
             const capacity = cls.capacity || 15;
+            const enrolledCount = Number(cls.enrolledCount || 0);
+            const occupancy = Math.max(currentCount, enrolledCount);
 
-            const remainingSlots = Math.max(0, capacity - currentCount);
-            if (currentCount + count > capacity || remainingSlots <= 0){
+            const remainingSlots = Math.max(0, capacity - occupancy);
+            if (occupancy + count > capacity || remainingSlots <= 0){
               this.showToast({
                 title: 'Capacidad excedida',
                 message: remainingSlots > 0 ? `Solo puedes agregar ${remainingSlots} reservas más` : 'La clase ya está llena',
@@ -3421,7 +3423,7 @@
             const batch = this.db.batch();
             const timestamp = firebase.firestore.Timestamp.now();
             const baseNow = Date.now();
-
+            const classRef = this.db.collection('classes').doc(classId);
             for (let i = 1; i <= count; i++){
               const bookingRef = this.db.collection('bookings').doc();
               const bookingData = {
@@ -3436,10 +3438,17 @@
               batch.set(bookingRef, bookingData);
             }
 
+            batch.update(classRef, {
+              enrolledCount: firebase.firestore.FieldValue.increment(count)
+            });
+
             await batch.commit();
 
             countInput.value = '';
 
+            const updatedEnrolled = occupancy + count;
+            cls.enrolledCount = updatedEnrolled;
+            this.renderAll();
             this.showToast({
               title: 'Reservas creadas',
               message: `Se crearon ${count} reservas manuales exitosamente`
