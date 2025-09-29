@@ -55,12 +55,14 @@ service cloud.firestore {
     match /bookings/{bookingId} {
       allow get: if isSignedIn();
       allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn()
+      allow create: if isAdmin() || (
+        isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.classId is string
         && request.resource.data.className is string
         && request.resource.data.startAt is timestamp
-        && cooldownOk(request.auth.uid);
+        && cooldownOk(request.auth.uid)
+      );
       // Booking cancellations must go through the callable Cloud Function.
       allow update: if isAdmin();
       allow delete: if isAdmin();
