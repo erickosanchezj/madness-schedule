@@ -122,7 +122,6 @@ exports.generateDailyClasses = onSchedule(
           startAt,
           endAt,
           description: `Clase de ${entry?.name}`,
-          icon: entry?.icon || "💪",
           image:
             entry?.image ||
             `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(
