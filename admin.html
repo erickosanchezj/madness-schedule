@@ -498,15 +498,9 @@
             <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
             <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica quién impartirá la sesión.</p>
           </div>
-          <div class="grid grid-cols-2 gap-4 mt-4">
-            <div class="flex flex-col">
-              <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
-              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Coloca la hora de inicio en formato 24 horas.</p>
-            </div>
-            <div class="flex flex-col">
-              <input type="text" id="class-icon" placeholder="Emoji Ícono (🧘‍♀️)" class="w-full bg-zinc-700 p-2 rounded">
-              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Elige un emoji que represente la clase.</p>
-            </div>
+          <div class="mt-4">
+            <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
+            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Coloca la hora de inicio en formato 24 horas.</p>
           </div>
           <p id="class-time-warning" class="mt-2 text-xs text-amber-400 hidden"></p>
           <div class="mt-4">
@@ -1222,7 +1216,6 @@
                 startAt,
                 endAt,
                 description:`Clase de ${c.name}`,
-                icon:'💪',
                 image:`https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(c.name)}`
               });
               existingKeys.add(classKey);
@@ -1591,7 +1584,6 @@
           this.state.classes.forEach(cls=>{
             if (cls.type) classTypes.add(cls.type);
             else if (cls.category) classTypes.add(cls.category);
-            else if (cls.icon) classTypes.add(`Icono ${cls.icon}`);
             if (cls.instructor) instructors.add(cls.instructor);
           });
           const classValue = classFilter.value || this.state.selectedClassType;
@@ -1658,8 +1650,7 @@
             if (!cls) return;
             const matchesType = filterType === 'all'
               || cls.type === filterType
-              || cls.category === filterType
-              || (`Icono ${cls.icon}` === filterType);
+              || cls.category === filterType;
             const matchesInstructor = filterInstructor === 'all'
               || (cls.instructor === filterInstructor);
             if (!matchesType || !matchesInstructor) return;
@@ -2539,7 +2530,6 @@
           document.getElementById('class-name').value = '';
           document.getElementById('class-instructor').value = '';
           document.getElementById('class-time').value = '';
-          document.getElementById('class-icon').value = '💪';
           document.getElementById('class-description').value = '';
           document.getElementById('class-date').value = this.dateHelper.today();
           document.getElementById('class-capacity').value = '15';
@@ -2585,7 +2575,6 @@
             name: document.getElementById('class-name').value.trim(),
             instructor: document.getElementById('class-instructor').value.trim() || 'Por Asignar',
             time: document.getElementById('class-time').value.trim(),
-            icon: document.getElementById('class-icon').value || '💪',
             description: document.getElementById('class-description').value.trim(),
             classDate: document.getElementById('class-date').value.trim(),
             capacity: Number(document.getElementById('class-capacity').value) || 15,
@@ -2634,7 +2623,6 @@
           document.getElementById('class-name').value = cls.name || '';
           document.getElementById('class-instructor').value = cls.instructor || '';
           document.getElementById('class-time').value = localTime;
-          document.getElementById('class-icon').value = cls.icon || '';
           document.getElementById('class-description').value = cls.description || '';
           document.getElementById('class-date').value = localDate;
           document.getElementById('class-capacity').value = (cls.capacity ?? 15);
@@ -3254,7 +3242,6 @@
 
           const name = document.getElementById('class-name').value.trim();
           const instructor = document.getElementById('class-instructor').value.trim();
-          const icon = document.getElementById('class-icon').value.trim();
           const description = document.getElementById('class-description').value.trim();
           const imageInput = document.getElementById('class-image').value.trim();
           const timeInputEl = document.getElementById('class-time');
@@ -3296,7 +3283,6 @@
             const data = {
               name,
               instructor: instructor || 'Por Asignar',
-              icon: icon || '💪',
               description,
               image: imageInput,
               capacity,
