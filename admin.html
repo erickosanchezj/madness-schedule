@@ -3420,33 +3420,50 @@
               return;
             }
 
-            const batch = this.db.batch();
             const timestamp = firebase.firestore.Timestamp.now();
             const baseNow = Date.now();
             const classRef = this.db.collection('classes').doc(classId);
-            for (let i = 1; i <= count; i++){
-              const bookingRef = this.db.collection('bookings').doc();
-              const bookingData = {
-                classId: classId,
-                userId: `whatsapp-test-${baseNow}-${i}`,
-                userName: `Reserva WhatsApp #${i}`,
-                userEmail: `whatsapp-booking-${baseNow}-${i}@test.local`,
-                createdAt: timestamp,
-                status: 'confirmed',
-                isManualBooking: true
-              };
-              batch.set(bookingRef, bookingData);
-            }
 
-            batch.update(classRef, {
-              enrolledCount: firebase.firestore.FieldValue.increment(count)
+            const { updatedEnrolled } = await this.db.runTransaction(async transaction=>{
+              const classSnap = await transaction.get(classRef);
+              if (!classSnap.exists){
+                throw new Error('CLASS_NOT_FOUND');
+              }
+
+              const classData = classSnap.data() || {};
+              const classCapacity = Number(classData.capacity || 15);
+              const currentEnrolled = Number(classData.enrolledCount || 0);
+              const availableSlots = Math.max(0, classCapacity - currentEnrolled);
+
+              if (currentEnrolled + count > classCapacity){
+                const capacityError = new Error('CAPACITY_EXCEEDED');
+                capacityError.remainingSlots = availableSlots;
+                throw capacityError;
+              }
+
+              for (let i = 1; i <= count; i++){
+                const bookingRef = this.db.collection('bookings').doc();
+                const bookingData = {
+                  classId: classId,
+                  userId: `whatsapp-test-${baseNow}-${i}`,
+                  userName: `Reserva WhatsApp #${i}`,
+                  userEmail: `whatsapp-booking-${baseNow}-${i}@test.local`,
+                  createdAt: timestamp,
+                  status: 'confirmed',
+                  isManualBooking: true
+                };
+                transaction.set(bookingRef, bookingData);
+              }
+
+              transaction.update(classRef, {
+                enrolledCount: firebase.firestore.FieldValue.increment(count)
+              });
+
+              return { updatedEnrolled: currentEnrolled + count };
             });
-
-            await batch.commit();
 
             countInput.value = '';
 
-            const updatedEnrolled = occupancy + count;
             cls.enrolledCount = updatedEnrolled;
             this.renderAll();
             this.showToast({
@@ -3455,6 +3472,26 @@
             });
           }catch(error){
             console.error('Error creating manual bookings:', error);
+
+            if (error && error.message === 'CAPACITY_EXCEEDED'){
+              const allowed = Number(error.remainingSlots || 0);
+              this.showToast({
+                title: 'Capacidad excedida',
+                message: allowed > 0 ? `Solo puedes agregar ${allowed} reservas más` : 'La clase ya está llena',
+                variant: 'error'
+              });
+              return;
+            }
+
+            if (error && error.message === 'CLASS_NOT_FOUND'){
+              this.showToast({
+                title: 'Clase no encontrada',
+                message: 'La clase se eliminó antes de crear las reservas',
+                variant: 'error'
+              });
+              return;
+            }
+
             this.showToast({
               title: 'Error',
               message: `No se pudieron crear las reservas: ${error.message}`,
