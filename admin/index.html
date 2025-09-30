@@ -1,7 +1,7 @@
-<!-- /admin.html -->
-<!-- Admin panel for managing classes, bookings and waitlists -->
-<!-- Allows staff to supervise daily operations and user management -->
-<!-- RELEVANT FILES: index.html, firebase-config.js, service-worker.js -->
+<!-- /admin/index.html -->
+<!-- Modular admin panel entry point with external assets -->
+<!-- Replaces the monolithic admin.html while preserving functionality -->
+<!-- RELEVANT FILES: admin/js/admin-core.js, admin/css/admin-components.css, admin/css/admin-calendar.css, admin/css/admin-responsive.css -->
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -13,9 +13,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    <link rel="stylesheet" href="admin/css/admin-components.css" />
-    <link rel="stylesheet" href="admin/css/admin-calendar.css" />
-    <link rel="stylesheet" href="admin/css/admin-responsive.css" />
+    <link rel="stylesheet" href="css/admin-components.css" />
+    <link rel="stylesheet" href="css/admin-calendar.css" />
+    <link rel="stylesheet" href="css/admin-responsive.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body class="bg-zinc-900 text-white">
@@ -103,6 +103,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-functions-compat.js"></script>
-    <script type="module" src="admin/js/admin-core.js"></script>
+    <script type="module" src="js/admin-core.js"></script>
   </body>
 </html>
