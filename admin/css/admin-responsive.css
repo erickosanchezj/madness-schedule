@@ -1,0 +1,54 @@
+/* /admin/css/admin-responsive.css */
+/* Responsive tweaks for the admin calendar views */
+/* Keeps breakpoints independent from base styling */
+/* RELEVANT FILES: admin/index.html, admin/css/admin-calendar.css, admin/js/modules/calendar.js */
+
+@media (max-width: 1024px) {
+  .calendar-header,
+  .calendar-grid {
+    grid-template-columns: 70px repeat(7, 180px);
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-container .min-w-[960px] {
+    min-width: 0;
+  }
+
+  .calendar-header,
+  .calendar-grid {
+    grid-template-columns: 60px 1fr;
+  }
+
+  .calendar-header .day-label {
+    display: none;
+  }
+
+  .calendar-header .day-label.today-label {
+    display: block;
+  }
+
+  .calendar-grid .day-grid {
+    display: none;
+  }
+
+  .calendar-grid .day-grid.today-column {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --hour-height: 52px;
+  }
+
+  .calendar-header,
+  .calendar-grid {
+    grid-template-columns: 60px 1fr;
+  }
+
+  .class-block {
+    font-size: 0.7rem;
+    padding: 0.4rem;
+  }
+}
