@@ -766,6 +766,8 @@
           const placeholder = (nameForText.charAt(0) || 'U').toUpperCase();
           // true if push notifications are allowed and token saved
           const pushEnabled = Notification.permission==='granted' && localStorage.getItem(LS_KEY);
+          const pushStatusText = pushEnabled ? 'Activadas' : 'Desactivadas';
+          const nameSubtitle = nameForText || 'Sin nombre';
           return `
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
@@ -777,7 +779,10 @@
               </header>
               <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
                 <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
-                  <span>Editar Nombre</span>
+                  <div class="flex flex-col">
+                    <span>Editar Nombre</span>
+                    <span class="text-xs text-zinc-500">${nameSubtitle}</span>
+                  </div>
                   <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
                 </a>
                 <label for="totalpass-toggle" class="flex items-center justify-between py-3 gap-4">
@@ -789,7 +794,10 @@
                   </span>
                 </label>
                 <button id="enablePush" class="flex items-center justify-between w-full py-3">
-                  <span>Notificaciones Push</span>
+                  <div class="flex flex-col text-left">
+                    <span>Notificaciones Push</span>
+                    <span class="text-xs text-zinc-500">${pushStatusText}</span>
+                  </div>
                   <div class="flex items-center gap-2">
                     <i data-lucide="${pushEnabled?'bell-ring':'bell-off'}" class="w-5 h-5 ${pushEnabled?'text-emerald-400':'text-zinc-500'}"></i>
                     <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
