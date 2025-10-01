@@ -877,8 +877,20 @@
           const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
           const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
           const safeName = DOMPurify.sanitize(cls.name || '');
-          const safeDesc = DOMPurify.sanitize(cls.description || '');
+          const safeInstructor = DOMPurify.sanitize(cls.instructor || 'Por asignar');
           const safeId = DOMPurify.sanitize(cls.id);
+          const capacityValue = Number(cls.capacity||0);
+          const availableLabel = capacityValue>0
+            ? `${Math.max(capacityValue - enrolled, 0)} disponibles • ${enrolled}/${capacityValue} ocupados`
+            : 'Capacidad no definida';
+          const durationLabel = (()=>{
+            if (!Number.isFinite(durationMin) || durationMin<=0) return 'Duración no definida';
+            const hours = Math.floor(durationMin/60);
+            const minutes = durationMin%60;
+            if (hours && minutes) return `${hours} h ${minutes} min`;
+            if (hours) return `${hours} h`;
+            return `${minutes} min`;
+          })();
           // default booking button
           let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
           if (isBooked) {
@@ -906,11 +918,38 @@
                   ${safeName}
                   <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
                 </h1>
-                <p class="text-zinc-400 leading-relaxed">${safeDesc}</p>
-                <div class="bg-zinc-800 p-4 rounded-xl flex justify-between items-center">
-                  <span class="font-semibold text-lg">Estado</span>
-                  <span class="text-2xl font-bold ${availableSpots>0?'text-emerald-400':'text-rose-400'}">${availableSpots>0?'¡Hay cupo!':'Llena'}</span>
-                </div>
+                <section aria-labelledby="class-details" class="bg-zinc-800 p-4 rounded-xl space-y-4">
+                  <h2 id="class-details" class="text-lg font-semibold">Detalles</h2>
+                  <ul class="space-y-3">
+                    <li class="flex items-center gap-3">
+                      <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700/60">
+                        <i data-lucide="user" class="w-5 h-5 text-zinc-200"></i>
+                      </span>
+                      <div>
+                        <p class="text-xs uppercase tracking-wide text-zinc-400">Instructor</p>
+                        <p class="text-sm font-medium text-white">${safeInstructor}</p>
+                      </div>
+                    </li>
+                    <li class="flex items-center gap-3">
+                      <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700/60">
+                        <i data-lucide="clock" class="w-5 h-5 text-zinc-200"></i>
+                      </span>
+                      <div>
+                        <p class="text-xs uppercase tracking-wide text-zinc-400">Duración</p>
+                        <p class="text-sm font-medium text-white">${durationLabel}</p>
+                      </div>
+                    </li>
+                    <li class="flex items-center gap-3">
+                      <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-700/60">
+                        <i data-lucide="users" class="w-5 h-5 text-zinc-200"></i>
+                      </span>
+                      <div>
+                        <p class="text-xs uppercase tracking-wide text-zinc-400">Lugares</p>
+                        <p class="text-sm font-medium text-white">${availableLabel}</p>
+                      </div>
+                    </li>
+                  </ul>
+                </section>
               </div>
               <div class="p-6 fixed bottom-20 left-0 right-0 max-w-md mx-auto bg-zinc-900">
                 ${buttonHTML}
