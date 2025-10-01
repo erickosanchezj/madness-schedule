@@ -667,16 +667,20 @@
             }
             const ymdUTC = cls.classDate || targetYMD;
             const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-            const hhmm = timeFmt.format(new Date(`${ymdUTC}T${hhmmUTC}:00Z`));
+            const startLocal = new Date(`${ymdUTC}T${hhmmUTC}:00Z`);
+            const hhmm = timeFmt.format(startLocal);
+            const ymdLocal = dateHelper.getYYYYMMDD(startLocal);
+            const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
+            const safeDayText = DOMPurify.sanitize(dayText);
             return `
               <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
                 <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                 <div class="flex-1">
                   <p class="font-bold text-lg">${safeName}</p>
                   <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
-                  <p class="text-sm mt-1 text-emerald-400">${hhmm} hrs</p>
+                  <p class="text-sm mt-1 text-emerald-400">${safeDayText} • ${hhmm}</p>
                   <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                 </div>
                 <div class="text-right">${badge}</div>
