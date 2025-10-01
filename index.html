@@ -647,7 +647,10 @@
             const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
             const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
             const safeId = DOMPurify.sanitize(cls.id);
-            let badge = `<span class="text-xs bg-emerald-500/50 text-emerald-300 px-2 py-1 rounded-md">¡Hay cupo!</span>`;
+            let badge = `<div class="flex items-center justify-end gap-2">
+              <span class="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Lugares disponibles</span>
+              <span class="text-xs font-semibold bg-emerald-500/50 text-emerald-100 px-2 py-1 rounded-md">Reservar!</span>
+            </div>`;
             if (isBooked) {
               badge = `<span class="text-xs bg-indigo-500/50 text-indigo-300 px-2 py-1 rounded-md">Reservada</span>`;
             } else if (available<=0 && !notified) {
