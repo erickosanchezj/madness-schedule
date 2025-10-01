@@ -780,9 +780,13 @@
                   <span>Editar Nombre</span>
                   <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
                 </a>
-                <label for="totalpass-toggle" class="flex items-center justify-between py-3">
+                <label for="totalpass-toggle" class="flex items-center justify-between py-3 gap-4">
                   <span>Usuario TotalPass</span>
-                  <input type="checkbox" id="totalpass-toggle" class="w-5 h-5 accent-indigo-600" ${state.isTotalPass?'checked':''}>
+                  <span class="relative inline-flex items-center">
+                    <input type="checkbox" id="totalpass-toggle" class="sr-only peer" ${state.isTotalPass?'checked':''}>
+                    <span class="block w-11 h-6 rounded-full bg-zinc-700 transition-colors peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 peer-checked:bg-indigo-600"></span>
+                    <span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
+                  </span>
                 </label>
                 <button id="enablePush" class="flex items-center justify-between w-full py-3">
                   <span>Notificaciones Push</span>
