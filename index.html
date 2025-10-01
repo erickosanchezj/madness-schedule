@@ -178,7 +178,8 @@
           scheduleFilter: 'today',
           selectedClassId: null,
           isTotalPass: false,
-          cancellationStrikes: 0
+          cancellationStrikes: 0,
+          dailyMessage: null
         };
 
         // ---- Render batching
@@ -219,12 +220,14 @@
         window.showToast = showToast;
 
         // Firestore listeners
-        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, listenersAttached=false;
+        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, unsubDailyMessage=null, listenersAttached=false;
         function detachListeners(){
           if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
           if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
           if (unsubWaitlist){ try{unsubWaitlist();}catch{}; unsubWaitlist=null; }
           if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
+          if (unsubDailyMessage){ try{unsubDailyMessage();}catch{}; unsubDailyMessage=null; }
+          state.dailyMessage = null;
           listenersAttached=false;
         }
         function attachAgendaListeners(){
@@ -254,6 +257,15 @@
               state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
               scheduleRender();
             });
+          unsubDailyMessage = db.collection('dailyMessages')
+            .where('isActive', '==', true)
+            .orderBy('createdAt', 'desc')
+            .limit(1)
+            .onSnapshot(snap => {
+              const doc = snap.docs[0];
+              state.dailyMessage = doc ? { id: doc.id, ...doc.data() } : null;
+              scheduleRender();
+            }, err => console.error('Error mensaje diario:', err));
           listenersAttached=true;
         }
 
@@ -695,12 +707,27 @@
               </div>`;
           }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
 
+          const activeDailyMessage = state.dailyMessage && state.dailyMessage.message ? state.dailyMessage : null;
+          const dailyMessageHTML = activeDailyMessage ? (()=>{
+            const safeId = DOMPurify.sanitize(activeDailyMessage.id || '');
+            const sanitized = DOMPurify.sanitize(activeDailyMessage.message || '');
+            const formatted = sanitized.replace(/\n/g,'<br>');
+            return `
+              <section aria-live="polite" class="bg-zinc-800 rounded-2xl p-4 flex items-start gap-3" data-message-id="${safeId}">
+                <div class="flex-1 text-sm leading-relaxed text-zinc-100">${formatted}</div>
+                <button type="button" data-action="dismiss-message" class="text-zinc-400 hover:text-zinc-200">
+                  <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+              </section>`;
+          })() : '';
+
           return `
             <div class="p-6 space-y-8">
               <header>
                 <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
                 <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
               </header>
+              ${dailyMessageHTML}
               <section aria-labelledby="mis-reservas">
                 <h2 id="mis-reservas" class="text-xl font-semibold mb-3">Tus Reservas</h2>
                 <div class="space-y-3">${reservasHTML}</div>
@@ -1022,6 +1049,10 @@
             case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
             case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
+            case 'dismiss-message':
+              state.dailyMessage = null;
+              scheduleRender();
+              break;
 
             /* RESUELTO: usar deep-link + fallback web y confirmación modal
                Mantiene el nombre de acción existente: send-totalpass-daily */
