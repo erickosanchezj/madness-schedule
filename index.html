@@ -182,6 +182,19 @@
           dailyMessage: null
         };
 
+        function getStrikeInfo(){
+          const strikesRaw = Number(state.cancellationStrikes);
+          const strikeCount = Number.isFinite(strikesRaw) && strikesRaw > 0 ? Math.min(strikesRaw, 3) : 0;
+          const strikeMessage = strikeCount >= 3
+            ? 'Llegaste al límite de 3 strikes. Tu cuenta queda bloqueada temporalmente.'
+            : strikeCount === 2
+              ? 'Estás a 1 strike del bloqueo. Cancela con tiempo.'
+              : strikeCount === 1
+                ? 'Tienes 1 strike. Cancela con más de 2 horas de anticipación.'
+                : 'Evita cancelar tarde para no llegar a 3 strikes.';
+          return { strikeCount, strikeMessage };
+        }
+
         // ---- Render batching
         let renderQueued=false;
         function scheduleRender(){
@@ -556,15 +569,6 @@
         // --- AGENDA (igual que tu implementación, con mínimos cambios)
         function getAgendaScreenHTML(){
           const now = Date.now();
-          const strikesRaw = Number(state.cancellationStrikes);
-          const strikeCount = Number.isFinite(strikesRaw) && strikesRaw > 0 ? Math.min(strikesRaw, 3) : 0;
-          const strikeMessage = strikeCount >= 3
-            ? 'Llegaste al límite de 3 strikes. Tu cuenta queda bloqueada temporalmente.'
-            : strikeCount === 2
-              ? 'Estás a 1 strike del bloqueo. Cancela con tiempo.'
-              : strikeCount === 1
-                ? 'Tienes 1 strike. Cancela con más de 2 horas de anticipación.'
-                : 'Evita cancelar tarde para no llegar a 3 strikes.';
           const upcoming = state.myBookings.filter(Boolean).filter(b=>{
             const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
             const relatedClass = state.classes.find(cls=>cls.id===b.classId);
@@ -749,13 +753,6 @@
                 </div>
                 <div class="space-y-3">${horarioHTML}</div>
               </section>
-              <section aria-labelledby="cancel-strikes">
-                <h2 id="cancel-strikes" class="text-xl font-semibold mb-3">Strikes por cancelación</h2>
-                <div class="bg-zinc-800 rounded-2xl p-4">
-                  <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
-                  <p class="text-sm text-zinc-400 mt-2">${strikeMessage}</p>
-                </div>
-              </section>
             </div>`;
         }
 
@@ -768,6 +765,7 @@
           const pushEnabled = Notification.permission==='granted' && localStorage.getItem(LS_KEY);
           const pushStatusText = pushEnabled ? 'Activadas' : 'Desactivadas';
           const nameSubtitle = nameForText || 'Sin nombre';
+          const { strikeCount, strikeMessage } = getStrikeInfo();
           return `
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
@@ -777,6 +775,11 @@
                   <p class="text-sm text-zinc-400">${safeEmail}</p>
                 </div>
               </header>
+              <section aria-labelledby="profile-strikes" class="bg-zinc-800 rounded-2xl p-4 text-center space-y-2">
+                <h2 id="profile-strikes" class="text-lg font-semibold">Strikes por cancelación</h2>
+                <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
+                <p class="text-sm text-zinc-400">${strikeMessage}</p>
+              </section>
               <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
                 <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
                   <div class="flex flex-col">
