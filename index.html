@@ -881,7 +881,7 @@
           const safeId = DOMPurify.sanitize(cls.id);
           const capacityValue = Number(cls.capacity||0);
           const availableLabel = capacityValue>0
-            ? `${Math.max(capacityValue - enrolled, 0)} disponibles • ${enrolled}/${capacityValue} ocupados`
+            ? `${enrolled}/${capacityValue} ocupados`
             : 'Capacidad no definida';
           const durationLabel = (()=>{
             if (!Number.isFinite(durationMin) || durationMin<=0) return 'Duración no definida';
