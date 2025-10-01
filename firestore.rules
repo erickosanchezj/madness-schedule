@@ -111,6 +111,12 @@ service cloud.firestore {
         allow read, write: if isAdmin();
     }
 
+    // ===== DAILY MESSAGES =====
+    match /dailyMessages/{messageId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
     // ===== Everything else locked =====
     match /{document=**} {
       allow read, write: if false;
