@@ -258,11 +258,13 @@
               scheduleRender();
             });
           unsubDailyMessage = db.collection('dailyMessages')
-            .where('isActive', '==', true)
             .orderBy('createdAt', 'desc')
-            .limit(1)
+            .limit(10)
             .onSnapshot(snap => {
-              const doc = snap.docs[0];
+              const doc = snap.docs.find(d => {
+                const data = d.data();
+                return data && data.isActive;
+              });
               state.dailyMessage = doc ? { id: doc.id, ...doc.data() } : null;
               scheduleRender();
             }, err => console.error('Error mensaje diario:', err));
