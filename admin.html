@@ -1304,6 +1304,7 @@
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-1 px-3 rounded-md" data-daily-action="edit" data-id="${safeId}">Editar</button>
                   <button type="button" class="${msg.isActive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white font-semibold py-1 px-3 rounded-md" data-daily-action="toggle" data-id="${safeId}" data-active="${msg.isActive?'true':'false'}">${msg.isActive ? 'Desactivar' : 'Activar'}</button>
+                  <button type="button" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-1 px-3 rounded-md" data-daily-action="delete" data-id="${safeId}">Eliminar</button>
                 </div>
               </article>`;
           }).join('');
@@ -1360,6 +1361,9 @@
           } else if (action === 'toggle'){
             const active = btn.dataset.active === 'true';
             this.toggleDailyMessage(id, active);
+          } else if (action === 'delete'){
+            const confirmed = window.confirm('¿Eliminar este mensaje? Esta acción no se puede deshacer.');
+            if (confirmed) this.deleteDailyMessage(id);
           }
         },
 
@@ -1373,6 +1377,16 @@
           }catch(err){
             console.error(err);
             this.showToast({ title:'Error actualizando mensaje', message: err.message, variant:'error' });
+          }
+        },
+
+        async deleteDailyMessage(id){
+          try{
+            await this.db.collection('dailyMessages').doc(id).delete();
+            this.showToast({ title:'Mensaje eliminado' });
+          }catch(err){
+            console.error(err);
+            this.showToast({ title:'Error eliminando mensaje', message: err.message, variant:'error' });
           }
         },
 
