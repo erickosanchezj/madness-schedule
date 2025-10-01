@@ -2550,7 +2550,7 @@
           if (!cls || !cls.classDate || !cls.time) return false;
           const start = new Date(`${cls.classDate}T${cls.time}:00Z`).getTime();
           const now = Date.now();
-          const lower = now - (15*60*60*1000);
+          const lower = now - (2*24*60*60*1000);
           const upper = now + (30*60*1000);
           return (start>=lower) && (start<=upper);
         },
