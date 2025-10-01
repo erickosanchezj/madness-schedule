@@ -2075,9 +2075,8 @@
         getDefaultAttendanceRange(){
           const today = this.dateHelper.today();
           const end = new Date(`${today}T00:00:00-06:00`);
-          end.setDate(end.getDate()+1);
           const start = new Date(end);
-          start.setDate(start.getDate()-3);
+          start.setDate(start.getDate()-2);
           return { start: this.dateHelper.ymd(start), end: this.dateHelper.ymd(end) };
         },
         getSelectedAttendanceRange(){
