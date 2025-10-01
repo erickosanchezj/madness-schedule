@@ -876,6 +876,27 @@
           const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
           const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
           const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
+          const startLocal = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${ymdUTC}T${hhmmUTC}:00Z`);
+          let dateContext = '';
+          if (startLocal && !Number.isNaN(startLocal.getTime())){
+            const ymdLocal = dateHelper.getYYYYMMDD(startLocal);
+            const baseLabel = startLocal.toLocaleDateString('es-MX', {
+              timeZone: MX_TZ,
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long'
+            }).replace(/,/g, '');
+            const prettyLabel = baseLabel.split(' ').map(word => {
+              const lower = word.toLowerCase();
+              if (lower === 'de') return 'de';
+              if (!word) return word;
+              return word.charAt(0).toUpperCase() + word.slice(1);
+            }).join(' ');
+            if (ymdLocal === dateHelper.today) dateContext = `Hoy, ${prettyLabel}`;
+            else if (ymdLocal === dateHelper.tomorrow) dateContext = `Mañana, ${prettyLabel}`;
+            else dateContext = prettyLabel;
+          }
+          const safeDateContext = DOMPurify.sanitize(dateContext);
           const safeName = DOMPurify.sanitize(cls.name || '');
           const safeInstructor = DOMPurify.sanitize(cls.instructor || 'Por asignar');
           const safeId = DOMPurify.sanitize(cls.id);
@@ -917,6 +938,7 @@
                 <h1 class="text-3xl font-bold">
                   ${safeName}
                   <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
+                  ${safeDateContext ? `<span class="block text-sm text-zinc-400 mt-1">${safeDateContext}</span>` : ''}
                 </h1>
                 <section aria-labelledby="class-details" class="bg-zinc-800 p-4 rounded-xl space-y-4">
                   <h2 id="class-details" class="text-lg font-semibold">Detalles</h2>
