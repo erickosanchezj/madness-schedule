@@ -669,7 +669,8 @@
           selectedInstructor: 'all',
           selectedExportFormat: 'capacity',
           dailyMessages: [],
-          unsubDailyMessages: null
+          unsubDailyMessages: null,
+          userCache: new Map()
         },
 
         // --- Helpers ---
@@ -1221,8 +1222,44 @@
           this.state.unsubDailyMessages = this.db.collection('dailyMessages')
             .orderBy('createdAt', 'desc')
             .limit(20)
-            .onSnapshot((snap)=>{
-              this.state.dailyMessages = snap.docs.map(doc=>({ id: doc.id, ...doc.data() }));
+            .onSnapshot(async (snap)=>{
+              // We reuse cached user names to avoid repeated fetches.
+              const cache = this.state.userCache instanceof Map ? this.state.userCache : new Map();
+              this.state.userCache = cache;
+              const messages = await Promise.all(snap.docs.map(async (doc)=>{
+                const data = doc.data() || {};
+                const message = { id: doc.id, ...data };
+                const storedName = typeof data.createdByName === 'string' && data.createdByName.trim() ? data.createdByName.trim() : '';
+                if (storedName) {
+                  message.creatorName = storedName;
+                  if (data.createdBy) cache.set(data.createdBy, storedName);
+                  return message;
+                }
+                const uid = typeof data.createdBy === 'string' ? data.createdBy : '';
+                if (!uid) {
+                  message.creatorName = '';
+                  return message;
+                }
+                if (cache.has(uid)) {
+                  message.creatorName = cache.get(uid) || uid;
+                  return message;
+                }
+                try {
+                  const userSnap = await this.db.collection('users').doc(uid).get();
+                  const userData = userSnap.exists ? userSnap.data() || {} : {};
+                  const resolvedName = [userData.displayName, userData.name, userData.email].find(value => typeof value === 'string' && value.trim()) || '';
+                  const finalName = resolvedName || uid;
+                  cache.set(uid, finalName);
+                  message.creatorName = finalName;
+                } catch (fetchErr) {
+                  // We fall back to the UID when the lookup fails.
+                  console.warn('No se pudo resolver el nombre del usuario', fetchErr);
+                  cache.set(uid, uid);
+                  message.creatorName = uid;
+                }
+                return message;
+              }));
+              this.state.dailyMessages = messages;
               this.renderDailyMessages();
             }, err=>{
               console.error(err);
@@ -1244,7 +1281,10 @@
             const createdAt = msg.createdAt?.toDate ? msg.createdAt.toDate() : null;
             const createdLabel = createdAt ? `${this.dayShortFmt.format(createdAt)} ${this.timeFmt.format(createdAt)}` : 'Sin fecha';
             const safeCreated = DOMPurify.sanitize(createdLabel);
-            const creator = msg.createdBy ? DOMPurify.sanitize(String(msg.createdBy)) : '';
+            const rawCreator = typeof msg.creatorName === 'string' && msg.creatorName.trim()
+              ? msg.creatorName
+              : (msg.createdBy ? String(msg.createdBy) : '');
+            const creator = rawCreator ? DOMPurify.sanitize(rawCreator) : '';
             const statusBadge = msg.isActive
               ? '<span class="px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Activo</span>'
               : '<span class="px-2 py-1 rounded-md bg-zinc-700 text-zinc-300 text-xs">Inactivo</span>';
@@ -1362,7 +1402,8 @@
               const createData = {
                 ...payload,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                createdBy: this.auth.currentUser?.uid || ''
+                createdBy: this.auth.currentUser?.uid || '',
+                createdByName: this.auth.currentUser?.displayName || this.auth.currentUser?.email || ''
               };
               await this.db.collection('dailyMessages').add(createData);
               this.showToast({ title:'Mensaje creado' });
