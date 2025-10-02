@@ -154,6 +154,15 @@
           return r===0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
         }
 
+        function getCountdownClass(ymd, hhmm, defaultClass='text-emerald-300'){
+          if(!ymd||!hhmm) return defaultClass;
+          const startTs=new Date(`${ymd}T${hhmm}:00Z`).getTime();
+          if(Number.isNaN(startTs)) return defaultClass;
+          const diff=startTs-Date.now();
+          if(diff<0) return defaultClass;
+          return diff<=FIFTEEN_MINUTES_MS ? 'text-amber-300' : defaultClass;
+        }
+
         const coverHelper = {
           byName(name=''){
             const n=name.toLowerCase();
@@ -596,6 +605,7 @@
             const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
             const cover = coverHelper.forClassName(b.className, b.className);
             const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
+            const countdownClass = getCountdownClass(ymdUTC, hhmmUTC, 'text-emerald-400');
             const showCancelButton = timeStatus !== 'en curso';
             const safeClassName = DOMPurify.sanitize(b.className || '');
             const safeDayText = DOMPurify.sanitize(dayText);
@@ -608,7 +618,7 @@
                   <div>
                     <p class="font-bold text-lg">${safeClassName}</p>
                     <p class="text-zinc-400 text-sm">${safeDayText} • ${hhmm}</p>
-                    <p class="text-emerald-400 text-xs mt-0.5">${safeTimeStatus}</p>
+                    <p class="${countdownClass} text-xs mt-0.5">${safeTimeStatus}</p>
                   </div>
                 </div>
                 ${showCancelButton ? `<button data-action="cancel-booking" data-class-id="${safeClassId}" class="text-xs text-rose-400 hover:text-rose-300">Cancelar</button>` : ''}
@@ -674,6 +684,7 @@
             const safeName = DOMPurify.sanitize(cls.name || '');
             const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
             const safeDayText = DOMPurify.sanitize(dayText);
+            const countdownClass = getCountdownClass(ymdUTC, hhmmUTC);
             return `
               <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
                 <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
@@ -681,7 +692,7 @@
                   <p class="font-bold text-lg">${safeName}</p>
                   <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
                   <p class="text-sm mt-1 text-emerald-400">${safeDayText} • ${hhmm}</p>
-                  <p class="text-emerald-300 text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
+                  <p class="${countdownClass} text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                 </div>
                 <div class="text-right">${badge}</div>
               </div>`;
