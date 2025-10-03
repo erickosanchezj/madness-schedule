@@ -788,7 +788,7 @@
             ? (() => {
                 const firstId = todays[0].booking.classId ? DOMPurify.sanitize(todays[0].booking.classId) : '';
                 const dataAttr = firstId ? ` data-class-id="${firstId}"` : '';
-                return `<button data-action="send-totalpass-daily"${dataAttr} class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg">Enviar Token del Día</button>`;
+                return `<button data-action="send-totalpass-daily"${dataAttr} class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg">Enviar Token del Día</button>`;
               })()
             : '';
 
@@ -928,17 +928,17 @@
             return `${minutes} min`;
           })();
           // default booking button
-          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Reservar Ahora</button>`;
+          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Reservar Ahora</button>`;
           if (isBooked) {
             // already have a booking
-            buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-4 rounded-xl" disabled>Ya estás inscrito</button>`;
+            buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-3 rounded-xl" disabled>Ya estás inscrito</button>`;
           } else if (availableSpots<=0 && !notified) {
             // class is full: either join waitlist or allow leaving
             if (waitEntry) {
               const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-              buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-4 rounded-xl">Salir de la lista de espera</button></div>`;
+              buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-3 rounded-xl">Salir de la lista de espera</button></div>`;
             } else {
-              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl">Unirse a lista de espera</button>`;
+              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Unirse a lista de espera</button>`;
             }
           }
           return `
@@ -1271,12 +1271,15 @@
               </div>
               <h2 class="text-2xl font-bold">${safeTitle}</h2>
               ${safeMessage ? `<p class="text-zinc-400">${safeMessage}</p>` : ''}
-              <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg mt-4">Entendido</button>`;
+              <button id="modal-close-btn" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg mt-4">Entendido</button>`;
             document.getElementById('modal-close-btn').onclick = hideModal;
           } else {
-            const buttonsHTML = buttons.map((btn, index) =>
-              `<button id="modal-btn-${index}" class="flex-1 ${btn.primary ? 'bg-indigo-600 text-white' : 'bg-zinc-700 text-zinc-300'} font-semibold py-3 rounded-lg">${DOMPurify.sanitize(btn.text)}</button>`
-            ).join('');
+            const buttonsHTML = buttons.map((btn, index) => {
+              const baseClasses = btn.primary
+                ? 'bg-indigo-600 text-white font-bold'
+                : 'bg-zinc-700 text-zinc-300 font-semibold';
+              return `<button id="modal-btn-${index}" class="flex-1 ${baseClasses} py-3 rounded-lg">${DOMPurify.sanitize(btn.text)}</button>`;
+            }).join('');
 
             modalContent.innerHTML = `
               <div class="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mx-auto">
