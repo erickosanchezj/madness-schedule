@@ -231,10 +231,10 @@
         </button>
       </div>
 
-      <div class="space-y-8">
+      <div class="space-y-6">
         <section aria-labelledby="week-title">
           <h2 id="week-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de la Semana</h2>
-          <div class="calendar-container space-y-3">
+          <div class="calendar-container space-y-4">
             <div class="overflow-x-auto pb-2">
               <div class="min-w-[960px] space-y-2">
                 <div class="calendar-header text-xs font-semibold uppercase tracking-wide text-zinc-400">
@@ -398,7 +398,7 @@
           <div id="dashboard-loading" class="hidden bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm p-3 rounded-md">
             Calculando métricas avanzadas…
           </div>
-          <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-3">
+          <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-4">
             <div class="w-full bg-zinc-700 h-2 rounded">
               <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>
             </div>
@@ -484,7 +484,7 @@
             <button type="button" id="daily-message-reset" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Limpiar</button>
           </div>
         </form>
-        <div id="daily-messages-list" class="mt-6 space-y-3 text-sm"></div>
+        <div id="daily-messages-list" class="mt-6 space-y-4 text-sm"></div>
       </section>
 
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
@@ -1202,7 +1202,7 @@
               const infoSection = infoLines.length ? `<div class="flex flex-wrap gap-3">${infoLines.join('')}</div>` : '';
               return `
                 <li class="mb-3">
-                  <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/40 space-y-3">
+                  <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/40 space-y-4">
                     <div class="flex flex-col gap-1">
                       <p class="text-[11px] uppercase tracking-wide text-zinc-400">${safeType}</p>
                       ${titleSection}
@@ -1290,7 +1290,7 @@
               : '<span class="px-2 py-1 rounded-md bg-zinc-700 text-zinc-300 text-xs">Inactivo</span>';
             const creatorLine = creator ? `<span class="text-xs text-zinc-500">Creado por: ${creator}</span>` : '';
             return `
-              <article class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-3">
+              <article class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-4">
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex-1 space-y-2">
                     <p class="text-sm leading-relaxed text-zinc-100">${formatted}</p>
@@ -3310,7 +3310,7 @@
               </div>
             </div>
           `;}).join('');
-          return head + `<div class="mt-4 space-y-3">${bodies}</div></div>`;
+          return head + `<div class="mt-4 space-y-4">${bodies}</div></div>`;
         },
 
         wireUserCardButtons(){
