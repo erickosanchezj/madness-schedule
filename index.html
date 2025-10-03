@@ -1186,33 +1186,9 @@
           leaveWaitlist: async (classId)=>{
             const uid = state.currentUser.uid;
             try{
-              const waitRef = db.collection('waitlists').doc(`${classId}_${uid}`);
-              const waitSnap = await waitRef.get();
-
-              if (!waitSnap.exists) {
-                showToast('No estás en la lista de espera');
-                return;
-              }
-
-              const userPosition = waitSnap.data().position || 1;
-
-              await waitRef.delete();
-
-              const q = await db.collection('waitlists')
-                .where('classId', '==', classId)
-                .where('position', '>', userPosition)
-                .get();
-
-              const batch = db.batch();
-              q.forEach(doc => {
-                batch.update(doc.ref, { position: (doc.data().position || 1) - 1 });
-              });
-              await batch.commit();
-
+              await db.collection('waitlists').doc(`${classId}_${uid}`).delete();
               showToast('Saliste de la lista de espera');
-            }catch(err){
-              alert(`No se pudo salir de la lista de espera\n\n${err.message}`);
-            }
+            }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
           }
         };
 
