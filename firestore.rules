@@ -96,19 +96,16 @@ service cloud.firestore {
     }
     
     // ===== WAITLISTS ===== // MODIFIED 2025-OCT-03
-    match /waitlists/{waitlistId} {  
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;  
-
-      // Add this line to allow reading waitlists for position calculation  
-      allow list: if isSignedIn() && (  
-        resource.data.userId == request.auth.uid ||   
-        request.query.where[0][0] == 'classId'  // Allow reading when querying by classId  
-      ) || isAdmin();  
-
-      allow get: if isAdmin() ||  
-      (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));  
-
-      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();  
+    match /waitlists/{waitlistId} {    
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;    
+      
+      // Allow reading all waitlists for a class when user is joining  
+      allow list: if isSignedIn() || isAdmin();  
+      
+      allow get: if isAdmin() ||    
+      (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));    
+      
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();    
     }
     
     // ===== NOTIFICATIONS (admin-only) =====
