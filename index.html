@@ -669,7 +669,7 @@
                 const pos = DOMPurify.sanitize(String(waitEntry.position||1));
                 badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
               } else {
-                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-md\">Unirse a lista de espera</button>`;
+                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md\">Unirse a lista de espera</button>`;
               }
             } else if (available<=0 && notified) {
               // user has been notified of a free spot
