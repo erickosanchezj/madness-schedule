@@ -1163,21 +1163,8 @@
           joinWaitlist: async (classId)=>{
             const uid = state.currentUser.uid;
             try{
-              // Revisamos la lista para conocer la siguiente posición disponible.
-              const existingEntries = await db.collection('waitlists')
-                .where('classId','==',classId)
-                .get();
-
-              let nextPosition = 1;
-              if (!existingEntries.empty){
-                const positions = existingEntries.docs.map(doc=>Number(doc.data()?.position) || 0);
-                nextPosition = Math.max(...positions) + 1;
-              }
-
               await db.collection('waitlists').doc(`${classId}_${uid}`).set({
-                classId,
-                userId: uid,
-                position: nextPosition,
+                classId, userId: uid,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
               });
               showToast('Unido a la lista de espera', 'success');
