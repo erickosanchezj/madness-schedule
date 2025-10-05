@@ -1,28 +1,13 @@
-{
-  "indexes": [
-    {
-      "collectionGroup": "waitlists",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "classId", "order": "ASCENDING" },
-        { "fieldPath": "position", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "waitlists",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "classId", "order": "ASCENDING" },
-        { "fieldPath": "position", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "waitlists",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" }
-      ]
-    }
-  ],
-  "fieldOverrides": []
+{  
+  "indexes": [  
+    {  
+      "collectionGroup": "waitlists",  
+      "queryScope": "COLLECTION",  
+      "fields": [  
+        { "fieldPath": "classId", "order": "ASCENDING" },  
+        { "fieldPath": "position", "order": "DESCENDING" }  
+      ]  
+    }  
+  ],  
+  "fieldOverrides": []  
 }
