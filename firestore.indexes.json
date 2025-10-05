@@ -5,6 +5,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "classId", "order": "ASCENDING" },
+        { "fieldPath": "position", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "waitlists",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classId", "order": "ASCENDING" },
         { "fieldPath": "position", "order": "ASCENDING" }
       ]
     },
