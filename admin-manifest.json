@@ -1,0 +1,30 @@
+{
+  "name": "Madness Admin - Panel de Control",
+  "short_name": "Madness Admin",
+  "description": "Gestiona clases, reservas y asistentes desde el panel administrativo de Madness.",
+  "start_url": "./admin.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "./images/admin-192x192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "./images/admin-512x512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "./images/admin-512x512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable any" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Calendario de Clases",
+      "short_name": "Calendario",
+      "url": "./admin.html#calendar",
+      "icons": [{ "src": "./images/admin-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Panel de Waitlist",
+      "short_name": "Waitlist",
+      "url": "./admin.html#waitlist",
+      "icons": [{ "src": "./images/admin-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
