@@ -189,13 +189,10 @@
           display: none;
         }
         .calendar-grid .day-grid {
-          display: none;
+          display: block;
           min-height: calc(var(--hour-height) * 12);
           margin-top: 2.5rem;
           overflow: visible;
-        }
-        .calendar-grid .day-grid.today-column::before {
-          color: #a5b4fc;
         }
         .calendar-grid .day-grid::before {
           content: attr(data-day-label);
