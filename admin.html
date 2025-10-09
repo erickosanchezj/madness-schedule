@@ -177,28 +177,52 @@
         .calendar-container .min-w-[960px] {
           min-width: 0;
         }
-        .calendar-header,
-        .calendar-grid {
-          grid-template-columns: 60px 1fr;
-        }
-        .calendar-header .day-label {
+        .calendar-header {
           display: none;
         }
-        .calendar-header .day-label.today-label {
-          display: block;
+        .calendar-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 2.5rem;
+        }
+        .calendar-grid .time-column {
+          display: none;
         }
         .calendar-grid .day-grid {
           display: none;
+          min-height: calc(var(--hour-height) * 12);
+          margin-top: 2.5rem;
+          overflow: visible;
         }
         .calendar-grid .day-grid.today-column {
           display: block;
         }
+        .calendar-grid .day-grid::before {
+          content: attr(data-day-label);
+          position: absolute;
+          top: -2rem;
+          left: 0;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #34d399;
+          letter-spacing: 0.02em;
+        }
+        .calendar-grid .day-grid.today-column::before {
+          color: #a5b4fc;
+        }
       }
       @media (max-width: 640px) {
         :root { --hour-height: 52px; }
-        .calendar-header,
         .calendar-grid {
-          grid-template-columns: 60px 1fr;
+          gap: 2rem;
+        }
+        .calendar-grid .day-grid {
+          margin-top: 2rem;
+          min-height: calc(var(--hour-height) * 12);
+          overflow: visible;
+        }
+        .calendar-grid .day-grid::before {
+          font-size: 0.9rem;
         }
         .class-block {
           font-size: 0.7rem;
@@ -272,13 +296,13 @@
                     <div class="time-slot">21:00</div>
                     <div class="time-slot">22:00</div>
                   </div>
-                  <div id="monday-grid" class="day-grid" data-day-index="1" aria-label="Clases del lunes"></div>
-                  <div id="tuesday-grid" class="day-grid" data-day-index="2" aria-label="Clases del martes"></div>
-                  <div id="wednesday-grid" class="day-grid" data-day-index="3" aria-label="Clases del miércoles"></div>
-                  <div id="thursday-grid" class="day-grid" data-day-index="4" aria-label="Clases del jueves"></div>
-                  <div id="friday-grid" class="day-grid" data-day-index="5" aria-label="Clases del viernes"></div>
-                  <div id="saturday-grid" class="day-grid" data-day-index="6" aria-label="Clases del sábado"></div>
-                  <div id="sunday-grid" class="day-grid" data-day-index="0" aria-label="Clases del domingo"></div>
+                  <div id="monday-grid" class="day-grid" data-day-index="1" data-day-label="Lunes" aria-label="Clases del lunes"></div>
+                  <div id="tuesday-grid" class="day-grid" data-day-index="2" data-day-label="Martes" aria-label="Clases del martes"></div>
+                  <div id="wednesday-grid" class="day-grid" data-day-index="3" data-day-label="Miércoles" aria-label="Clases del miércoles"></div>
+                  <div id="thursday-grid" class="day-grid" data-day-index="4" data-day-label="Jueves" aria-label="Clases del jueves"></div>
+                  <div id="friday-grid" class="day-grid" data-day-index="5" data-day-label="Viernes" aria-label="Clases del viernes"></div>
+                  <div id="saturday-grid" class="day-grid" data-day-index="6" data-day-label="Sábado" aria-label="Clases del sábado"></div>
+                  <div id="sunday-grid" class="day-grid" data-day-index="0" data-day-label="Domingo" aria-label="Clases del domingo"></div>
                 </div>
               </div>
             </div>
