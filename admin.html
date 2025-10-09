@@ -194,8 +194,8 @@
           margin-top: 2.5rem;
           overflow: visible;
         }
-        .calendar-grid .day-grid.today-column {
-          display: block;
+        .calendar-grid .day-grid.today-column::before {
+          color: #a5b4fc;
         }
         .calendar-grid .day-grid::before {
           content: attr(data-day-label);
