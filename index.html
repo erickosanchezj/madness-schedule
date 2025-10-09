@@ -148,6 +148,18 @@
       </div>
     `;
           },
+          bookingCard(){
+            return `
+      <div class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 animate-pulse">
+        <div class="w-16 h-16 rounded-lg bg-zinc-700"></div>
+        <div class="flex-1 space-y-2">
+          <div class="h-4 bg-zinc-700/60 rounded w-3/4"></div>
+          <div class="h-3 bg-zinc-700/50 rounded w-1/2"></div>
+          <div class="h-3 bg-zinc-700/40 rounded w-1/3"></div>
+        </div>
+      </div>
+    `;
+          },
           userCard(){
             return `
       <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/50 animate-pulse">
@@ -638,35 +650,50 @@
         // --- AGENDA (igual que tu implementación, con mínimos cambios)
         function getAgendaScreenHTML(){
           const now = Date.now();
-          const upcoming = state.myBookings.filter(Boolean).filter(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
-            const relatedClass = state.classes.find(cls=>cls.id===b.classId);
-            const durationRaw = b.duration ?? relatedClass?.duration;
-            const durationValue = Number(durationRaw);
-            const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
-            const endTime = startObj.getTime() + durationMinutes*60000;
-            return now <= endTime;
-          }).sort((a,b)=>{
-            const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
-            const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
-            return ta - tb;
-          });
-          const reservasHTML = upcoming.length ? upcoming.map(b=>{
-            const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
-            const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
-            const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
-            const hhmm = timeFmt.format(startObj);
-            const ymdLocal = dateHelper.getYYYYMMDD(startObj);
-            const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
-            const cover = coverHelper.forClassName(b.className, b.className);
-            const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
-            const countdownClass = getCountdownClass(ymdUTC, hhmmUTC, 'text-emerald-400');
-            const showCancelButton = timeStatus !== 'en curso';
-            const safeClassName = DOMPurify.sanitize(b.className || '');
-            const safeDayText = DOMPurify.sanitize(dayText);
-            const safeClassId = DOMPurify.sanitize(b.classId);
-            const safeTimeStatus = DOMPurify.sanitize(timeStatus);
-            return `
+          const isLoadingBookings = state.loading?.bookings;
+          const reservasHTML = (() => {
+            if (isLoadingBookings) {
+              return Array(2).fill(0).map(() => skeletonLoaders.bookingCard()).join('');
+            }
+
+            const upcoming = state.myBookings.filter(Boolean).filter(b=>{
+              const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+              const relatedClass = state.classes.find(cls=>cls.id===b.classId);
+              const durationRaw = b.duration ?? relatedClass?.duration;
+              const durationValue = Number(durationRaw);
+              const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
+              const endTime = startObj.getTime() + durationMinutes*60000;
+              return now <= endTime;
+            }).sort((a,b)=>{
+              const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
+              const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
+              return ta - tb;
+            });
+
+            if (!upcoming.length) {
+              return `
+            <div class="bg-zinc-800 rounded-2xl p-5 text-center space-y-4">
+              <p class="text-zinc-300">Aún no tienes reservas. ¡Anímate a agendar una clase!</p>
+              <button data-action="scroll-to-schedule" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">Ver Horario</button>
+            </div>`;
+            }
+
+            return upcoming.map(b=>{
+              const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
+              const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
+              const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
+              const hhmm = timeFmt.format(startObj);
+              const ymdLocal = dateHelper.getYYYYMMDD(startObj);
+              const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
+              const cover = coverHelper.forClassName(b.className, b.className);
+              const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
+              const countdownClass = getCountdownClass(ymdUTC, hhmmUTC, 'text-emerald-400');
+              const showCancelButton = timeStatus !== 'en curso';
+              const safeClassName = DOMPurify.sanitize(b.className || '');
+              const safeDayText = DOMPurify.sanitize(dayText);
+              const safeClassId = DOMPurify.sanitize(b.classId);
+              const safeTimeStatus = DOMPurify.sanitize(timeStatus);
+              return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                   <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
@@ -678,11 +705,8 @@
                 </div>
                 ${showCancelButton ? `<button type="button" data-action="cancel-booking" data-class-id="${safeClassId}" class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-rose-400 border border-rose-400 rounded-lg hover:bg-rose-500/10 focus:outline-none focus:ring-2 focus:ring-rose-500/40">Cancelar</button>` : ''}
               </div>`;
-          }).join('') : `
-            <div class="bg-zinc-800 rounded-2xl p-5 text-center space-y-4">
-              <p class="text-zinc-300">Aún no tienes reservas. ¡Anímate a agendar una clase!</p>
-              <button data-action="scroll-to-schedule" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">Ver Horario</button>
-            </div>`;
+            }).join('');
+          })();
 
           const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
           const filtered = state.classes
