@@ -400,9 +400,6 @@
               </label>
             </div>
           </div>
-          <div id="dashboard-loading" class="hidden bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm p-3 rounded-md">
-            Calculando métricas avanzadas…
-          </div>
           <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-4">
             <div class="w-full bg-zinc-700 h-2 rounded">
               <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>
@@ -668,6 +665,7 @@
             cancellationTimeline: [],
             switches: []
           },
+          dashboardContainers: {},
           selectedMetrics: new Set(['attended','absent','booked','utilization','revenue']),
           selectedPeriod: 'range',
           selectedClassType: 'all',
@@ -2173,14 +2171,45 @@
           container.innerHTML = rows.join('');
         },
 
+        showDashboardSkeletons(){
+          if (!this.state.dashboardContainers) this.state.dashboardContainers = {};
+          const ensure = (key, resolver, skeleton) => {
+            const store = this.state.dashboardContainers;
+            const existing = store[key];
+            if (existing?.parent?.isConnected) {
+              existing.parent.innerHTML = skeleton;
+              return;
+            }
+            const target = typeof resolver === 'function' ? resolver() : null;
+            const parent = target?.parentElement;
+            if (!parent) return;
+            store[key] = { parent, html: parent.innerHTML };
+            parent.innerHTML = skeleton;
+          };
+          const chartSkeleton = '<div class="h-64 bg-zinc-700/50 rounded animate-pulse"></div>';
+          ensure('trend', () => document.getElementById('attendanceTrendChart'), chartSkeleton);
+          ensure('revenue', () => document.getElementById('revenueChart'), chartSkeleton);
+          ensure('retention', () => document.getElementById('retentionChart'), chartSkeleton);
+          ensure('popularity', () => document.getElementById('popularityChart'), chartSkeleton);
+          ensure('heatmap', () => document.getElementById('capacity-heatmap'), '<div class="h-48 bg-zinc-700/50 rounded animate-pulse"></div>');
+        },
+
+        restoreDashboardContainers(){
+          if (!this.state.dashboardContainers) return;
+          Object.values(this.state.dashboardContainers).forEach(entry => {
+            if (!entry?.parent || !entry.html) return;
+            if (entry.parent.innerHTML !== entry.html) {
+              entry.parent.innerHTML = entry.html;
+            }
+          });
+        },
+
         renderAttendanceDashboardFromCache(){
           const trendCtx = document.getElementById('attendanceTrendChart')?.getContext('2d');
           const revenueCtx = document.getElementById('revenueChart')?.getContext('2d');
           const retentionCtx = document.getElementById('retentionChart')?.getContext('2d');
           const popularityCtx = document.getElementById('popularityChart')?.getContext('2d');
           const details = document.getElementById('attendance-details');
-          const loadingEl = document.getElementById('dashboard-loading');
-          if (loadingEl) loadingEl.classList.add('hidden');
           if (!trendCtx || !details){ return; }
           const dataCache = this.state.attendanceData;
           if (!dataCache){
@@ -2372,8 +2401,7 @@
         },
 
         async fetchAttendanceData(){
-          const loadingEl = document.getElementById('dashboard-loading');
-          if (loadingEl) loadingEl.classList.remove('hidden');
+          this.showDashboardSkeletons();
           const now = Date.now();
           const { start, end } = this.getSelectedAttendanceRange();
           const report = {};
@@ -2506,13 +2534,15 @@
             };
             this.state.attendanceLastAt = now;
             this.updateAttendanceLegend();
-            this.renderAttendanceDashboardFromCache();
-            this.updateCapacityGauge();
             console.log('BI resumen:', aggregates.bi);
           } catch(e){
             console.error('Error leyendo asistencia:', e);
           } finally {
-            if (loadingEl) loadingEl.classList.add('hidden');
+            this.restoreDashboardContainers();
+            this.renderAttendanceDashboardFromCache();
+            if (this.state.attendanceData){
+              this.updateCapacityGauge();
+            }
           }
         },
 
@@ -3333,7 +3363,12 @@
           const feedback = document.getElementById('blacklisted-users-feedback');
           if (!container) return;
 
-          const loadingHtml = '<div class="p-4 bg-zinc-900 rounded-lg text-sm text-zinc-400">Cargando usuarios…</div>';
+          const loadingHtml = Array(3).fill(0).map(() => `
+  <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/50 animate-pulse">
+    <div class="h-5 bg-zinc-600/50 rounded w-3/4 mb-2"></div>
+    <div class="h-4 bg-zinc-600/50 rounded w-1/2"></div>
+  </div>
+`).join('');
           container.innerHTML = loadingHtml;
           if (feedback){
             feedback.textContent = 'Cargando usuarios bloqueados…';

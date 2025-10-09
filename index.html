@@ -137,6 +137,33 @@
             return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
           }
         };
+        // Skeleton loader helpers mimic the layout of real content so loading feels smoother.
+        const skeletonLoaders = {
+          classCard(){
+            return `
+      <div class="bg-zinc-800 rounded-lg p-4 mb-4 animate-pulse">
+        <div class="h-4 bg-zinc-700/50 rounded w-3/4 mb-3"></div>
+        <div class="h-3 bg-zinc-700/50 rounded w-1/2 mb-2"></div>
+        <div class="h-3 bg-zinc-700/50 rounded w-2/3"></div>
+      </div>
+    `;
+          },
+          userCard(){
+            return `
+      <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/50 animate-pulse">
+        <div class="h-5 bg-zinc-600/50 rounded w-3/4 mb-2"></div>
+        <div class="h-4 bg-zinc-600/50 rounded w-1/2"></div>
+      </div>
+    `;
+          },
+          dashboardMetric(){
+            return `
+      <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 animate-pulse">
+        <div class="h-32 bg-zinc-700/50 rounded"></div>
+      </div>
+    `;
+          }
+        };
         const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
         const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
         const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
@@ -194,7 +221,12 @@
           selectedClassId: null,
           isTotalPass: false,
           cancellationStrikes: 0,
-          dailyMessage: null
+          dailyMessage: null,
+          loading: {
+            classes: true,
+            bookings: true,
+            users: false
+          }
         };
 
         function getStrikeInfo(){
@@ -256,21 +288,42 @@
           if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
           if (unsubDailyMessage){ try{unsubDailyMessage();}catch{}; unsubDailyMessage=null; }
           state.dailyMessage = null;
+          state.classes = [];
+          state.myBookings = [];
+          state.waitlistEntries = [];
+          if (state.loading){
+            state.loading.classes = true;
+            state.loading.bookings = true;
+          }
+          scheduleRender();
           listenersAttached=false;
         }
         function attachAgendaListeners(){
           if (listenersAttached || !state.currentUser) return;
+          state.loading.classes = true;
+          state.loading.bookings = true;
+          scheduleRender();
           const nowMinus5 = new Date(Date.now()-5*60*1000);
           unsubClasses = db.collection('classes').where('startAt','>=',nowMinus5).orderBy('startAt','asc').limit(100)
             .onSnapshot(snap=>{
               state.classes = snap.docs.map(d=>({id:d.id,...d.data()}));
+              state.loading.classes = false;
               scheduleRender();
-            }, err=>console.error('Error clases:', err));
+            }, err=>{
+              console.error('Error clases:', err);
+              state.loading.classes = false;
+              scheduleRender();
+            });
           unsubMyBookings = db.collection('bookings').where('userId','==',state.currentUser.uid)
             .onSnapshot(snap=>{
               state.myBookings = snap.docs.map(d=>({id:d.id,...d.data()}));
+              state.loading.bookings = false;
               scheduleRender();
-            }, err=>console.error('Error mis reservas:', err));
+            }, err=>{
+              console.error('Error mis reservas:', err);
+              state.loading.bookings = false;
+              scheduleRender();
+            });
           unsubWaitlist = db.collection('waitlists')
             .where('userId', '==', state.currentUser.uid)
             .onSnapshot(snap => {
@@ -652,42 +705,49 @@
               return startA.getTime() - startB.getTime();
             });
 
-          const horarioHTML = filtered.length ? filtered.map(cls=>{
-            const enrolled = Number(cls.enrolledCount||0);
-            const available = Number(cls.capacity||0)-enrolled;
-            const isBooked = state.myBookings.some(b=>b.classId===cls.id);
-            const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
-            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
-            const safeId = DOMPurify.sanitize(cls.id);
-            let badge = `<div class="flex items-center justify-end gap-2">
+          const isLoadingClasses = state.loading?.classes;
+          const classesHTML = isLoadingClasses
+            ? Array(3).fill(0).map(() => skeletonLoaders.classCard()).join('')
+            : (() => {
+              if (!filtered.length) {
+                return `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
+              }
+              return filtered.map(cls=>{
+                const enrolled = Number(cls.enrolledCount||0);
+                const available = Number(cls.capacity||0)-enrolled;
+                const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+                const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
+                const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
+                const safeId = DOMPurify.sanitize(cls.id);
+                let badge = `<div class="flex items-center justify-end gap-2">
               <!-- <span class="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Lugares disponibles</span> -->
               <span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-emerald-500/50 text-emerald-100 rounded-md">Reservar!</span>
             </div>`;
-            if (isBooked) {
-              badge = `<span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-indigo-300 border border-indigo-400/70 rounded-md bg-transparent">Reservada</span>`;
-            } else if (available<=0 && !notified) {
-              // class full: show join or leave waitlist options
-              if (waitEntry) {
-                const pos = DOMPurify.sanitize(String(waitEntry.position||1));
-                badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
-              } else {
-                badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md\">Unirse a lista de espera</button>`;
-              }
-            } else if (available<=0 && notified) {
-              // user has been notified of a free spot
-              badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
-            }
-            const ymdUTC = cls.classDate || targetYMD;
-            const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-            const startLocal = new Date(`${ymdUTC}T${hhmmUTC}:00Z`);
-            const hhmm = timeFmt.format(startLocal);
-            const ymdLocal = dateHelper.getYYYYMMDD(startLocal);
-            const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
-            const safeName = DOMPurify.sanitize(cls.name || '');
-            const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
-            const safeDayText = DOMPurify.sanitize(dayText);
-            const countdownClass = getCountdownClass(ymdUTC, hhmmUTC);
-            return `
+                if (isBooked) {
+                  badge = `<span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-indigo-300 border border-indigo-400/70 rounded-md bg-transparent">Reservada</span>`;
+                } else if (available<=0 && !notified) {
+                  // class full: show join or leave waitlist options
+                  if (waitEntry) {
+                    const pos = DOMPurify.sanitize(String(waitEntry.position||1));
+                    badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
+                  } else {
+                    badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md\">Unirse a lista de espera</button>`;
+                  }
+                } else if (available<=0 && notified) {
+                  // user has been notified of a free spot
+                  badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
+                }
+                const ymdUTC = cls.classDate || targetYMD;
+                const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
+                const startLocal = new Date(`${ymdUTC}T${hhmmUTC}:00Z`);
+                const hhmm = timeFmt.format(startLocal);
+                const ymdLocal = dateHelper.getYYYYMMDD(startLocal);
+                const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
+                const safeName = DOMPurify.sanitize(cls.name || '');
+                const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
+                const safeDayText = DOMPurify.sanitize(dayText);
+                const countdownClass = getCountdownClass(ymdUTC, hhmmUTC);
+                return `
               <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
                 <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                 <div class="flex-1">
@@ -698,8 +758,8 @@
                 </div>
                 <div class="text-right">${badge}</div>
               </div>`;
-          }).join('') : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
-
+              }).join('');
+            })();
           const activeDailyMessage = state.dailyMessage && state.dailyMessage.message ? state.dailyMessage : null;
           const dailyMessageHTML = activeDailyMessage ? (()=>{
             const safeId = DOMPurify.sanitize(activeDailyMessage.id || '');
@@ -733,7 +793,7 @@
                     <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='tomorrow'?'bg-indigo-600 text-white':''}">Mañana</button>
                   </div>
                 </div>
-                <div class="space-y-4">${horarioHTML}</div>
+                <div class="space-y-4">${classesHTML}</div>
               </section>
             </div>`;
         }
