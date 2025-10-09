@@ -8,27 +8,49 @@
 - it's a Progressive Web App (PWA) for gym/studio class scheduling  
 - we are a small fitness business with limited technical resources  
 - we CANNOT overthink & over-engineer shit. we have to look for the 80/20 solution.  
-  
+
+# KEY FEATURES    
+- **Waitlist Management**: Position-based queue system with automatic notifications when spots open  
+- **Strike System**: Late cancellation tracking (3 strikes = automatic blacklist for 30 days)  
+- **Automated Scheduling**: Weekly class generation every Saturday at 4 PM from schedule templates  
+- **Multi-stage Reminders**: 60min, 30min, 15min notifications before class start  
+- **Analytics Dashboard**: Booking velocity, revenue tracking, instructor metrics, popularity scoring  
+- **Daily Messages**: Admin-authored announcements displayed in user PWA  
+- **TotalPass Integration**: Special reminder logic for TotalPass members (5-10 min after class)  
+- **Manual Bookings**: WhatsApp reservation tracking via placeholder emails
+
 # MODUS OPERANDI  
 - Prioritize simplicity and minimalism in your solutions.  
 - Use simple & easy-to-understand language. Write in short sentences.  
   
-# TECH STACK  
-- Frontend: Vanilla JavaScript, Tailwind CSS, Lucide Icons  
-- Backend: Firebase (Firestore, Auth, Cloud Functions, FCM)  
-- PWA: Service Worker, Push Notifications  
-- Security: Cloudflare Turnstile, DOMPurify  
+# TECH STACK    
+- Frontend: Vanilla JavaScript, Tailwind CSS, Lucide Icons    
+- Backend: Firebase (Firestore, Auth, Cloud Functions, FCM)    
+- PWA: Service Worker, Push Notifications    
+- Security: Cloudflare Turnstile, DOMPurify    
 - Build: Node.js build scripts for configuration  
+- Analytics: Chart.js for admin dashboard visualizations  
+- Scheduling: Cloud Scheduler for automated weekly class generation 
   
 # DEPLOYED ENVIRONMENTS  
 - Production: Firebase Hosting  
 - Database: Firestore (production)  
-  
-# DATABASE  
-- Firestore NoSQL database with real-time listeners  
-- Collections: classes, bookings, users, attendance, notifications  
-- Transaction-based booking system to prevent race conditions  
-- Real-time synchronization across all clients  
+
+# AUTOMATED WORKFLOWS    
+- **Weekly Class Generation**: Runs every Saturday at 4 PM (Mexico City time) to create next week's schedule from templates
+- **Booking Reminders**: 3-stage notification system (60min, 30min, 15min before class)
+- **TotalPass Reminders**: Randomized 5-10 minute delay after class ends for TotalPass users
+- **Waitlist Cascading**: Automatic notification to next person in queue when spot opens
+- **Monthly Whitelist Reset**: Resets strike counts on 1st of each month
+- **FCM Token Pruning**: Removes invalid tokens on delivery failures
+
+# DATABASE    
+- Firestore NoSQL database with real-time listeners    
+- Collections: classes, bookings, users, waitlists, attendance, notifications, schedule_template, dailyMessages    
+- Transaction-based booking system to prevent race conditions    
+- Real-time synchronization across all clients    
+- Position-based waitlist queuing with 5-minute expiration windows  
+- Automated weekly class generation from templates
   
 # API  
 - Firebase SDK for all data operations  
@@ -71,11 +93,17 @@
 - Implement precisely what the user asks for, without additional features or complexity.  
 - the fewer lines of code, the better.  
   
-# KEY METRICS  
-- Class booking conversion rate  
-- User retention and repeat bookings  
-- System uptime and real-time sync reliability  
+# KEY METRICS    
+- Class booking conversion rate    
+- User retention and repeat bookings    
+- System uptime and real-time sync reliability    
 - Push notification engagement  
+- Booking velocity scores (bookings per hour before class)  
+- Revenue tracking per class/instructor/period  
+- Attendance rate (attended vs booked)  
+- Capacity utilization percentage  
+- Instructor performance metrics  
+- Cancellation timeline analysis
   
 # QUICK AND DIRTY PROTOTYPE  
 - this is a very important concept you must understand  
