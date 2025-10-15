@@ -228,6 +228,7 @@
           classes: [],
           myBookings: [],
           waitlistEntries: [],
+          attendanceRecords: {},
           currentScreen: 'agenda',
           scheduleFilter: 'today',
           selectedClassId: null,
@@ -292,17 +293,19 @@
         window.showToast = showToast;
 
         // Firestore listeners
-        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, unsubDailyMessage=null, listenersAttached=false;
+        let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, unsubDailyMessage=null, unsubAttendance=null, listenersAttached=false;
         function detachListeners(){
           if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
           if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
           if (unsubWaitlist){ try{unsubWaitlist();}catch{}; unsubWaitlist=null; }
           if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
           if (unsubDailyMessage){ try{unsubDailyMessage();}catch{}; unsubDailyMessage=null; }
+          if (unsubAttendance){ try{unsubAttendance();}catch{}; unsubAttendance=null; }
           state.dailyMessage = null;
           state.classes = [];
           state.myBookings = [];
           state.waitlistEntries = [];
+          state.attendanceRecords = {};
           if (state.loading){
             state.loading.classes = true;
             state.loading.bookings = true;
@@ -341,6 +344,21 @@
             .onSnapshot(snap => {
               state.waitlistEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
               scheduleRender();
+            });
+          unsubAttendance = db.collection('attendance')
+            .where('userId', '==', state.currentUser.uid)
+            .onSnapshot(snap => {
+              const records = {};
+              snap.forEach(doc => {
+                const data = doc.data() || {};
+                if (!data.classId) return;
+                const rawStatus = typeof data.status === 'string' ? data.status.trim().toLowerCase() : '';
+                records[data.classId] = { status: rawStatus };
+              });
+              state.attendanceRecords = records;
+              scheduleRender();
+            }, err => {
+              console.error('Error asistencia usuario:', err);
             });
           unsubUser = db.collection('users').doc(state.currentUser.uid)
             .onSnapshot(doc => {
@@ -856,12 +874,30 @@
             const hhmm = timeFmt.format(startObj);
             const dayLabel = dateHelper.human(ymdLocal);
             const safeDayLabel = DOMPurify.sanitize(dayLabel);
+            const attendance = (() => {
+              const classId = booking.classId;
+              if (classId && state.attendanceRecords?.[classId]) return state.attendanceRecords[classId];
+              if (typeof booking.attendanceStatus === 'string') return { status: booking.attendanceStatus.trim().toLowerCase() };
+              return null;
+            })();
+            const badge = (() => {
+              const status = attendance?.status || '';
+              const normalized = status.toLowerCase();
+              if (normalized === 'attended'){
+                return `<span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">Asististe</span>`;
+              }
+              if (normalized === 'absent'){
+                return `<span class="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-medium text-rose-300">Falta registrada</span>`;
+              }
+              return `<span class="inline-flex items-center gap-1 rounded-full border border-zinc-600/60 bg-zinc-700/60 px-3 py-1 text-xs font-medium text-zinc-300">Sin registro</span>`;
+            })();
             return `
               <div class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4">
                 <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-                <div>
+                <div class="flex-1">
                   <p class="font-bold text-lg">${safeClassName}</p>
                   <p class="text-zinc-400 text-sm">${safeDayLabel} • ${hhmm}</p>
+                  <div class="mt-2">${badge}</div>
                 </div>
               </div>`;
           };
