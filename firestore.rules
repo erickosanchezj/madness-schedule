@@ -84,9 +84,14 @@ service cloud.firestore {
       isAdmin();
     }
 
-    // ===== ATTENDANCE (admin-only) =====
+    // ===== ATTENDANCE =====
     match /attendance/{doc} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || (
+        isSignedIn()
+        && resource != null
+        && resource.data.userId == request.auth.uid
+      );
+      allow write: if isAdmin();
     }
 
     // ===== SCHEDULE TEMPLATE =====
