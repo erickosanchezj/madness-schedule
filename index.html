@@ -126,22 +126,13 @@
           get today(){ return this.getYYYYMMDD(new Date()); },
           get tomorrow(){ return this.getYYYYMMDD(new Date(Date.now()+86400000)); },
           human(ymd){
-            const dt=toMXDate(ymd);
+            const dt=new Date(`${ymd}T00:00:00Z`);
             return dt.toLocaleDateString('es-MX',{ timeZone: MX_TZ, weekday:'long',day:'2-digit',month:'short' });
           }
         };
-        const MX_FIXED_OFFSET = '-06:00';
-        // We store schedule strings in Mexico City time.
-
-        // Using a fixed UTC-6 offset keeps countdown math consistent on all devices.
-        function toMXDate(ymd, hhmm='00:00'){
-          if(!ymd) return new Date(NaN);
-          const cleanTime = (hhmm || '00:00').padStart(5, '0');
-          return new Date(`${ymd}T${cleanTime}:00${MX_FIXED_OFFSET}`);
-        }
         const timeHelper = {
           range(ymd, hhmm, durationMin=60){
-            const start=toMXDate(ymd, hhmm);
+            const start=new Date(`${ymd}T${hhmm}:00Z`);
             const end=new Date(start.getTime()+Number(durationMin||60)*60000);
             return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
           }
@@ -191,7 +182,7 @@
 
         function timeUntilLabel(ymd, hhmm){
           if(!ymd||!hhmm) return '';
-          const start=toMXDate(ymd, hhmm).getTime();
+          const start=new Date(`${ymd}T${hhmm}:00Z`).getTime();
           const now=Date.now();
           const diff=start-now;
           if (diff>4*60*60*1000) return '';
@@ -206,7 +197,7 @@
 
         function getCountdownClass(ymd, hhmm, defaultClass='text-emerald-300'){
           if(!ymd||!hhmm) return defaultClass;
-          const startTs=toMXDate(ymd, hhmm).getTime();
+          const startTs=new Date(`${ymd}T${hhmm}:00Z`).getTime();
           if(Number.isNaN(startTs)) return defaultClass;
           const diff=startTs-Date.now();
           if(diff<0) return defaultClass;
@@ -684,7 +675,7 @@
             }
 
             const upcoming = state.myBookings.filter(Boolean).filter(b=>{
-              const startObj = b.startAt ? asDate(b.startAt) : toMXDate(b.classDate, b.time||'00:00');
+              const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
               const relatedClass = state.classes.find(cls=>cls.id===b.classId);
               const durationRaw = b.duration ?? relatedClass?.duration;
               const durationValue = Number(durationRaw);
@@ -692,8 +683,8 @@
               const endTime = startObj.getTime() + durationMinutes*60000;
               return now <= endTime;
             }).sort((a,b)=>{
-              const ta = a.startAt ? asDate(a.startAt).getTime() : toMXDate(a.classDate, a.time||'00:00').getTime();
-              const tb = b.startAt ? asDate(b.startAt).getTime() : toMXDate(b.classDate, b.time||'00:00').getTime();
+              const ta = a.startAt ? asDate(a.startAt).getTime() : new Date(`${a.classDate}T${a.time||'00:00'}:00Z`).getTime();
+              const tb = b.startAt ? asDate(b.startAt).getTime() : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`).getTime();
               return ta - tb;
             });
 
@@ -706,7 +697,7 @@
             }
 
             return upcoming.map(b=>{
-              const startObj = b.startAt ? asDate(b.startAt) : toMXDate(b.classDate, b.time||'00:00');
+              const startObj = b.startAt ? asDate(b.startAt) : new Date(`${b.classDate}T${b.time||'00:00'}:00Z`);
               const ymdUTC = b.classDate || startObj.toISOString().slice(0,10);
               const hhmmUTC = b.time || startObj.toISOString().slice(11,16);
               const hhmm = timeFmt.format(startObj);
@@ -738,21 +729,21 @@
           const targetYMD = state.scheduleFilter==='today' ? dateHelper.today : dateHelper.tomorrow;
           const filtered = state.classes
             .filter(cls=>{
-              const start = cls.startAt?.toDate ? cls.startAt.toDate() : toMXDate(cls.classDate, cls.time);
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
               const ymd = dateHelper.getYYYYMMDD(start);
               return ymd===targetYMD;
             })
             .filter(cls=>{
               if (state.scheduleFilter!=='today') return true;
-              const start = cls.startAt?.toDate ? cls.startAt.toDate() : toMXDate(cls.classDate, cls.time);
+              const start = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${cls.classDate}T${cls.time}:00Z`);
               const durationValue = Number(cls.duration);
               const durationMinutes = Number.isFinite(durationValue) && durationValue>0 ? durationValue : 60;
               const endTime = start.getTime() + durationMinutes*60000;
               return now <= endTime;
             })
             .sort((a, b) => {
-              const startA = a.startAt?.toDate ? a.startAt.toDate() : toMXDate(a.classDate, a.time);
-              const startB = b.startAt?.toDate ? b.startAt.toDate() : toMXDate(b.classDate, b.time);
+              const startA = a.startAt?.toDate ? a.startAt.toDate() : new Date(`${a.classDate}T${a.time}:00Z`);
+              const startB = b.startAt?.toDate ? b.startAt.toDate() : new Date(`${b.classDate}T${b.time}:00Z`);
               return startA.getTime() - startB.getTime();
             });
 
@@ -790,7 +781,7 @@
                 }
                 const ymdUTC = cls.classDate || targetYMD;
                 const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
-                const startLocal = toMXDate(ymdUTC, hhmmUTC);
+                const startLocal = new Date(`${ymdUTC}T${hhmmUTC}:00Z`);
                 const hhmm = timeFmt.format(startLocal);
                 const ymdLocal = dateHelper.getYYYYMMDD(startLocal);
                 const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
@@ -857,7 +848,7 @@
             .map(booking => {
               const startObj = booking.startAt
                 ? asDate(booking.startAt)
-                : (booking.classDate ? toMXDate(booking.classDate, booking.time||'00:00') : null);
+                : (booking.classDate ? new Date(`${booking.classDate}T${booking.time||'00:00'}:00Z`) : null);
               if (!startObj || Number.isNaN(startObj.getTime())) return null;
               const relatedClass = state.classes.find(cls => cls.id === booking.classId);
               const durationRaw = booking.duration ?? relatedClass?.duration;
@@ -1022,7 +1013,7 @@
           const ymdUTC = cls.classDate || cls.startAt.toDate().toISOString().slice(0,10);
           const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
           const timeRange = timeHelper.range(ymdUTC, hhmmUTC, durationMin);
-          const startLocal = cls.startAt?.toDate ? cls.startAt.toDate() : toMXDate(ymdUTC, hhmmUTC);
+          const startLocal = cls.startAt?.toDate ? cls.startAt.toDate() : new Date(`${ymdUTC}T${hhmmUTC}:00Z`);
           let dateContext = '';
           if (startLocal && !Number.isNaN(startLocal.getTime())){
             const ymdLocal = dateHelper.getYYYYMMDD(startLocal);
@@ -1195,7 +1186,7 @@
                 if (!startDateObj || isNaN(startDateObj.getTime())){
                   if (cls.classDate){
                     const hhmm = cls.time || '00:00';
-                    startDateObj = toMXDate(cls.classDate, hhmm);
+                    startDateObj = new Date(`${cls.classDate}T${hhmm}:00Z`);
                   }
                 }
                 if (!startDateObj || isNaN(startDateObj.getTime())){
@@ -1244,7 +1235,7 @@
               const dateStr = bookingData?.classDate || classData?.classDate;
               const timeStr = bookingData?.time || classData?.time;
               if (dateStr && timeStr) {
-                const parsed = toMXDate(dateStr, timeStr);
+                const parsed = new Date(`${dateStr}T${timeStr}:00Z`);
                 if (isValidDate(parsed)) return parsed;
               }
               return null;
