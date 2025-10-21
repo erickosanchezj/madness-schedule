@@ -77,7 +77,13 @@ service cloud.firestore {
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['fcmTokens', 'fcmUpdatedAt', 'displayName', 'photoURL', 'lastActivity', 'lastCancelAt', 'totalPass'])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'fcmTokens', 'fcmUpdatedAt', 'displayName', 'photoURL',
+            'lastActivity', 'lastCancelAt', 'totalPass', 'subscriptionType'
+          ])
+          && !request.resource.data.diff(resource.data).changedKeys().hasAny([
+            'totalPassVerified', 'subscriptionPaidDate', 'subscriptionStatus'
+          ])
           && request.resource.data.email == resource.data.email
           && request.resource.data.createdAt == resource.data.createdAt
       ) ||
