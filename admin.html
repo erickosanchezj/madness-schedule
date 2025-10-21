@@ -286,6 +286,56 @@
         </section>
       </div>
 
+      <section aria-labelledby="subscription-title" class="mt-8">
+        <h2 id="subscription-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">
+          Gestión de Suscripciones
+        </h2>
+
+        <div class="bg-zinc-800 rounded-lg p-6">
+          <div class="mb-4 flex gap-3 flex-wrap">
+            <select id="subscription-filter" class="bg-zinc-700 text-white p-2 rounded">
+              <option value="all">Todos los usuarios</option>
+              <option value="monthly">Solo Mensuales</option>
+              <option value="totalpass-pending">TotalPass Pendientes</option>
+              <option value="unpaid">No Pagados</option>
+            </select>
+
+            <input
+              type="text"
+              id="user-search"
+              placeholder="Buscar por nombre o email..."
+              class="bg-zinc-700 text-white p-2 rounded flex-1 min-w-[200px]"
+            >
+
+            <button id="refresh-users-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+              <i data-lucide="refresh-cw" class="inline-block -mt-1 mr-2"></i>Actualizar
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-zinc-700">
+                <tr>
+                  <th class="p-3 text-left">Usuario</th>
+                  <th class="p-3 text-left">Tipo de Suscripción</th>
+                  <th class="p-3 text-left">Estado TotalPass</th>
+                  <th class="p-3 text-left">Estado de Pago</th>
+                  <th class="p-3 text-left">Última Fecha de Pago</th>
+                  <th class="p-3 text-left">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="subscription-users-list" class="divide-y divide-zinc-700">
+                <!-- Users will be populated here -->
+              </tbody>
+            </table>
+          </div>
+
+          <div id="subscription-loading" class="text-center py-8 text-zinc-400 hidden">
+            Cargando usuarios...
+          </div>
+        </div>
+      </section>
+
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="reservas-title">
         <h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas de la Semana</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
@@ -673,7 +723,9 @@
           selectedExportFormat: 'capacity',
           dailyMessages: [],
           unsubDailyMessages: null,
-          userCache: new Map()
+          userCache: new Map(),
+          subscriptionUsers: [],
+          unsubSubscriptionUsers: null
         },
 
         // --- Helpers ---
@@ -884,6 +936,19 @@
           document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
           document.getElementById('list-users-btn').onclick = () => this.listUsersPage();
 
+          const subscriptionFilter = document.getElementById('subscription-filter');
+          const userSearchInput = document.getElementById('user-search');
+          const refreshUsersBtn = document.getElementById('refresh-users-btn');
+          if (subscriptionFilter){
+            subscriptionFilter.addEventListener('change', ()=> this.listenSubscriptionUsers());
+          }
+          if (userSearchInput){
+            userSearchInput.addEventListener('input', ()=> this.listenSubscriptionUsers());
+          }
+          if (refreshUsersBtn){
+            refreshUsersBtn.onclick = () => this.listenSubscriptionUsers();
+          }
+
           this.auth.onAuthStateChanged(async (user) => {
             if (user) {
               const token = await user.getIdTokenResult();
@@ -896,6 +961,7 @@
                   this.startAttendancePolling();
                   this.listenRecentNotifications();
                   this.listenDailyMessages();
+                  this.listenSubscriptionUsers();
                 } catch(e){
                   this.showToast({ title:'Error al iniciar', message:e.message, variant:'error' });
                 }
@@ -912,6 +978,9 @@
               if (this.state.unsubRecentNotifs) this.state.unsubRecentNotifs();
               if (this.state.unsubDailyMessages) this.state.unsubDailyMessages();
               this.state.unsubDailyMessages = null;
+              if (this.state.unsubSubscriptionUsers){ this.state.unsubSubscriptionUsers(); this.state.unsubSubscriptionUsers = null; }
+              this.state.subscriptionUsers = [];
+              this.renderSubscriptionUsers();
               this.state.recentNotifications = [];
               this.renderRecentNotifications();
               this.state.dailyMessages = [];
@@ -3228,6 +3297,220 @@
           }catch(e){
             this.showToast({ title:'Error al buscar', message:e.message, variant:'error' });
           }
+        },
+
+        listenSubscriptionUsers(){
+          const filterEl = document.getElementById('subscription-filter');
+          const searchEl = document.getElementById('user-search');
+          const loadingEl = document.getElementById('subscription-loading');
+          const tbody = document.getElementById('subscription-users-list');
+          const filter = filterEl?.value || 'all';
+          const searchTerm = (searchEl?.value || '').toLowerCase();
+
+          if (loadingEl) loadingEl.classList.remove('hidden');
+          if (tbody) tbody.innerHTML = '';
+
+          if (this.state.unsubSubscriptionUsers){
+            // Close previous listener so we do not leak real-time subscriptions.
+            try { this.state.unsubSubscriptionUsers(); } catch(e) { console.error('No se pudo cerrar snapshot', e); }
+          }
+
+          let query = this.db.collection('users');
+
+          if (filter === 'monthly') {
+            query = query.where('subscriptionType','==','monthly');
+          } else if (filter === 'totalpass-pending') {
+            query = query.where('totalPass','==',true).where('totalPassVerified','==',false);
+          } else if (filter === 'unpaid') {
+            query = query.where('subscriptionStatus','==','unpaid');
+          }
+
+          this.state.unsubSubscriptionUsers = query.onSnapshot(snapshot => {
+            this.state.subscriptionUsers = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
+
+            if (searchTerm) {
+              this.state.subscriptionUsers = this.state.subscriptionUsers.filter(user => {
+                const name = (user.displayName || '').toLowerCase();
+                const email = (user.email || '').toLowerCase();
+                return name.includes(searchTerm) || email.includes(searchTerm);
+              });
+            }
+
+            this.renderSubscriptionUsers();
+          }, err => {
+            console.error('Error escuchando usuarios', err);
+            if (loadingEl) loadingEl.classList.add('hidden');
+            this.showToast({ title:'Error', message:err.message, variant:'error' });
+          });
+        },
+
+        renderSubscriptionUsers(){
+          const tbody = document.getElementById('subscription-users-list');
+          const loading = document.getElementById('subscription-loading');
+          if (!tbody) return;
+
+          if (loading) loading.classList.add('hidden');
+
+          if (!this.state.subscriptionUsers.length){
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-zinc-400">No se encontraron usuarios</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = this.state.subscriptionUsers.map(user => {
+            const subscriptionType = user.subscriptionType || 'dropin';
+            const totalPassSelfMarked = user.totalPass === true;
+            const totalPassVerified = user.totalPassVerified === true;
+            const subscriptionStatus = user.subscriptionStatus || 'unpaid';
+            const paidRaw = user.subscriptionPaidDate;
+            let paidDate = 'Nunca';
+            if (paidRaw?.toDate) {
+              paidDate = this.timeFmt.format(paidRaw.toDate());
+            } else if (paidRaw instanceof Date && !Number.isNaN(paidRaw.getTime())) {
+              paidDate = this.timeFmt.format(paidRaw);
+            } else if (paidRaw) {
+              const parsed = new Date(paidRaw);
+              if (!Number.isNaN(parsed.getTime())) {
+                paidDate = this.timeFmt.format(parsed);
+              }
+            }
+            const safeName = DOMPurify.sanitize(user.displayName || 'Sin nombre');
+            const safeEmail = DOMPurify.sanitize(user.email || '');
+
+            let totalPassDisplay = 'No';
+            let totalPassClass = 'text-zinc-400';
+            if (totalPassVerified) {
+              totalPassDisplay = '✓ Verificado';
+              totalPassClass = 'text-green-400';
+            } else if (totalPassSelfMarked) {
+              totalPassDisplay = '⚠ Pendiente';
+              totalPassClass = 'text-amber-400';
+            }
+
+            let statusDisplay = subscriptionStatus;
+            let statusClass = 'text-zinc-400';
+            if (subscriptionStatus === 'paid') {
+              statusDisplay = 'Pagado';
+              statusClass = 'text-green-400';
+            } else if (subscriptionStatus === 'grace_period') {
+              statusDisplay = 'Período de Gracia';
+              statusClass = 'text-amber-400';
+            } else if (subscriptionStatus === 'unpaid') {
+              statusDisplay = 'No Pagado';
+              statusClass = 'text-rose-400';
+            }
+
+            let actions = '';
+
+            if (subscriptionType === 'monthly' && subscriptionStatus !== 'paid') {
+              actions += `<button onclick="AdminPanel.markUserAsPaid('${user.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs py-1 px-3 rounded mr-2">Marcar como Pagado</button>`;
+            }
+
+            if (totalPassSelfMarked && !totalPassVerified) {
+              actions += `<button onclick="AdminPanel.verifyTotalPass('${user.id}', true)" class="bg-blue-600 hover:bg-blue-700 text-white text-xs py-1 px-3 rounded mr-2">Verificar TotalPass</button>`;
+              actions += `<button onclick="AdminPanel.verifyTotalPass('${user.id}', false)" class="bg-rose-600 hover:bg-rose-700 text-white text-xs py-1 px-3 rounded">Rechazar</button>`;
+            }
+
+            actions += `<button onclick="AdminPanel.showSubscriptionTypeModal('${user.id}')" class="bg-zinc-600 hover:bg-zinc-700 text-white text-xs py-1 px-3 rounded ml-2">Cambiar Tipo</button>`;
+
+            const typeBadge = subscriptionType === 'monthly'
+              ? 'bg-blue-600'
+              : subscriptionType === 'totalpass'
+                ? 'bg-purple-600'
+                : 'bg-zinc-600';
+
+            const typeLabel = subscriptionType === 'monthly'
+              ? 'Mensual'
+              : subscriptionType === 'totalpass'
+                ? 'TotalPass'
+                : 'Por Clase';
+
+            return `
+              <tr>
+                <td class="p-3">
+                  <div class="font-medium">${safeName}</div>
+                  <div class="text-xs text-zinc-400">${safeEmail}</div>
+                </td>
+                <td class="p-3">
+                  <span class="px-2 py-1 rounded text-xs ${typeBadge}">${typeLabel}</span>
+                </td>
+                <td class="p-3 ${totalPassClass}">${totalPassDisplay}</td>
+                <td class="p-3 ${statusClass}">${statusDisplay}</td>
+                <td class="p-3 text-zinc-400">${paidDate}</td>
+                <td class="p-3">${actions}</td>
+              </tr>
+            `;
+          }).join('');
+
+          lucide.createIcons({ attrs:{ 'aria-hidden':'true' } });
+        },
+
+        async markUserAsPaid(userId){
+          if (!confirm('¿Marcar a este usuario como pagado para el mes actual?')) return;
+
+          try {
+            await this.db.collection('users').doc(userId).update({
+              subscriptionStatus:'paid',
+              subscriptionPaidDate: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            this.showToast({ title:'Usuario actualizado', message:'El usuario ha sido marcado como pagado' });
+          } catch (err) {
+            this.showToast({ title:'Error', message:err.message, variant:'error' });
+          }
+        },
+
+        async verifyTotalPass(userId, approve){
+          const action = approve ? 'verificar' : 'rechazar';
+          if (!confirm(`¿Confirmar ${action} el estado TotalPass de este usuario?`)) return;
+
+          try {
+            const updates = { totalPassVerified: approve };
+
+            if (approve) {
+              // TotalPass users stay in good standing without extra charges.
+              updates.subscriptionType = 'totalpass';
+              updates.subscriptionStatus = 'paid';
+            } else {
+              // Reset manual flag so we avoid repeated review requests.
+              updates.totalPass = false;
+              updates.subscriptionType = 'dropin';
+            }
+
+            await this.db.collection('users').doc(userId).update(updates);
+
+            this.showToast({
+              title: approve ? 'TotalPass Verificado' : 'TotalPass Rechazado',
+              message: approve ? 'El usuario ha sido verificado como TotalPass' : 'Se ha rechazado el estado TotalPass del usuario'
+            });
+          } catch (err) {
+            this.showToast({ title:'Error', message:err.message, variant:'error' });
+          }
+        },
+
+        showSubscriptionTypeModal(userId){
+          const user = this.state.subscriptionUsers.find(u => u.id === userId);
+          if (!user) return;
+
+          const newType = prompt(
+            `Cambiar tipo de suscripción para ${user.displayName || user.email}\n\n` +
+            `Tipo actual: ${user.subscriptionType || 'dropin'}\n\n` +
+            'Ingresa el nuevo tipo:\n' +
+            '- monthly (Mensual)\n' +
+            '- totalpass (TotalPass)\n' +
+            '- dropin (Por Clase)',
+            user.subscriptionType || 'dropin'
+          );
+
+          if (!newType || !['monthly','totalpass','dropin'].includes(newType)) {
+            this.showToast({ title:'Tipo inválido', message:'Debe ser: monthly, totalpass, o dropin', variant:'error' });
+            return;
+          }
+
+          this.db.collection('users').doc(userId).update({ subscriptionType:newType }).then(() => {
+            this.showToast({ title:'Tipo actualizado', message:`Tipo de suscripción cambiado a: ${newType}` });
+          }).catch(err => {
+            this.showToast({ title:'Error', message:err.message, variant:'error' });
+          });
         },
 
         // ---- USERS: Listar primera página ----
