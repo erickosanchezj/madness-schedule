@@ -1071,16 +1071,27 @@
             const batch = classIds.slice(i,i+10);
             const unsub = this.db.collection('bookings')
               .where('classId','in',batch)
-              .onSnapshot((snap)=>{
+              .onSnapshot(async (snap)=>{
                 const tracker = this.state.analyticsTracker;
                 batch.forEach(cid => {
                   this.state.bookingsMap.delete(cid);
                   tracker.bookingTimeline[cid] = [];
                 });
-                snap.docs.forEach(doc=>{
+                const bookingsWithNames = await Promise.all(snap.docs.map(async doc=>{
                   const b = doc.data();
+                  let userName = b.userName || '';
+                  if (b.userId){
+                    try{
+                      const uSnap = await this.db.collection('users').doc(b.userId).get();
+                      const uData = uSnap.data() || {};
+                      userName = uData.displayName || uData.email || b.userId;
+                    }catch{}
+                  }
+                  return { id:doc.id, ...b, userName };
+                }));
+                bookingsWithNames.forEach(record=>{
+                  const b = record;
                   const arr = this.state.bookingsMap.get(b.classId) || [];
-                  const record = { id:doc.id, ...b };
                   arr.push(record);
                   this.state.bookingsMap.set(b.classId, arr);
                   const createdAt = b.createdAt?.toDate ? b.createdAt.toDate() : (b.createdAt ? new Date(b.createdAt) : null);
@@ -1088,19 +1099,19 @@
                   if (createdAt && !Number.isNaN(createdAt.getTime())){
                     tracker.bookingTimeline[b.classId].push(createdAt.getTime());
                   }
-                  const userKey = b.userId || b.userEmail || b.userName || doc.id;
+                  const userKey = b.userId || b.userEmail || b.userName || record.id;
                   if (!tracker.userBehavior[userKey]){
                     tracker.userBehavior[userKey] = { bookingsSet:new Set(), cancellationIds:new Set(), switchIds:new Set(), bookings:0, cancellations:0, switches:0, lastClassId:null };
                   }
-                  tracker.userBehavior[userKey].bookingsSet.add(doc.id);
+                  tracker.userBehavior[userKey].bookingsSet.add(record.id);
                   tracker.userBehavior[userKey].bookings = tracker.userBehavior[userKey].bookingsSet.size;
                   if ((b.status && b.status==='cancelled') || b.cancelledAt){
-                    tracker.userBehavior[userKey].cancellationIds.add(doc.id);
+                    tracker.userBehavior[userKey].cancellationIds.add(record.id);
                     tracker.userBehavior[userKey].cancellations = tracker.userBehavior[userKey].cancellationIds.size;
                     this.recordCancellationTiming(b);
                   }
                   if (b.previousClassId && b.previousClassId !== b.classId){
-                    tracker.userBehavior[userKey].switchIds.add(`${doc.id}:${b.previousClassId}->${b.classId}`);
+                    tracker.userBehavior[userKey].switchIds.add(`${record.id}:${b.previousClassId}->${b.classId}`);
                     tracker.userBehavior[userKey].switches = tracker.userBehavior[userKey].switchIds.size;
                     this.recordClassSwitch(b);
                   }
