@@ -1148,7 +1148,12 @@
             const newName = prompt('Ingresa tu nombre y apellido:', state.currentUser.displayName || '');
             if (newName && newName.trim()!==''){
               loadingSpinner.classList.remove('hidden');
-              state.currentUser.updateProfile({ displayName: newName.trim() })
+              const trimmedName = newName.trim();
+              // Update both Firebase Auth profile and Firestore user document to keep the display name consistent.
+              Promise.all([
+                state.currentUser.updateProfile({ displayName: trimmedName }),
+                db.collection('users').doc(state.currentUser.uid).set({ displayName: trimmedName }, { merge: true })
+              ])
                 .then(()=>{ scheduleRender(); loadingSpinner.classList.add('hidden'); })
                 .catch(err=>{ alert('Error: '+err.message); loadingSpinner.classList.add('hidden'); });
             }
