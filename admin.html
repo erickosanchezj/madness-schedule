@@ -3404,6 +3404,16 @@
 
             let actions = '';
 
+            const subscriptionTypeOptions = ['monthly','totalpass','dropin'].map(type => {
+              const label = type === 'monthly'
+                ? 'Mensual'
+                : type === 'totalpass'
+                  ? 'TotalPass'
+                  : 'Por Clase';
+              const disabled = type === subscriptionType ? ' disabled' : '';
+              return `<option value="${type}"${disabled}>${label}</option>`;
+            }).join('');
+
             if (subscriptionType === 'monthly' && subscriptionStatus !== 'paid') {
               actions += `<button onclick="AdminPanel.markUserAsPaid('${user.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs py-1 px-3 rounded mr-2">Marcar como Pagado</button>`;
             }
@@ -3413,7 +3423,11 @@
               actions += `<button onclick="AdminPanel.verifyTotalPass('${user.id}', false)" class="bg-rose-600 hover:bg-rose-700 text-white text-xs py-1 px-3 rounded">Rechazar</button>`;
             }
 
-            actions += `<button onclick="AdminPanel.showSubscriptionTypeModal('${user.id}')" class="bg-zinc-600 hover:bg-zinc-700 text-white text-xs py-1 px-3 rounded ml-2">Cambiar Tipo</button>`;
+            actions += `
+              <select data-subscription-select="${user.id}" onchange="AdminPanel.showSubscriptionTypeModal('${user.id}', this)" class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs py-1 px-2 rounded ml-2">
+                <option value="" selected disabled>Cambiar tipo</option>
+                ${subscriptionTypeOptions}
+              </select>`;
 
             const typeBadge = subscriptionType === 'monthly'
               ? 'bg-blue-600'
@@ -3492,9 +3506,45 @@
           }
         },
 
-        showSubscriptionTypeModal(userId){
+        showSubscriptionTypeModal(userId, selectEl){
           const user = this.state.subscriptionUsers.find(u => u.id === userId);
-          if (!user) return;
+          if (!user) {
+            if (selectEl) selectEl.value = '';
+            return;
+          }
+
+          if (selectEl && selectEl.value) {
+            const newType = selectEl.value;
+            const validTypes = ['monthly','totalpass','dropin'];
+            if (!validTypes.includes(newType)) {
+              this.showToast({ title:'Tipo inválido', message:'Debe ser: monthly, totalpass, o dropin', variant:'error' });
+              selectEl.value = '';
+              return;
+            }
+
+            const labels = {
+              monthly:'Mensual',
+              totalpass:'TotalPass',
+              dropin:'Por Clase'
+            };
+            const targetLabel = labels[newType] || newType;
+            const userLabel = user.displayName || user.email || 'este usuario';
+
+            const confirmed = confirm(`¿Cambiar tipo de suscripción de ${userLabel} a ${targetLabel}?`);
+            if (!confirmed) {
+              selectEl.value = '';
+              return;
+            }
+
+            this.db.collection('users').doc(userId).update({ subscriptionType:newType }).then(() => {
+              this.showToast({ title:'Tipo actualizado', message:`Tipo de suscripción cambiado a: ${newType}` });
+            }).catch(err => {
+              this.showToast({ title:'Error', message:err.message, variant:'error' });
+            }).finally(() => {
+              selectEl.value = '';
+            });
+            return;
+          }
 
           const newType = prompt(
             `Cambiar tipo de suscripción para ${user.displayName || user.email}\n\n` +
