@@ -527,6 +527,7 @@
                   email: user.email,
                   displayName: user.displayName || '',
                   photoURL: user.photoURL || '',
+                  subscriptionType: 'monthly',
                   createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
               }catch(e){
