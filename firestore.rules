@@ -73,7 +73,7 @@ service cloud.firestore {
       allow read: if (isSignedIn() && request.auth.uid == userId) ||
       isAdmin();
       allow create: if isSignedIn() && request.auth.uid == userId &&
-        request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt']);
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'photoURL', 'createdAt', 'subscriptionType']);
       allow update: if (
           isSignedIn()
           && request.auth.uid == userId
