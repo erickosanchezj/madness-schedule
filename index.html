@@ -126,7 +126,12 @@
           get today(){ return this.getYYYYMMDD(new Date()); },
           get tomorrow(){ return this.getYYYYMMDD(new Date(Date.now()+86400000)); },
           human(ymd){
-            const dt=new Date(`${ymd}T00:00:00Z`);
+            if (!ymd) return '';
+            const parts = ymd.split('-').map(Number);
+            if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return '';
+            const [year, month, day] = parts;
+            // Use UTC noon so timezone conversion never rolls back to the previous day.
+            const dt=new Date(Date.UTC(year, month-1, day, 12, 0, 0));
             return dt.toLocaleDateString('es-MX',{ timeZone: MX_TZ, weekday:'long',day:'2-digit',month:'short' });
           }
         };
