@@ -3388,7 +3388,10 @@
 
             let statusDisplay = subscriptionStatus;
             let statusClass = 'text-zinc-400';
-            if (subscriptionStatus === 'paid') {
+            if (subscriptionType === 'totalpass') {
+              statusDisplay = 'TotalPass';
+              statusClass = 'text-purple-400';
+            } else if (subscriptionStatus === 'paid') {
               statusDisplay = 'Pagado';
               statusClass = 'text-green-400';
             } else if (subscriptionStatus === 'grace_period') {
@@ -3468,12 +3471,14 @@
 
             if (approve) {
               // TotalPass users stay in good standing without extra charges.
+              updates.totalPass = true;
               updates.subscriptionType = 'totalpass';
-              updates.subscriptionStatus = 'paid';
+              updates.subscriptionStatus = 'totalpass';
             } else {
               // Reset manual flag so we avoid repeated review requests.
               updates.totalPass = false;
               updates.subscriptionType = 'dropin';
+              updates.subscriptionStatus = 'unpaid';
             }
 
             await this.db.collection('users').doc(userId).update(updates);
