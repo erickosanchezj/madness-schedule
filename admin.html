@@ -162,6 +162,27 @@
         border-color: rgba(99, 102, 241, 0.7);
         box-shadow: inset 0 0 0 2px rgba(129, 140, 248, 0.35);
       }
+      .day-column {
+        background: rgba(24, 24, 27, 0.75);
+        border: 1px solid rgba(63, 63, 70, 0.7);
+        border-radius: 0.75rem;
+        padding: 1rem;
+      }
+      .day-column summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        list-style: none;
+      }
+      .day-column summary::-webkit-details-marker {
+        display: none;
+      }
+      .toggle-indicator {
+        transition: transform 0.2s ease;
+      }
+      .day-column[open] .toggle-indicator {
+        transform: rotate(180deg);
+      }
       .day-label.today-label {
         background: rgba(67, 56, 202, 0.35);
         border-color: rgba(99, 102, 241, 0.7);
@@ -289,34 +310,55 @@
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="reservas-title">
         <h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas de la Semana</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
-          <div class="day-column" data-day="monday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Lunes</h3>
-            <div id="monday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
-          <div class="day-column" data-day="tuesday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Martes</h3>
-            <div id="tuesday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
-          <div class="day-column" data-day="wednesday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Miércoles</h3>
-            <div id="wednesday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
-          <div class="day-column" data-day="thursday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Jueves</h3>
-            <div id="thursday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
-          <div class="day-column" data-day="friday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Viernes</h3>
-            <div id="friday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
-          <div class="day-column" data-day="saturday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Sábado</h3>
-            <div id="saturday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
-          <div class="day-column" data-day="sunday">
-            <h3 class="text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2">Domingo</h3>
-            <div id="sunday-bookings-list" class="space-y-4 text-sm"></div>
-          </div>
+          <details class="day-column group" data-day="monday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Lunes</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="monday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
+          <details class="day-column group" data-day="tuesday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Martes</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="tuesday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
+          <details class="day-column group" data-day="wednesday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Miércoles</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="wednesday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
+          <details class="day-column group" data-day="thursday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Jueves</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="thursday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
+          <details class="day-column group" data-day="friday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Viernes</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="friday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
+          <details class="day-column group" data-day="saturday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Sábado</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="saturday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
+          <details class="day-column group" data-day="sunday">
+            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+              <span>Domingo</span>
+              <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
+            </summary>
+            <div id="sunday-bookings-list" class="space-y-4 text-sm pt-2"></div>
+          </details>
         </div>
       </section>
 
@@ -797,6 +839,20 @@
           });
         },
 
+        expandTodayBookingsAccordion(){
+          // Expands the bookings accordion for the current weekday and collapses the rest.
+          const weekdayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+          const todayKey = weekdayKeys[new Date().getDay()];
+          if (!todayKey) return;
+          const reservasSection = document.querySelector('section[aria-labelledby="reservas-title"]');
+          if (!reservasSection) return;
+          reservasSection.querySelectorAll('.day-column[data-day]').forEach((detail) => {
+            if (!(detail instanceof HTMLDetailsElement)) return;
+            if (detail.dataset.day === todayKey) detail.setAttribute('open','');
+            else detail.removeAttribute('open');
+          });
+        },
+
         // --- TOASTS ---
         showToast({ title='Hecho', message='', variant='success', timeout=3000 }){
           const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';
@@ -931,6 +987,7 @@
           this.resetDailyMessageForm();
 
           this.setupSectionToggles();
+          this.expandTodayBookingsAccordion();
 
           // Users: find + list
           document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
