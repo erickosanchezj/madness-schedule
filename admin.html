@@ -1069,14 +1069,12 @@
           const classIds = this.state.classes.map(c=>c.id);
           for (let i=0;i<classIds.length;i+=10){
             const batch = classIds.slice(i,i+10);
+            let batchSequence = 0;
             const unsub = this.db.collection('bookings')
               .where('classId','in',batch)
               .onSnapshot(async (snap)=>{
+                const currentSequence = ++batchSequence;
                 const tracker = this.state.analyticsTracker;
-                batch.forEach(cid => {
-                  this.state.bookingsMap.delete(cid);
-                  tracker.bookingTimeline[cid] = [];
-                });
                 const bookingsWithNames = await Promise.all(snap.docs.map(async doc=>{
                   const b = doc.data();
                   let userName = b.userName || '';
@@ -1089,13 +1087,32 @@
                   }
                   return { id:doc.id, ...b, userName };
                 }));
+
+                if (currentSequence !== batchSequence) return; // drop outdated snapshot results
+
+                const shouldTrackAnalytics = Boolean(tracker);
+
+                batch.forEach(cid => {
+                  this.state.bookingsMap.delete(cid);
+                  if (tracker){
+                    tracker.bookingTimeline[cid] = [];
+                  }
+                });
+
+                if (tracker && !tracker.userBehavior){
+                  tracker.userBehavior = {};
+                }
+
                 bookingsWithNames.forEach(record=>{
                   const b = record;
                   const arr = this.state.bookingsMap.get(b.classId) || [];
                   arr.push(record);
                   this.state.bookingsMap.set(b.classId, arr);
-                  const createdAt = b.createdAt?.toDate ? b.createdAt.toDate() : (b.createdAt ? new Date(b.createdAt) : null);
+
+                  if (!shouldTrackAnalytics) return;
+
                   if (!tracker.bookingTimeline[b.classId]) tracker.bookingTimeline[b.classId] = [];
+                  const createdAt = b.createdAt?.toDate ? b.createdAt.toDate() : (b.createdAt ? new Date(b.createdAt) : null);
                   if (createdAt && !Number.isNaN(createdAt.getTime())){
                     tracker.bookingTimeline[b.classId].push(createdAt.getTime());
                   }
@@ -1117,6 +1134,7 @@
                   }
                   tracker.userBehavior[userKey].lastClassId = b.classId;
                 });
+
                 this.renderAll();
                 this.renderAttendanceDashboardFromCache();
               });
