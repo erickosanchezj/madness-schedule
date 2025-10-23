@@ -237,6 +237,7 @@
           currentScreen: 'agenda',
           scheduleFilter: 'today',
           selectedClassId: null,
+          subscriptionType: 'monthly',
           isTotalPass: false,
           cancellationStrikes: 0,
           dailyMessage: null,
@@ -369,6 +370,7 @@
             .onSnapshot(doc => {
               const data = doc.data() || {};
               state.isTotalPass = !!data.totalPass;
+              state.subscriptionType = typeof data.subscriptionType === 'string' ? data.subscriptionType : 'monthly';
               const strikesRaw = Number(data.lateCancellations);
               state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
               scheduleRender();
@@ -959,6 +961,17 @@
           const pushStatusText = pushEnabled ? 'Activadas' : 'Desactivadas';
           const nameSubtitle = nameForText || 'Sin nombre';
           const { strikeCount, strikeMessage } = getStrikeInfo();
+          const subscriptionType = typeof state.subscriptionType === 'string' ? state.subscriptionType : 'monthly';
+          const subscriptionBadgeClass = subscriptionType === 'monthly'
+            ? 'bg-blue-600'
+            : subscriptionType === 'totalpass'
+              ? 'bg-purple-600'
+              : 'bg-zinc-600';
+          const subscriptionLabel = subscriptionType === 'monthly'
+            ? 'Mensual'
+            : subscriptionType === 'totalpass'
+              ? 'TotalPass'
+              : 'Por Clase';
           return `
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
@@ -989,6 +1002,10 @@
                     <span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
                   </span>
                 </label>
+                <div class="flex items-center justify-between py-3">
+                  <span>Tipo de Suscripción</span>
+                  <span class="px-2 py-1 rounded text-xs ${subscriptionBadgeClass}">${subscriptionLabel}</span>
+                </div>
                 <button id="enablePush" class="flex items-center justify-between w-full py-3">
                   <div class="flex flex-col text-left">
                     <span>Notificaciones Push</span>
