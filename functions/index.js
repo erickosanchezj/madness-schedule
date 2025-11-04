@@ -14,7 +14,8 @@ const FieldValue = admin.firestore.FieldValue;
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
 // Allowed origins for admin-only callable functions served to the web dashboard.
-const ADMIN_PANEL_ORIGINS = "https://madness.chinito.cc";
+const ADMIN_PANEL_ORIGINS = ["https://madness.chinito.cc"];
+const ADMIN_ORIGIN_SET = new Set(ADMIN_PANEL_ORIGINS);
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REMINDER_FUNCTION_FQFN =
@@ -374,9 +375,16 @@ exports.automaticWhitelisting = onSchedule(
 exports.resetAllStrikes = onCall(
   {
     region: "us-central1",
-    cors: [ADMIN_PANEL_ORIGINS],
+    cors: true,
   },
   async (request) => {
+    // Block unknown origins even though CORS allows the preflight so we can surface a clear error.
+    const originHeader = request.rawRequest?.headers?.origin;
+    if (originHeader && !ADMIN_ORIGIN_SET.has(originHeader)) {
+      console.warn(`resetAllStrikes: blocked origin ${originHeader}`);
+      throw new HttpsError("permission-denied", "Origen no autorizado.");
+    }
+
     const auth = request.auth;
     if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
     if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
