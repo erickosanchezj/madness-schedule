@@ -5,6 +5,7 @@
 const admin = require("firebase-admin");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { getFunctions } = require("firebase-admin/functions");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -12,6 +13,8 @@ const db = admin.firestore();
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const REMINDER_FUNCTION_FQFN =
+  "projects/madnessscheds/locations/us-central1/functions/sendBookingReminder";
 
 /**
  * Member cancellation handled on the server to prevent clock tampering.
@@ -69,6 +72,7 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
   let becameBlacklisted = false;
   let recordedLateStrike = false;
   let resultingLateCount = 0;
+  let reminderTaskNames = [];
 
   await db.runTransaction(async (tx) => {
     const [bookingSnap, classSnap, userSnap] = await Promise.all([
@@ -82,6 +86,11 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
     }
 
     const bookingData = bookingSnap.data() || {};
+    reminderTaskNames = Array.isArray(bookingData.reminderTaskNames)
+      ? bookingData.reminderTaskNames.filter(
+          (name) => typeof name === "string" && name.trim() !== ""
+        )
+      : [];
     const classData = classSnap.exists ? classSnap.data() || {} : {};
     const startDate = resolveStartDate(bookingData, classData);
     const serverNow = admin.firestore.Timestamp.now().toDate();
@@ -122,6 +131,21 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
     tx.delete(bookingRef);
     tx.set(userRef, userUpdates, { merge: true });
   });
+
+  if (reminderTaskNames.length > 0) {
+    try {
+      const queue = getFunctions().taskQueue(REMINDER_FUNCTION_FQFN);
+      await Promise.all(
+        reminderTaskNames.map((taskName) =>
+          queue.delete(taskName).catch((err) => {
+            console.error("cancelBooking: failed to delete reminder task", taskName, err);
+          })
+        )
+      );
+    } catch (err) {
+      console.error("cancelBooking: reminder cleanup failed", err);
+    }
+  }
 
   return {
     success: true,

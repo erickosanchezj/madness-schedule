@@ -1,3 +1,7 @@
+// functions/src/bookingReminders.js
+// Schedules class reminder push notifications.
+// Ensures reminders track booking lifecycle events.
+// RELEVANT FILES: functions/index.js, functions/src/totalPassReminders.js
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
@@ -71,6 +75,16 @@ exports.onBookingCreate = onDocumentCreated(
           })
           .filter(Boolean)
       );
+
+      const reminderTaskNames = tasks
+        .map((task) => (task && typeof task.name === 'string' ? task.name : null))
+        .filter(Boolean);
+
+      if (reminderTaskNames.length > 0) {
+        await event.data.ref.set({ reminderTaskNames }, { merge: true });
+      } else {
+        await event.data.ref.set({ reminderTaskNames: [] }, { merge: true });
+      }
 
       console.log('Tasks created:', tasks.length);
     } catch (error) {
