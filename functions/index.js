@@ -379,7 +379,17 @@ exports.automaticWhitelisting = onSchedule(
 exports.resetAllStrikes = onCall(
   {
     region: "us-central1",
-    cors: ADMIN_PANEL_ORIGINS,
+    cors: {
+      origin: ADMIN_PANEL_ORIGINS,
+      methods: ["POST", "OPTIONS"],
+      allowedHeaders: [
+        "Authorization",
+        "Content-Type",
+        "X-Firebase-GMPID",
+        "X-Firebase-AppCheck",
+      ],
+      maxAge: 3600,
+    },
   },
   async (request) => {
     const auth = request.auth;
