@@ -49,6 +49,12 @@ exports.onBookingCreate = onDocumentCreated(
     const startDate = start.toDate();
     console.log('Start date:', startDate);
 
+    const existingBookingSnap = await event.data.ref.get();
+    if (!existingBookingSnap.exists) {
+      console.log('Booking document already removed before scheduling reminders.');
+      return;
+    }
+
     const functionsAdmin = getFunctions();
 
     try {
@@ -80,11 +86,13 @@ exports.onBookingCreate = onDocumentCreated(
         .map((task) => (task && typeof task.name === 'string' ? task.name : null))
         .filter(Boolean);
 
-      if (reminderTaskNames.length > 0) {
-        await event.data.ref.set({ reminderTaskNames }, { merge: true });
-      } else {
-        await event.data.ref.set({ reminderTaskNames: [] }, { merge: true });
+      const latestBookingSnap = await event.data.ref.get();
+      if (!latestBookingSnap.exists) {
+        console.log('Booking document was removed before reminders were stored. Skipping write.');
+        return;
       }
+
+      await event.data.ref.set({ reminderTaskNames }, { merge: true });
 
       console.log('Tasks created:', tasks.length);
     } catch (error) {
