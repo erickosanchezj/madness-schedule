@@ -3676,10 +3676,14 @@
               const data = doc.data() || {};
               const safeName = DOMPurify.sanitize(data.displayName || 'Usuario sin nombre');
               const safeEmail = DOMPurify.sanitize(data.email || '');
+              const strikesRaw = Number(data.lateCancellations);
+              const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
+              const safeStrikes = DOMPurify.sanitize(String(strikesCount));
               return `
             <div class="p-4 bg-zinc-700/50 rounded-lg">
               <h4 class="font-bold">${safeName}</h4>
               <p class="text-sm text-zinc-400">${safeEmail}</p>
+              <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3</p>
             </div>`;
             }).join('');
             container.classList.remove('hidden');
@@ -3696,10 +3700,14 @@
           const tokenEntries = userData.fcmTokens ? Object.entries(userData.fcmTokens) : [];
           const safeName = DOMPurify.sanitize(userData.displayName || 'Usuario sin nombre');
           const safeEmail = DOMPurify.sanitize(userData.email || '');
+          const strikesRaw = Number(userData.lateCancellations);
+          const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
+          const safeStrikes = DOMPurify.sanitize(String(strikesCount));
           const head = `
             <div class="p-4 bg-zinc-700/50 rounded-lg">
               <h4 class="font-bold">${safeName}</h4>
               <p class="text-sm text-zinc-400">${safeEmail}</p>
+              <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3</p>
           `;
           if (!tokenEntries.length){
             return head + `<p class="text-sm text-zinc-400 mt-3">Sin dispositivos registrados.</p></div>`;
