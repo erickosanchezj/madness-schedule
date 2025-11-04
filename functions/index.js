@@ -14,12 +14,7 @@ const FieldValue = admin.firestore.FieldValue;
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
 // Allowed origins for admin-only callable functions served to the web dashboard.
-const ADMIN_PANEL_ORIGINS = [
-  "https://madness.chinito.cc",
-  "https://madnessschedule.web.app",
-  "https://madnessschedule.firebaseapp.com",
-  "http://localhost:5000",
-];
+const ADMIN_PANEL_ORIGINS = "https://madness.chinito.cc";
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REMINDER_FUNCTION_FQFN =
