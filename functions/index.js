@@ -13,6 +13,14 @@ const FieldValue = admin.firestore.FieldValue;
 
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
+// Allowed origins for admin-only callable functions served to the web dashboard.
+const ADMIN_PANEL_ORIGINS = [
+  "https://madness.chinito.cc",
+  "https://madnessschedule.web.app",
+  "https://madnessschedule.firebaseapp.com",
+  "http://localhost:5000",
+];
+
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REMINDER_FUNCTION_FQFN =
   "projects/madnessscheds/locations/us-central1/functions/sendBookingReminder";
@@ -367,11 +375,11 @@ exports.automaticWhitelisting = onSchedule(
   }
 );
 
-// Default callable CORS handling keeps the Access-Control-Allow-Origin header intact.
-// Using the defaults avoids browsers rejecting the admin panel request during preflight.
+// Restrict callable access to the known admin origins to satisfy browser preflight.
 exports.resetAllStrikes = onCall(
   {
     region: "us-central1",
+    cors: ADMIN_PANEL_ORIGINS,
   },
   async (request) => {
     const auth = request.auth;
