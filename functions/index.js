@@ -367,15 +367,11 @@ exports.automaticWhitelisting = onSchedule(
   }
 );
 
+// Default callable CORS handling keeps the Access-Control-Allow-Origin header intact.
+// Using the defaults avoids browsers rejecting the admin panel request during preflight.
 exports.resetAllStrikes = onCall(
   {
     region: "us-central1",
-    // Allow callable access from our Firebase Hosting domains and the custom admin domain.
-    cors: [
-      "https://madness.chinito.cc",
-      "https://madnessscheds.web.app",
-      "https://madnessscheds.firebaseapp.com",
-    ],
   },
   async (request) => {
     const auth = request.auth;
