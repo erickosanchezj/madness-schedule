@@ -355,19 +355,30 @@ exports.automaticWhitelisting = onSchedule(
   }
 );
 
-exports.resetAllStrikes = onCall({ region: "us-central1" }, async (request) => {
-  const auth = request.auth;
-  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
-  if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
+exports.resetAllStrikes = onCall(
+  {
+    region: "us-central1",
+    // Allow callable access from our Firebase Hosting domains and the custom admin domain.
+    cors: [
+      "https://madness.chinito.cc",
+      "https://madnessscheds.web.app",
+      "https://madnessscheds.firebaseapp.com",
+    ],
+  },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+    if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
 
-  const { updates, totals } = await buildStrikeResetUpdates();
-  const result = await commitStrikeResetUpdates(updates, "resetAllStrikes");
+    const { updates, totals } = await buildStrikeResetUpdates();
+    const result = await commitStrikeResetUpdates(updates, "resetAllStrikes");
 
-  return {
-    ok: true,
-    updated: result.processed,
-    totalTargets: result.total,
-    blacklistedCount: totals.blacklisted,
-    strikeCount: totals.strikes,
-  };
-});
+    return {
+      ok: true,
+      updated: result.processed,
+      totalTargets: result.total,
+      blacklistedCount: totals.blacklisted,
+      strikeCount: totals.strikes,
+    };
+  }
+);
