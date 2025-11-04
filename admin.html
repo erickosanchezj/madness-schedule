@@ -616,6 +616,7 @@
         <p class="text-sm text-zinc-400 mb-4">Revisa usuarios bloqueados por cancelaciones tardías y rehabilítalos cuando sea necesario.</p>
         <div class="flex flex-wrap gap-2">
           <button id="list-blacklisted-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-md">Listar usuarios en lista negra</button>
+          <button id="reset-strikes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md">Resetear strikes (todos)</button>
         </div>
         <p id="blacklisted-users-feedback" class="text-xs text-zinc-400 mt-3 hidden"></p>
         <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -903,6 +904,8 @@
           document.getElementById('att-refresh').onclick = () => this.fetchAttendanceData(true);
           const blacklistBtn = document.getElementById('list-blacklisted-btn');
           if (blacklistBtn) blacklistBtn.onclick = () => this.listBlacklistedUsers();
+          const resetStrikesBtn = document.getElementById('reset-strikes-btn');
+          if (resetStrikesBtn) resetStrikesBtn.onclick = () => this.resetAllStrikesForEveryone();
           const manualBookingsBtn = document.getElementById('generate-manual-bookings-btn');
           if (manualBookingsBtn) manualBookingsBtn.onclick = () => this.generateManualBookings();
 
@@ -3875,6 +3878,45 @@
             await this.listBlacklistedUsers();
           }catch(e){
             this.showToast({ title:'No se pudo rehabilitar', message:e.message, variant:'error' });
+          }
+        },
+
+        async resetAllStrikesForEveryone(){
+          const btn = document.getElementById('reset-strikes-btn');
+          // Ask for confirmation to avoid accidental global resets.
+          const confirmed = confirm('Esto reiniciará todos los strikes y desbloqueará a cualquiera en lista negra. ¿Continuar?');
+          if (!confirmed) return;
+
+          const originalText = btn ? btn.textContent : '';
+          if (btn){
+            btn.disabled = true;
+            btn.textContent = 'Reiniciando…';
+          }
+
+          try{
+            if (this.auth.currentUser){
+              await this.auth.currentUser.getIdToken(true);
+            }
+
+            const callable = this.functions.httpsCallable('resetAllStrikes');
+            const result = await callable();
+            const updated = Number(result?.data?.updated || 0);
+            const totalTargets = Number(result?.data?.totalTargets || 0);
+
+            const message = totalTargets > 0
+              ? `Se reiniciaron los strikes de ${updated} usuarios.`
+              : 'No había strikes pendientes por reiniciar.';
+
+            this.showToast({ title:'Strikes reiniciados', message });
+            await this.listBlacklistedUsers();
+          }catch(e){
+            const message = e?.message || 'No se pudo reiniciar los strikes.';
+            this.showToast({ title:'Error', message, variant:'error' });
+          }finally{
+            if (btn){
+              btn.disabled = false;
+              btn.textContent = originalText || 'Resetear strikes (todos)';
+            }
           }
         },
 

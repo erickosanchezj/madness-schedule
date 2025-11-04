@@ -9,6 +9,7 @@ const { getFunctions } = require("firebase-admin/functions");
 
 admin.initializeApp();
 const db = admin.firestore();
+const FieldValue = admin.firestore.FieldValue;
 
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
 
@@ -263,6 +264,75 @@ const userUnlockNotifications = require("./src/userUnlockNotifications");
 exports.onUserUnlockNotification =
   userUnlockNotifications.onUserUnlockNotification;
 
+const buildStrikeResetUpdates = async () => {
+  const [blacklistedSnap, strikesSnap] = await Promise.all([
+    db.collection("users").where("blacklisted", "==", true).get(),
+    db.collection("users").where("lateCancellations", ">", 0).get(),
+  ]);
+
+  const updates = new Map();
+
+  const ensureEntry = (doc) => {
+    const existing = updates.get(doc.id);
+    if (existing) return existing;
+    const entry = { ref: doc.ref, fields: {} };
+    updates.set(doc.id, entry);
+    return entry;
+  };
+
+  blacklistedSnap.forEach((doc) => {
+    const entry = ensureEntry(doc);
+    entry.fields.blacklisted = false;
+    entry.fields.lateCancellations = 0;
+    entry.fields.blacklistedAt = FieldValue.delete();
+  });
+
+  strikesSnap.forEach((doc) => {
+    const entry = ensureEntry(doc);
+    entry.fields.lateCancellations = 0;
+  });
+
+  return {
+    updates: Array.from(updates.values()),
+    totals: {
+      blacklisted: blacklistedSnap.size,
+      strikes: strikesSnap.size,
+    },
+  };
+};
+
+const commitStrikeResetUpdates = async (entries, logLabel) => {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    console.log(`${logLabel}: no users required strike reset.`);
+    return { processed: 0, total: 0 };
+  }
+
+  const CHUNK = 400;
+  let processed = 0;
+
+  for (let i = 0; i < entries.length; i += CHUNK) {
+    const slice = entries.slice(i, i + CHUNK);
+    if (slice.length === 0) continue;
+
+    const batch = db.batch();
+    let writes = 0;
+
+    slice.forEach(({ ref, fields }) => {
+      if (!ref || !fields || Object.keys(fields).length === 0) return;
+      batch.set(ref, fields, { merge: true });
+      writes++;
+    });
+
+    if (writes === 0) continue;
+
+    await batch.commit();
+    processed += writes;
+    console.log(`${logLabel}: processed ${processed}/${entries.length}`);
+  }
+
+  return { processed, total: entries.length };
+};
+
 exports.automaticWhitelisting = onSchedule(
   {
     region: "us-central1",
@@ -270,32 +340,34 @@ exports.automaticWhitelisting = onSchedule(
     timeZone: "America/Mexico_City",
   },
   async () => {
-    const snap = await db.collection("users").where("blacklisted", "==", true).get();
-    if (snap.empty) {
-      console.log("automaticWhitelisting: no blacklisted users found.");
+    const { updates, totals } = await buildStrikeResetUpdates();
+
+    if (!updates.length) {
+      console.log("automaticWhitelisting: no users required strike reset.");
       return;
     }
 
-    const CHUNK = 400;
-    const docs = snap.docs;
-    let processed = 0;
+    console.log(
+      `automaticWhitelisting: resetting strikes for ${updates.length} users (blacklisted=${totals.blacklisted}, strikes=${totals.strikes}).`
+    );
 
-    for (let i = 0; i < docs.length; i += CHUNK) {
-      const slice = docs.slice(i, i + CHUNK);
-      if (slice.length === 0) continue;
-
-      const batch = db.batch();
-      slice.forEach((doc) => {
-        batch.update(doc.ref, {
-          blacklisted: false,
-          lateCancellations: 0,
-          blacklistedAt: admin.firestore.FieldValue.delete(),
-        });
-      });
-
-      await batch.commit();
-      processed += slice.length;
-      console.log(`automaticWhitelisting: processed ${processed}/${docs.length}`);
-    }
+    await commitStrikeResetUpdates(updates, "automaticWhitelisting");
   }
 );
+
+exports.resetAllStrikes = onCall({ region: "us-central1" }, async (request) => {
+  const auth = request.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+  if (auth.token?.admin !== true) throw new HttpsError("permission-denied", "Admins only.");
+
+  const { updates, totals } = await buildStrikeResetUpdates();
+  const result = await commitStrikeResetUpdates(updates, "resetAllStrikes");
+
+  return {
+    ok: true,
+    updated: result.processed,
+    totalTargets: result.total,
+    blacklistedCount: totals.blacklisted,
+    strikeCount: totals.strikes,
+  };
+});
