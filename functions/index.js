@@ -265,38 +265,50 @@ exports.onUserUnlockNotification =
   userUnlockNotifications.onUserUnlockNotification;
 
 const buildStrikeResetUpdates = async () => {
-  const [blacklistedSnap, strikesSnap] = await Promise.all([
-    db.collection("users").where("blacklisted", "==", true).get(),
-    db.collection("users").where("lateCancellations", ">", 0).get(),
-  ]);
+  const snap = await db.collection("users").get();
 
-  const updates = new Map();
+  const updates = [];
+  let blacklistedCount = 0;
+  let strikeCount = 0;
 
-  const ensureEntry = (doc) => {
-    const existing = updates.get(doc.id);
-    if (existing) return existing;
-    const entry = { ref: doc.ref, fields: {} };
-    updates.set(doc.id, entry);
-    return entry;
-  };
+  snap.forEach((doc) => {
+    const data = doc.data() || {};
+    const fields = {};
 
-  blacklistedSnap.forEach((doc) => {
-    const entry = ensureEntry(doc);
-    entry.fields.blacklisted = false;
-    entry.fields.lateCancellations = 0;
-    entry.fields.blacklistedAt = FieldValue.delete();
-  });
+    const rawStrikes = data.lateCancellations;
+    const numericStrikes = typeof rawStrikes === "number" ? rawStrikes : Number(rawStrikes);
+    const hasValidNumber = Number.isFinite(numericStrikes);
+    const strikesOverZero = hasValidNumber && numericStrikes > 0;
+    const needsStrikeReset = strikesOverZero || (rawStrikes !== undefined && rawStrikes !== 0);
 
-  strikesSnap.forEach((doc) => {
-    const entry = ensureEntry(doc);
-    entry.fields.lateCancellations = 0;
+    if (strikesOverZero) {
+      strikeCount += 1;
+    }
+
+    if (needsStrikeReset) {
+      fields.lateCancellations = 0;
+    }
+
+    const isBlacklisted = data.blacklisted === true;
+    if (isBlacklisted) {
+      blacklistedCount += 1;
+      fields.blacklisted = false;
+    }
+
+    if (data.blacklistedAt !== undefined) {
+      fields.blacklistedAt = FieldValue.delete();
+    }
+
+    if (Object.keys(fields).length > 0) {
+      updates.push({ ref: doc.ref, fields });
+    }
   });
 
   return {
-    updates: Array.from(updates.values()),
+    updates,
     totals: {
-      blacklisted: blacklistedSnap.size,
-      strikes: strikesSnap.size,
+      blacklisted: blacklistedCount,
+      strikes: strikeCount,
     },
   };
 };
