@@ -241,12 +241,52 @@
           isTotalPass: false,
           cancellationStrikes: 0,
           dailyMessage: null,
+          dailyMessageList: [],
           loading: {
             classes: true,
             bookings: true,
             users: false
           }
         };
+
+        // Daily messages can now rotate when multiple announcements are active.
+        const DAILY_MESSAGE_ROTATION_MS = 10000;
+        let dailyMessageRotation = {
+          intervalId: null,
+          messages: [],
+          index: 0
+        };
+
+        function stopDailyMessageRotation(){
+          if (dailyMessageRotation.intervalId){
+            clearInterval(dailyMessageRotation.intervalId);
+          }
+          dailyMessageRotation.intervalId = null;
+          dailyMessageRotation.messages = [];
+          dailyMessageRotation.index = 0;
+        }
+
+        function startDailyMessageRotation(messages){
+          // We reset timers and store a shallow copy so future snapshots can replace the queue safely.
+          stopDailyMessageRotation();
+          dailyMessageRotation.messages = messages.slice();
+          if (!dailyMessageRotation.messages.length){
+            state.dailyMessage = null;
+            return;
+          }
+          dailyMessageRotation.index = 0;
+          state.dailyMessage = dailyMessageRotation.messages[0];
+          scheduleRender();
+          dailyMessageRotation.intervalId = setInterval(()=>{
+            if (!dailyMessageRotation.messages.length){
+              stopDailyMessageRotation();
+              return;
+            }
+            dailyMessageRotation.index = (dailyMessageRotation.index + 1) % dailyMessageRotation.messages.length;
+            state.dailyMessage = dailyMessageRotation.messages[dailyMessageRotation.index];
+            scheduleRender();
+          }, DAILY_MESSAGE_ROTATION_MS);
+        }
 
         function getStrikeInfo(){
           const strikesRaw = Number(state.cancellationStrikes);
@@ -307,7 +347,9 @@
           if (unsubUser){ try{unsubUser();}catch{}; unsubUser=null; }
           if (unsubDailyMessage){ try{unsubDailyMessage();}catch{}; unsubDailyMessage=null; }
           if (unsubAttendance){ try{unsubAttendance();}catch{}; unsubAttendance=null; }
+          stopDailyMessageRotation();
           state.dailyMessage = null;
+          state.dailyMessageList = [];
           state.classes = [];
           state.myBookings = [];
           state.waitlistEntries = [];
@@ -379,13 +421,32 @@
             .orderBy('createdAt', 'desc')
             .limit(10)
             .onSnapshot(snap => {
-              const doc = snap.docs.find(d => {
-                const data = d.data();
-                return data && data.isActive;
-              });
-              state.dailyMessage = doc ? { id: doc.id, ...doc.data() } : null;
+              const activeMessages = snap.docs.map(doc => {
+                const data = doc.data() || {};
+                const rawText = typeof data.message === 'string' ? data.message.trim() : '';
+                return { id: doc.id, ...data, message: rawText };
+              }).filter(msg => msg.isActive && msg.message);
+              state.dailyMessageList = activeMessages;
+              if (!activeMessages.length){
+                stopDailyMessageRotation();
+                state.dailyMessage = null;
+                scheduleRender();
+                return;
+              }
+              if (activeMessages.length === 1){
+                stopDailyMessageRotation();
+                state.dailyMessage = activeMessages[0];
+                scheduleRender();
+                return;
+              }
+              startDailyMessageRotation(activeMessages);
+            }, err => {
+              console.error('Error mensaje diario:', err);
+              stopDailyMessageRotation();
+              state.dailyMessageList = [];
+              state.dailyMessage = null;
               scheduleRender();
-            }, err => console.error('Error mensaje diario:', err));
+            });
           listenersAttached=true;
         }
 
@@ -1359,6 +1420,8 @@
             case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'dismiss-message':
+              stopDailyMessageRotation();
+              state.dailyMessageList = [];
               state.dailyMessage = null;
               scheduleRender();
               break;
