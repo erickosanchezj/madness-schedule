@@ -3462,6 +3462,26 @@
                 paidDate = this.timeFmt.format(parsed);
               }
             }
+            // Compute five-day grace details so admins can see who is still within the window.
+            const graceRaw = user.subscriptionGraceUntil;
+            let graceUntil = null;
+            if (graceRaw?.toDate) {
+              graceUntil = graceRaw.toDate();
+            } else if (graceRaw instanceof Date && !Number.isNaN(graceRaw.getTime())) {
+              graceUntil = graceRaw;
+            } else if (graceRaw) {
+              const parsedGrace = new Date(graceRaw);
+              if (!Number.isNaN(parsedGrace.getTime())) {
+                graceUntil = parsedGrace;
+              }
+            }
+            let graceLabel = '';
+            let graceActive = false;
+            if (graceUntil instanceof Date && !Number.isNaN(graceUntil.getTime())) {
+              graceLabel = this.dayShortFmt.format(graceUntil);
+              graceActive = graceUntil.getTime() > Date.now();
+            }
+            const safeGraceLabel = graceLabel ? DOMPurify.sanitize(graceLabel) : '';
             const safeName = DOMPurify.sanitize(user.displayName || 'Sin nombre');
             const safeEmail = DOMPurify.sanitize(user.email || '');
 
@@ -3483,6 +3503,11 @@
             } else if (subscriptionStatus === 'paid') {
               statusDisplay = 'Pagado';
               statusClass = 'text-green-400';
+            } else if (graceActive) {
+              statusDisplay = safeGraceLabel
+                ? `No Pagado (Gracia hasta ${safeGraceLabel})`
+                : 'No Pagado (Período de Gracia)';
+              statusClass = 'text-amber-400';
             } else if (subscriptionStatus === 'grace_period') {
               statusDisplay = 'Período de Gracia';
               statusClass = 'text-amber-400';
@@ -3556,7 +3581,8 @@
           try {
             await this.db.collection('users').doc(userId).update({
               subscriptionStatus:'paid',
-              subscriptionPaidDate: firebase.firestore.FieldValue.serverTimestamp()
+              subscriptionPaidDate: firebase.firestore.FieldValue.serverTimestamp(),
+              subscriptionGraceUntil: firebase.firestore.FieldValue.delete()
             });
 
             this.showToast({ title:'Usuario actualizado', message:'El usuario ha sido marcado como pagado' });
@@ -3577,11 +3603,13 @@
               updates.totalPass = true;
               updates.subscriptionType = 'totalpass';
               updates.subscriptionStatus = 'totalpass';
+              updates.subscriptionGraceUntil = firebase.firestore.FieldValue.delete();
             } else {
               // Reset manual flag so we avoid repeated review requests.
               updates.totalPass = false;
               updates.subscriptionType = 'dropin';
               updates.subscriptionStatus = 'unpaid';
+              updates.subscriptionGraceUntil = firebase.firestore.FieldValue.delete();
             }
 
             await this.db.collection('users').doc(userId).update(updates);

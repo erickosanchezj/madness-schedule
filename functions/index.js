@@ -20,6 +20,7 @@ const ADMIN_ORIGIN_SET = new Set(ADMIN_PANEL_ORIGINS);
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REMINDER_FUNCTION_FQFN =
   "projects/madnessscheds/locations/us-central1/functions/sendBookingReminder";
+const FIVE_DAY_MS = 5 * 24 * 60 * 60 * 1000;
 
 /**
  * Member cancellation handled on the server to prevent clock tampering.
@@ -368,6 +369,61 @@ exports.automaticWhitelisting = onSchedule(
     );
 
     await commitStrikeResetUpdates(updates, "automaticWhitelisting");
+  }
+);
+
+// Reset monthly member status at the start of each month and store a grace end date.
+exports.resetMonthlySubscriptionStatuses = onSchedule(
+  {
+    region: "us-central1",
+    schedule: "5 0 1 * *",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const graceStart = new Date();
+    const graceUntilDate = new Date(graceStart.getTime() + FIVE_DAY_MS);
+    const graceUntil = admin.firestore.Timestamp.fromDate(graceUntilDate);
+
+    const snapshot = await db
+      .collection("users")
+      .where("subscriptionType", "==", "monthly")
+      .get();
+
+    if (snapshot.empty) {
+      console.log("resetMonthlySubscriptionStatuses: no monthly users to update.");
+      return;
+    }
+
+    const docs = snapshot.docs;
+    const BATCH_SIZE = 400;
+    let processed = 0;
+
+    for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+      const slice = docs.slice(i, i + BATCH_SIZE);
+      if (slice.length === 0) continue;
+
+      const batch = db.batch();
+      slice.forEach((doc) => {
+        batch.set(
+          doc.ref,
+          {
+            subscriptionStatus: "unpaid",
+            subscriptionGraceUntil: graceUntil,
+          },
+          { merge: true }
+        );
+      });
+
+      await batch.commit();
+      processed += slice.length;
+      console.log(
+        `resetMonthlySubscriptionStatuses: processed ${processed}/${docs.length}`
+      );
+    }
+
+    console.log(
+      `resetMonthlySubscriptionStatuses: updated ${processed} monthly users.`
+    );
   }
 );
 
