@@ -397,7 +397,6 @@
                   <th class="p-3 text-left">Estado TotalPass</th>
                   <th class="p-3 text-left">Estado de Pago</th>
                   <th class="p-3 text-left">Última Fecha de Pago</th>
-                  <th class="p-3 text-left">Notas de Pago</th>
                   <th class="p-3 text-left">Acciones</th>
                 </tr>
               </thead>
@@ -769,8 +768,7 @@
           unsubDailyMessages: null,
           userCache: new Map(),
           subscriptionUsers: [],
-          unsubSubscriptionUsers: null,
-          adminEmail: ''
+          unsubSubscriptionUsers: null
         },
 
         // --- Helpers ---
@@ -789,68 +787,6 @@
         },
         normalizeStr(s=''){
           return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-        },
-        resolvePaymentLogDate(entry){
-          // Normalize any Firestore timestamp value into a native Date for formatting.
-          if (!entry || typeof entry !== 'object') return null;
-          const raw = entry.createdAt;
-          try {
-            if (raw?.toDate) {
-              return raw.toDate();
-            }
-          } catch (_err) {
-            // Ignore and fall through to other coercions.
-          }
-          if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
-          if (typeof raw === 'number' && Number.isFinite(raw)) {
-            const asDate = new Date(raw);
-            if (!Number.isNaN(asDate.getTime())) return asDate;
-          }
-          if (typeof raw === 'string') {
-            const parsed = new Date(raw);
-            if (!Number.isNaN(parsed.getTime())) return parsed;
-          }
-          return null;
-        },
-        formatPaymentLogDate(entry){
-          // Provide a readable label for the log entry timestamp using our locale formatter.
-          const date = this.resolvePaymentLogDate(entry);
-          if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
-          return this.fullDateFmt.format(date);
-        },
-        sortPaymentLog(entries){
-          // Return a defensive sorted copy so newest entries surface consistently.
-          if (!Array.isArray(entries)) return [];
-          return entries.slice().sort((a, b) => {
-            const aTime = this.resolvePaymentLogDate(a)?.getTime() || 0;
-            const bTime = this.resolvePaymentLogDate(b)?.getTime() || 0;
-            return aTime - bTime;
-          });
-        },
-        buildPaymentLogEntry(note='', fallback=''){
-          // Compose the object persisted in Firestore with audit metadata.
-          const trimmed = (note || '').trim();
-          const base = trimmed || (fallback || 'Pago registrado manualmente');
-          const finalNote = base.length > 400 ? `${base.slice(0, 397)}…` : base;
-          const entry = {
-            note: finalNote,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          };
-          if (this.state.adminEmail) {
-            entry.createdBy = this.state.adminEmail;
-          }
-          return entry;
-        },
-        formatPaymentLogHistory(entries){
-          // Build a human string shown in prompts so admins can review the log quickly.
-          const sorted = this.sortPaymentLog(entries).slice(-10);
-          if (!sorted.length) return 'Sin notas registradas.';
-          return sorted.map((entry, idx) => {
-            const label = this.formatPaymentLogDate(entry) || `Nota ${idx + 1}`;
-            const author = typeof entry.createdBy === 'string' && entry.createdBy ? ` · ${entry.createdBy}` : '';
-            const body = typeof entry.note === 'string' ? entry.note : '';
-            return `${label}${author}\n${body}`.trim();
-          }).join('\n\n');
         },
         formatWeekdayLabel(dateStr=''){
           // Converts an ISO date into "Lunes - 26" so the calendar headers show the active day number.
@@ -1078,7 +1014,6 @@
             if (user) {
               const token = await user.getIdTokenResult();
               if (token.claims && token.claims.admin) {
-                this.state.adminEmail = user.email || '';
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 try {
@@ -1096,7 +1031,6 @@
                 this.showToast({ title:'Acceso denegado', message:'Tu cuenta no tiene rol de admin', variant:'error' });
               }
             } else {
-              this.state.adminEmail = '';
               document.getElementById('login-screen').classList.remove('hidden');
               document.getElementById('admin-panel').classList.add('hidden');
               this.teardownBookingsListeners();
@@ -3508,7 +3442,7 @@
           if (loading) loading.classList.add('hidden');
 
           if (!this.state.subscriptionUsers.length){
-            tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-zinc-400">No se encontraron usuarios</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-zinc-400">No se encontraron usuarios</td></tr>';
             return;
           }
 
@@ -3555,24 +3489,6 @@
             const safeGraceLabel = graceLabel ? DOMPurify.sanitize(graceLabel) : '';
             const safeName = DOMPurify.sanitize(user.displayName || 'Sin nombre');
             const safeEmail = DOMPurify.sanitize(user.email || '');
-            const paymentLogRaw = Array.isArray(user.subscriptionPaymentLog) ? user.subscriptionPaymentLog : [];
-            const sortedPaymentLog = this.sortPaymentLog(paymentLogRaw);
-            const lastPaymentLog = sortedPaymentLog.length ? sortedPaymentLog[sortedPaymentLog.length - 1] : null;
-            let lastLogHtml = '<span class="text-zinc-500 text-xs">Sin notas registradas.</span>';
-            if (lastPaymentLog) {
-              const logNote = typeof lastPaymentLog.note === 'string' ? lastPaymentLog.note : '';
-              const trimmed = logNote.length > 140 ? `${logNote.slice(0, 137)}…` : logNote;
-              const safeNote = DOMPurify.sanitize(trimmed || 'Sin nota');
-              const when = this.formatPaymentLogDate(lastPaymentLog);
-              const safeWhen = when ? DOMPurify.sanitize(when) : '';
-              const author = typeof lastPaymentLog.createdBy === 'string' && lastPaymentLog.createdBy
-                ? ` · ${DOMPurify.sanitize(lastPaymentLog.createdBy)}`
-                : '';
-              lastLogHtml = `<div class="text-[11px] text-zinc-400 leading-snug">
-                <p class="font-medium text-zinc-300">Última nota${safeWhen ? ` (${safeWhen})` : ''}${author}</p>
-                <p>${safeNote}</p>
-              </div>`;
-            }
 
             let totalPassDisplay = 'No';
             let totalPassClass = 'text-zinc-400';
@@ -3626,8 +3542,6 @@
               actions += `<button onclick="AdminPanel.verifyTotalPass('${user.id}', false)" class="bg-rose-600 hover:bg-rose-700 text-white text-xs py-1 px-3 rounded">Rechazar</button>`;
             }
 
-            actions += `<button onclick="AdminPanel.showPaymentLog('${user.id}')" class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs py-1 px-3 rounded mr-2">Notas de Pago</button>`;
-
             actions += `
               <select data-subscription-select="${user.id}" onchange="AdminPanel.showSubscriptionTypeModal('${user.id}', this)" class="bg-zinc-700 hover:bg-zinc-600 text-white text-xs py-1 px-2 rounded ml-2">
                 <option value="" selected disabled>Cambiar tipo</option>
@@ -3658,7 +3572,6 @@
                 <td class="p-3 ${totalPassClass}">${totalPassDisplay}</td>
                 <td class="p-3 ${statusClass}">${statusDisplay}</td>
                 <td class="p-3 text-zinc-400">${paidDate}</td>
-                <td class="p-3">${lastLogHtml}</td>
                 <td class="p-3">${actions}</td>
               </tr>
             `;
@@ -3670,53 +3583,14 @@
         async markUserAsPaid(userId){
           if (!confirm('¿Marcar a este usuario como pagado para el mes actual?')) return;
 
-          const noteInput = prompt(
-            'Describe el pago recibido (monto, método, referencia). Puedes dejarlo vacío si no hay detalles adicionales.',
-            ''
-          );
-
           try {
             await this.db.collection('users').doc(userId).update({
               subscriptionStatus:'paid',
               subscriptionPaidDate: firebase.firestore.FieldValue.serverTimestamp(),
-              subscriptionGraceUntil: firebase.firestore.FieldValue.delete(),
-              subscriptionPaymentLog: firebase.firestore.FieldValue.arrayUnion(
-                this.buildPaymentLogEntry(noteInput, 'Pago registrado manualmente')
-              )
+              subscriptionGraceUntil: firebase.firestore.FieldValue.delete()
             });
 
             this.showToast({ title:'Usuario actualizado', message:'El usuario ha sido marcado como pagado' });
-          } catch (err) {
-            this.showToast({ title:'Error', message:err.message, variant:'error' });
-          }
-        },
-
-        async showPaymentLog(userId){
-          const user = this.state.subscriptionUsers.find(u => u.id === userId);
-          if (!user) {
-            this.showToast({ title:'Usuario no encontrado', message:'No pudimos abrir el historial.', variant:'error' });
-            return;
-          }
-
-          const displayName = user.displayName || user.email || 'este usuario';
-          const history = this.formatPaymentLogHistory(user.subscriptionPaymentLog);
-          const promptMessage = `Historial de pagos para ${displayName}\n\n${history}\n\nEscribe una nueva nota (opcional):`;
-          const newNote = prompt(promptMessage, '');
-
-          if (newNote === null) return;
-
-          if (!(newNote || '').trim()) {
-            this.showToast({ title:'Sin cambios', message:'No se agregó ninguna nota.' });
-            return;
-          }
-
-          try {
-            await this.db.collection('users').doc(userId).update({
-              subscriptionPaymentLog: firebase.firestore.FieldValue.arrayUnion(
-                this.buildPaymentLogEntry(newNote, '')
-              )
-            });
-            this.showToast({ title:'Nota guardada', message:'Se agregó la nota de pago' });
           } catch (err) {
             this.showToast({ title:'Error', message:err.message, variant:'error' });
           }
@@ -4191,7 +4065,6 @@
         },
         logout(){
           this.stopCurrentTimeTicker();
-          this.state.adminEmail = '';
           this.auth.signOut();
           this.showToast({ title:'Sesión cerrada' });
         },
