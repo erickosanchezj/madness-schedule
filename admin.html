@@ -778,6 +778,7 @@
         dayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', day:'2-digit',month:'short' }),
         weekdayNameFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long' }),
         weekdayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'short' }),
+        fullDateFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', dateStyle:'medium', timeStyle:'short' }),
         dateHelper: {
           ymd(date){ return new Intl.DateTimeFormat('en-CA',{ timeZone: 'America/Mexico_City', year:'numeric', month:'2-digit', day:'2-digit' }).format(date); },
           today(){ return this.ymd(new Date()); },
@@ -3452,15 +3453,19 @@
             const subscriptionStatus = user.subscriptionStatus || 'unpaid';
             const paidRaw = user.subscriptionPaidDate;
             let paidDate = 'Nunca';
+            let paidDateObj = null;
             if (paidRaw?.toDate) {
-              paidDate = this.timeFmt.format(paidRaw.toDate());
+              paidDateObj = paidRaw.toDate();
             } else if (paidRaw instanceof Date && !Number.isNaN(paidRaw.getTime())) {
-              paidDate = this.timeFmt.format(paidRaw);
+              paidDateObj = paidRaw;
             } else if (paidRaw) {
               const parsed = new Date(paidRaw);
               if (!Number.isNaN(parsed.getTime())) {
-                paidDate = this.timeFmt.format(parsed);
+                paidDateObj = parsed;
               }
+            }
+            if (paidDateObj) {
+              paidDate = this.fullDateFmt.format(paidDateObj);
             }
             // Compute five-day grace details so admins can see who is still within the window.
             const graceRaw = user.subscriptionGraceUntil;
