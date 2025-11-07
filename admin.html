@@ -698,6 +698,7 @@
                 Generar Reservas
               </button>
             </div>
+            <div id="manual-bookings-existing" class="mt-4 space-y-2"></div>
             <p class="text-xs text-zinc-400 mt-2">
               Esto creará reservas de prueba con emails placeholder para simular las reservas recibidas por WhatsApp.
             </p>
@@ -1681,7 +1682,11 @@
         },
 
         // --- RENDER ---
-        renderAll(){ this.renderCalendarGrid(); this.renderDailyBookings(); },
+        renderAll(){
+          this.renderCalendarGrid();
+          this.renderDailyBookings();
+          this.renderManualBookingsList(this.state.selectedClass?.id || null);
+        },
 
         isClassRunningNow(cls){
           if (!cls || !cls.classDate || !cls.time) return false;
@@ -2026,6 +2031,61 @@
             });
 
             container.innerHTML = blocks.join('') || '<p class="text-zinc-500 text-sm">No hay reservas.</p>';
+          });
+        },
+
+        // Render manual bookings so admins can free spots quickly.
+        renderManualBookingsList(classId){
+          const listEl = document.getElementById('manual-bookings-existing');
+          if (!listEl){
+            return;
+          }
+
+          if (!classId){
+            listEl.innerHTML = '<p class="text-xs text-zinc-400">Selecciona una clase para revisar las reservas manuales.</p>';
+            return;
+          }
+
+          const bookings = this.state.bookingsMap.get(classId) || [];
+          const manualBookings = bookings.filter(b=>b.isManualBooking);
+
+          if (!manualBookings.length){
+            listEl.innerHTML = '<p class="text-xs text-zinc-400">No hay reservas manuales activas.</p>';
+            return;
+          }
+
+          const rows = manualBookings.map(booking=>{
+            const safeName = DOMPurify.sanitize(booking.userName || 'Reserva WhatsApp');
+            const createdAtDate = booking.createdAt?.toDate ? booking.createdAt.toDate() : (booking.createdAt ? new Date(booking.createdAt) : null);
+            const createdAtStr = createdAtDate && !Number.isNaN(createdAtDate.getTime()) ? this.timeFmt.format(createdAtDate) : '';
+            const createdAtHtml = createdAtStr ? `<p class="text-[11px] text-zinc-500">Reservada a las ${createdAtStr}</p>` : '';
+            return `
+              <div class="flex items-center justify-between bg-zinc-800/70 border border-zinc-600 rounded-lg px-3 py-2">
+                <div>
+                  <p class="text-sm text-zinc-100">${safeName}</p>
+                  ${createdAtHtml}
+                </div>
+                <button
+                  class="text-xs font-semibold text-rose-300 hover:text-rose-200"
+                  data-manual-booking-id="${booking.id}"
+                  data-manual-class-id="${classId}"
+                >Liberar lugar</button>
+              </div>`;
+          });
+
+          listEl.innerHTML = rows.join('');
+          listEl.querySelectorAll('[data-manual-booking-id]').forEach(btn=>{
+            btn.onclick = (evt)=>{
+              const target = evt.currentTarget;
+              const bookingId = target?.dataset?.manualBookingId;
+              const clsId = target?.dataset?.manualClassId || classId;
+              if (bookingId && clsId){
+                const shouldDelete = confirm('¿Liberar este lugar manual?');
+                if (shouldDelete){
+                  this.deleteManualBooking(clsId, bookingId);
+                }
+              }
+            };
           });
         },
 
@@ -3022,6 +3082,7 @@
           document.getElementById('class-enrolled').value = '0';
           document.getElementById('class-image').value = '';
           document.getElementById('manual-bookings-count').value = '';
+          this.renderManualBookingsList(null);
 
           const timeInput = document.getElementById('class-time');
           if (timeInput){
@@ -3117,6 +3178,7 @@
           document.getElementById('class-image').value = cls.image || '';
           const manualInput = document.getElementById('manual-bookings-count');
           if (manualInput) manualInput.value = '';
+          this.renderManualBookingsList(cls.id);
 
           const tabD = document.getElementById('tab-details');
           const tabA = document.getElementById('tab-attendance');
@@ -3156,6 +3218,7 @@
         hideClassModal(){
           document.getElementById('class-modal').classList.add('hidden');
           this.state.selectedClass = null;
+          this.renderManualBookingsList(null);
         },
 
         async refreshClassTimeLock(cls){
@@ -4333,6 +4396,98 @@
             this.showToast({
               title: 'Error',
               message: `No se pudieron crear las reservas: ${error.message}`,
+              variant: 'error'
+            });
+          }
+        },
+
+        // Delete a WhatsApp booking and release one seat from the class.
+        async deleteManualBooking(classId, bookingId){
+          if (!classId || !bookingId){
+            return;
+          }
+
+          let effectiveClassId = classId;
+
+          try{
+            await this.db.runTransaction(async transaction=>{
+              const bookingRef = this.db.collection('bookings').doc(bookingId);
+              const bookingSnap = await transaction.get(bookingRef);
+
+              if (!bookingSnap.exists){
+                throw new Error('BOOKING_NOT_FOUND');
+              }
+
+              const bookingData = bookingSnap.data() || {};
+
+              if (!bookingData.isManualBooking){
+                throw new Error('NOT_MANUAL_BOOKING');
+              }
+
+              effectiveClassId = bookingData.classId || classId;
+              const classRef = this.db.collection('classes').doc(effectiveClassId);
+              const classSnap = await transaction.get(classRef);
+
+              if (classSnap.exists){
+                const classData = classSnap.data() || {};
+                const currentEnrolled = Number(classData.enrolledCount || 0);
+                const nextCount = Math.max(0, currentEnrolled - 1);
+                transaction.update(classRef, { enrolledCount: nextCount });
+              }
+
+              transaction.delete(bookingRef);
+            });
+
+            this.showToast({
+              title: 'Reserva eliminada',
+              message: 'Se liberó un lugar para la clase.'
+            });
+            const existing = this.state.bookingsMap.get(effectiveClassId) || [];
+            const filtered = existing.filter(item=>item.id !== bookingId);
+            this.state.bookingsMap.set(effectiveClassId, filtered);
+            const classIndex = this.state.classes.findIndex(c=>c.id === effectiveClassId);
+            if (classIndex >= 0){
+              const targetClass = this.state.classes[classIndex];
+              const currentEnrolledClass = Number(targetClass?.enrolledCount || 0);
+              const updatedClass = { ...targetClass, enrolledCount: Math.max(0, currentEnrolledClass - 1) };
+              this.state.classes.splice(classIndex, 1, updatedClass);
+            }
+            if (this.state.selectedClass?.id === effectiveClassId){
+              const currentEnrolled = Number(this.state.selectedClass.enrolledCount || 0);
+              const nextEnrolled = Math.max(0, currentEnrolled - 1);
+              this.state.selectedClass.enrolledCount = nextEnrolled;
+              const enrolledInput = document.getElementById('class-enrolled');
+              if (enrolledInput){
+                enrolledInput.value = nextEnrolled;
+              }
+            }
+            this.renderAll();
+          }catch(error){
+            if (error && error.message === 'BOOKING_NOT_FOUND'){
+              this.showToast({
+                title: 'Reserva inexistente',
+                message: 'Esta reserva ya había sido eliminada.',
+                variant: 'warn'
+              });
+              const current = this.state.bookingsMap.get(classId) || [];
+              const cleaned = current.filter(item=>item.id !== bookingId);
+              this.state.bookingsMap.set(classId, cleaned);
+              this.renderAll();
+              return;
+            }
+
+            if (error && error.message === 'NOT_MANUAL_BOOKING'){
+              this.showToast({
+                title: 'Acción no permitida',
+                message: 'Solo puedes eliminar reservas creadas por WhatsApp.',
+                variant: 'error'
+              });
+              return;
+            }
+
+            this.showToast({
+              title: 'Error',
+              message: `No se pudo eliminar la reserva: ${error.message}`,
               variant: 'error'
             });
           }
