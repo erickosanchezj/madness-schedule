@@ -2047,7 +2047,25 @@
           }
 
           const bookings = this.state.bookingsMap.get(classId) || [];
-          const manualBookings = bookings.filter(b=>b.isManualBooking);
+          const manualBookings = bookings
+            .filter(b=>b.isManualBooking)
+            .sort((a,b)=>{
+              const getTime = (record)=>{
+                const stamp = record?.createdAt;
+                if (!stamp) return 0;
+                if (typeof stamp.toMillis === 'function'){
+                  const millis = stamp.toMillis();
+                  return Number.isFinite(millis) ? millis : 0;
+                }
+                if (typeof stamp.toDate === 'function'){
+                  const parsed = stamp.toDate();
+                  return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed.getTime() : 0;
+                }
+                const raw = new Date(stamp);
+                return Number.isNaN(raw.getTime()) ? 0 : raw.getTime();
+              };
+              return getTime(a) - getTime(b);
+            });
 
           if (!manualBookings.length){
             listEl.innerHTML = '<p class="text-xs text-zinc-400">No hay reservas manuales activas.</p>';
@@ -2059,11 +2077,16 @@
             const createdAtDate = booking.createdAt?.toDate ? booking.createdAt.toDate() : (booking.createdAt ? new Date(booking.createdAt) : null);
             const createdAtStr = createdAtDate && !Number.isNaN(createdAtDate.getTime()) ? this.timeFmt.format(createdAtDate) : '';
             const createdAtHtml = createdAtStr ? `<p class="text-[11px] text-zinc-500">Reservada a las ${createdAtStr}</p>` : '';
+            const adminLabel = booking.createdByAdminName || booking.createdByAdminEmail || '';
+            const adminHtml = adminLabel
+              ? `<p class="text-[11px] text-zinc-500">Capturado por ${DOMPurify.sanitize(adminLabel)}</p>`
+              : '';
             return `
               <div class="flex items-center justify-between bg-zinc-800/70 border border-zinc-600 rounded-lg px-3 py-2">
                 <div>
                   <p class="text-sm text-zinc-100">${safeName}</p>
                   ${createdAtHtml}
+                  ${adminHtml}
                 </div>
                 <button
                   class="text-xs font-semibold text-rose-300 hover:text-rose-200"
@@ -4310,6 +4333,11 @@
             const capacity = cls.capacity || 15;
             const enrolledCount = Number(cls.enrolledCount || 0);
             const occupancy = Math.max(currentCount, enrolledCount);
+            const existingManualCount = currentBookings.filter(item=>item.isManualBooking).length;
+            const adminUser = this.auth?.currentUser || null;
+            const adminUid = adminUser?.uid || '';
+            const adminEmail = adminUser?.email || '';
+            const adminName = adminUser?.displayName || adminEmail || '';
 
             const remainingSlots = Math.max(0, capacity - occupancy);
             if (occupancy + count > capacity || remainingSlots <= 0){
@@ -4321,7 +4349,6 @@
               return;
             }
 
-            const timestamp = firebase.firestore.Timestamp.now();
             const baseNow = Date.now();
             const classRef = this.db.collection('classes').doc(classId);
 
@@ -4346,12 +4373,15 @@
                 const bookingRef = this.db.collection('bookings').doc();
                 const bookingData = {
                   classId: classId,
-                  userId: `whatsapp-test-${baseNow}-${i}`,
-                  userName: `Reserva WhatsApp #${i}`,
-                  userEmail: `whatsapp-booking-${baseNow}-${i}@test.local`,
-                  createdAt: timestamp,
+                  userId: `whatsapp-${classId}-${baseNow}-${i}`,
+                  userName: `Reserva WhatsApp #${existingManualCount + i}`,
+                  userEmail: `whatsapp-booking-${baseNow}-${existingManualCount + i}@test.local`,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                   status: 'confirmed',
-                  isManualBooking: true
+                  isManualBooking: true,
+                  createdByAdminId: adminUid,
+                  createdByAdminEmail: adminEmail,
+                  createdByAdminName: adminName
                 };
                 transaction.set(bookingRef, bookingData);
               }
