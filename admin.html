@@ -4364,6 +4364,19 @@
             });
 
             countInput.value = '';
+            const classIndex = this.state.classes.findIndex(item=>item.id === classId);
+            if (classIndex >= 0){
+              const updatedClass = { ...cls, enrolledCount: updatedEnrolled };
+              this.state.classes.splice(classIndex, 1, updatedClass);
+            }
+
+            if (this.state.selectedClass?.id === classId){
+              this.state.selectedClass = { ...this.state.selectedClass, enrolledCount: updatedEnrolled };
+              const enrolledInput = document.getElementById('class-enrolled');
+              if (enrolledInput){
+                enrolledInput.value = updatedEnrolled;
+              }
+            }
 
             cls.enrolledCount = updatedEnrolled;
             this.renderAll();
