@@ -14,6 +14,84 @@ const REMINDER_INTERVALS = [60, 30, 15];
 const REMINDER_FUNCTION_FQFN =
   'projects/madnessscheds/locations/us-central1/functions/sendBookingReminder';
 
+async function sendAdminBookingNotification(booking, classData, bookingId) {
+  if (!booking || !booking.userId || !booking.classId) return;
+
+  const adminSnap = await db.collection('users').where('admin', '==', true).get();
+
+  const tokens = [];
+  adminSnap.forEach((doc) => {
+    const tokenMap = doc.get('fcmTokens') || {};
+    Object.keys(tokenMap).forEach((token) => tokens.push(token));
+  });
+
+  if (tokens.length === 0) {
+    console.log('sendAdminBookingNotification: no admin tokens found.');
+    return;
+  }
+
+  const className =
+    classData?.name || classData?.title || booking.className || 'Clase';
+  const classDate = booking.classDate || classData?.classDate || '';
+  const time = booking.time || classData?.time || '';
+  const userName = booking.userName || 'Miembro';
+
+  const title = 'Nueva reserva';
+  const details = [className, classDate, time].filter(Boolean).join(' · ');
+  const body = `${userName} reservó ${details || 'una clase'}`;
+
+  const tokenChunks = [];
+  for (let i = 0; i < tokens.length; i += 500) tokenChunks.push(tokens.slice(i, i + 500));
+
+  const res = { responses: [], successCount: 0, failureCount: 0 };
+  for (const chunk of tokenChunks) {
+    const chunkRes = await admin.messaging().sendEachForMulticast({
+      tokens: chunk,
+      notification: { title, body },
+      data: { type: 'admin_booking', classId: booking.classId },
+    });
+    res.responses.push(...chunkRes.responses);
+    res.successCount += chunkRes.successCount;
+    res.failureCount += chunkRes.failureCount;
+  }
+
+  const prunePromises = [];
+  const failedTokens = [];
+  res.responses.forEach((r, idx) => {
+    if (!r.success) {
+      const token = tokens[idx];
+      const code = r.error?.errorInfo?.code || r.error?.code || '';
+      const invalid =
+        code === 'messaging/invalid-registration-token' ||
+        code === 'messaging/registration-token-not-registered';
+      if (invalid) {
+        prunePromises.push(pruneTokenInUsers(token));
+      } else {
+        console.error('Admin booking notification failure', token, booking.classId, code);
+      }
+      failedTokens.push({ token, errorCode: code || 'unknown' });
+    }
+  });
+  await Promise.all(prunePromises);
+
+  const notificationRecord = {
+    classId: booking.classId,
+    userId: booking.userId,
+    bookingId,
+    type: 'admin_booking',
+    className,
+    classDate,
+    time,
+    sentAt: admin.firestore.FieldValue.serverTimestamp(),
+    tokensUsed: [...tokens],
+    successCount: res.successCount,
+    failureCount: res.failureCount,
+    failedTokens,
+  };
+
+  await db.collection('notifications').add(notificationRecord);
+}
+
 exports.onBookingCreate = onDocumentCreated(
   { region: 'us-central1', document: 'bookings/{bookingId}' },
   async (event) => {
@@ -98,6 +176,12 @@ exports.onBookingCreate = onDocumentCreated(
     } catch (error) {
       console.error('Error creating tasks:', error);
       throw error;
+    }
+
+    try {
+      await sendAdminBookingNotification(booking, classSnap.data(), event.params?.bookingId);
+    } catch (err) {
+      console.error('Failed to send admin booking notification', err);
     }
   }
 );
