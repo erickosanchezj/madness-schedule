@@ -119,63 +119,63 @@ exports.onBookingCreate = onDocumentCreated(
 
     const start = classSnap.get('startAt');
     console.log('Start field:', start);
-    if (!start) {
-      console.log('Missing start field, exiting.');
-      return;
-    }
 
-    const startDate = start.toDate();
-    console.log('Start date:', startDate);
+    if (start) {
+      const startDate = start.toDate();
+      console.log('Start date:', startDate);
 
-    const existingBookingSnap = await event.data.ref.get();
-    if (!existingBookingSnap.exists) {
-      console.log('Booking document already removed before scheduling reminders.');
-      return;
-    }
-
-    const functionsAdmin = getFunctions();
-
-    try {
-      console.log('taskQueue target:', REMINDER_FUNCTION_FQFN);
-      const queue = functionsAdmin.taskQueue(REMINDER_FUNCTION_FQFN);
-
-      console.log('Queue created successfully');
-      const now = new Date();
-      console.log('Current time:', now);
-
-      REMINDER_INTERVALS.forEach((interval) => {
-        const scheduleTime = new Date(startDate.getTime() - interval * 60000);
-        console.log(
-          `Interval ${interval}min: scheduleTime=${scheduleTime}, willSchedule=${scheduleTime > now}`
-        );
-      });
-
-      const tasks = await Promise.all(
-        REMINDER_INTERVALS
-          .map((interval) => {
-            const scheduleTime = new Date(startDate.getTime() - interval * 60000);
-            if (scheduleTime <= now) return null;
-            return queue.enqueue({ classId, userId, interval }, { scheduleTime });
-          })
-          .filter(Boolean)
-      );
-
-      const reminderTaskNames = tasks
-        .map((task) => (task && typeof task.name === 'string' ? task.name : null))
-        .filter(Boolean);
-
-      const latestBookingSnap = await event.data.ref.get();
-      if (!latestBookingSnap.exists) {
-        console.log('Booking document was removed before reminders were stored. Skipping write.');
+      const existingBookingSnap = await event.data.ref.get();
+      if (!existingBookingSnap.exists) {
+        console.log('Booking document already removed before scheduling reminders.');
         return;
       }
 
-      await event.data.ref.set({ reminderTaskNames }, { merge: true });
+      const functionsAdmin = getFunctions();
 
-      console.log('Tasks created:', tasks.length);
-    } catch (error) {
-      console.error('Error creating tasks:', error);
-      throw error;
+      try {
+        console.log('taskQueue target:', REMINDER_FUNCTION_FQFN);
+        const queue = functionsAdmin.taskQueue(REMINDER_FUNCTION_FQFN);
+
+        console.log('Queue created successfully');
+        const now = new Date();
+        console.log('Current time:', now);
+
+        REMINDER_INTERVALS.forEach((interval) => {
+          const scheduleTime = new Date(startDate.getTime() - interval * 60000);
+          console.log(
+            `Interval ${interval}min: scheduleTime=${scheduleTime}, willSchedule=${scheduleTime > now}`
+          );
+        });
+
+        const tasks = await Promise.all(
+          REMINDER_INTERVALS
+            .map((interval) => {
+              const scheduleTime = new Date(startDate.getTime() - interval * 60000);
+              if (scheduleTime <= now) return null;
+              return queue.enqueue({ classId, userId, interval }, { scheduleTime });
+            })
+            .filter(Boolean)
+        );
+
+        const reminderTaskNames = tasks
+          .map((task) => (task && typeof task.name === 'string' ? task.name : null))
+          .filter(Boolean);
+
+        const latestBookingSnap = await event.data.ref.get();
+        if (!latestBookingSnap.exists) {
+          console.log('Booking document was removed before reminders were stored. Skipping write.');
+          return;
+        }
+
+        await event.data.ref.set({ reminderTaskNames }, { merge: true });
+
+        console.log('Tasks created:', tasks.length);
+      } catch (error) {
+        console.error('Error creating tasks:', error);
+        throw error;
+      }
+    } else {
+      console.log('Missing start field, skipping reminder scheduling but continuing notification flow.');
     }
 
     try {
