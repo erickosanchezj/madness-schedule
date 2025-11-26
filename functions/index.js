@@ -20,6 +20,8 @@ const ADMIN_ORIGIN_SET = new Set(ADMIN_PANEL_ORIGINS);
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const REMINDER_FUNCTION_FQFN =
   "projects/madnessscheds/locations/us-central1/functions/sendBookingReminder";
+const TOTALPASS_FUNCTION_FQFN =
+  "projects/madnessscheds/locations/us-central1/functions/sendTotalPassReminder";
 const FIVE_DAY_MS = 5 * 24 * 60 * 60 * 1000;
 
 /**
@@ -79,6 +81,7 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
   let recordedLateStrike = false;
   let resultingLateCount = 0;
   let reminderTaskNames = [];
+  let totalPassTaskNames = [];
 
   await db.runTransaction(async (tx) => {
     const [bookingSnap, classSnap, userSnap] = await Promise.all([
@@ -94,6 +97,11 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
     const bookingData = bookingSnap.data() || {};
     reminderTaskNames = Array.isArray(bookingData.reminderTaskNames)
       ? bookingData.reminderTaskNames.filter(
+          (name) => typeof name === "string" && name.trim() !== ""
+        )
+      : [];
+    totalPassTaskNames = Array.isArray(bookingData.totalPassTaskNames)
+      ? bookingData.totalPassTaskNames.filter(
           (name) => typeof name === "string" && name.trim() !== ""
         )
       : [];
@@ -150,6 +158,25 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
       );
     } catch (err) {
       console.error("cancelBooking: reminder cleanup failed", err);
+    }
+  }
+
+  if (totalPassTaskNames.length > 0) {
+    try {
+      const queue = getFunctions().taskQueue(TOTALPASS_FUNCTION_FQFN);
+      await Promise.all(
+        totalPassTaskNames.map((taskName) =>
+          queue.delete(taskName).catch((err) => {
+            console.error(
+              "cancelBooking: failed to delete TotalPass reminder task",
+              taskName,
+              err
+            );
+          })
+        )
+      );
+    } catch (err) {
+      console.error("cancelBooking: TotalPass cleanup failed", err);
     }
   }
 

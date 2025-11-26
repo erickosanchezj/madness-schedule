@@ -107,7 +107,7 @@ exports.onBookingCreateTotalPass = onDocumentCreated(
     try {
       const functionsAdmin = getFunctions();
       const queue = functionsAdmin.taskQueue(TOTALPASS_FUNCTION_FQFN);
-      await queue.enqueue(
+      const task = await queue.enqueue(
         {
           classId,
           userId,
@@ -115,6 +115,21 @@ exports.onBookingCreateTotalPass = onDocumentCreated(
         },
         { scheduleTime }
       );
+      const taskName =
+        task && typeof task.name === 'string' ? task.name.trim() : '';
+      if (taskName) {
+        const latestBookingSnap = await event.data.ref.get();
+        if (latestBookingSnap.exists) {
+          await event.data.ref.set(
+            { totalPassTaskNames: [taskName] },
+            { merge: true }
+          );
+        } else {
+          console.log(
+            'Booking removed before storing TotalPass task name, skipping persist.'
+          );
+        }
+      }
       console.log('TotalPass reminder queued:', {
         classId,
         userId,
