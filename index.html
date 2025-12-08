@@ -413,6 +413,20 @@
               const data = doc.data() || {};
               state.isTotalPass = !!data.totalPass;
               state.subscriptionType = typeof data.subscriptionType === 'string' ? data.subscriptionType : 'monthly';
+              state.subscriptionStatus = typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : 'unpaid';
+              const graceRaw = data.subscriptionGraceUntil;
+              let graceUntil = null;
+              if (graceRaw?.toDate) {
+                graceUntil = graceRaw.toDate();
+              } else if (graceRaw instanceof Date && !Number.isNaN(graceRaw.getTime())) {
+                graceUntil = graceRaw;
+              } else if (graceRaw) {
+                const parsedGrace = new Date(graceRaw);
+                if (!Number.isNaN(parsedGrace.getTime())) {
+                  graceUntil = parsedGrace;
+                }
+              }
+              state.subscriptionGraceUntil = graceUntil;
               const strikesRaw = Number(data.lateCancellations);
               state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
               scheduleRender();
@@ -1023,6 +1037,14 @@
           const nameSubtitle = nameForText || 'Sin nombre';
           const { strikeCount, strikeMessage } = getStrikeInfo();
           const subscriptionType = typeof state.subscriptionType === 'string' ? state.subscriptionType : 'monthly';
+          const subscriptionStatus = typeof state.subscriptionStatus === 'string' ? state.subscriptionStatus : 'unpaid';
+          const graceUntilDate = state.subscriptionGraceUntil instanceof Date && !Number.isNaN(state.subscriptionGraceUntil.getTime())
+            ? state.subscriptionGraceUntil
+            : null;
+          const isWithinGrace = (() => {
+            if (!graceUntilDate) return false;
+            return Date.now() <= graceUntilDate.getTime();
+          })();
           const subscriptionBadgeClass = subscriptionType === 'monthly'
             ? 'bg-blue-600'
             : subscriptionType === 'totalpass'
@@ -1033,6 +1055,7 @@
             : subscriptionType === 'totalpass'
               ? 'TotalPass'
               : 'Por Clase';
+          const showUnpaidAlert = (subscriptionType === 'monthly') && subscriptionStatus !== 'paid' && !isWithinGrace;
           return `
             <div class="p-6 space-y-6">
               <header class="text-center space-y-4">
@@ -1042,6 +1065,11 @@
                   <p class="text-sm text-zinc-400">${safeEmail}</p>
                 </div>
               </header>
+              ${showUnpaidAlert ? `
+              <div class="bg-rose-900/60 border border-rose-700 text-rose-100 p-4 rounded-xl text-sm">
+                <p class="font-semibold">Suscripción mensual no pagada.</p>
+                <p class="text-rose-200 mt-1">Paga antes del 16 para seguir reservando.</p>
+              </div>` : ''}
               <section aria-labelledby="profile-strikes" class="bg-zinc-800 rounded-2xl p-4 text-center space-y-2">
                 <h2 id="profile-strikes" class="text-lg font-semibold">Strikes por cancelación</h2>
                 <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
@@ -1091,6 +1119,13 @@
           const enrolled = Number(cls.enrolledCount||0);
           const availableSpots = Number(cls.capacity||0)-enrolled;
           const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+          const subscriptionType = typeof state.subscriptionType === 'string' ? state.subscriptionType : 'monthly';
+          const subscriptionStatus = typeof state.subscriptionStatus === 'string' ? state.subscriptionStatus : 'unpaid';
+          const graceUntilDate = state.subscriptionGraceUntil instanceof Date && !Number.isNaN(state.subscriptionGraceUntil.getTime())
+            ? state.subscriptionGraceUntil
+            : null;
+          const withinGrace = graceUntilDate ? (Date.now() <= graceUntilDate.getTime()) : false;
+          const isMonthlyBlocked = subscriptionType === 'monthly' && subscriptionStatus !== 'paid' && !withinGrace;
           const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
           const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
           const durationMin = Number(cls.duration||60);
@@ -1146,6 +1181,15 @@
             } else {
               buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Unirse a lista de espera</button>`;
             }
+          }
+          if (isMonthlyBlocked) {
+            buttonHTML = `<div class="space-y-3">
+              <div class="bg-rose-900/60 border border-rose-700 text-rose-100 p-4 rounded-xl text-sm">
+                <p class="font-semibold">Suscripción mensual no pagada.</p>
+                <p class="text-rose-200 mt-1">Paga antes del 16 para seguir reservando.</p>
+              </div>
+              <button class="w-full bg-zinc-700 text-zinc-500 font-bold py-3 rounded-xl" disabled>Reserva bloqueada</button>
+            </div>`;
           }
           return `
             <div>
