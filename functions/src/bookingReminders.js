@@ -27,6 +27,41 @@ const bookingTimeFormatter = new Intl.DateTimeFormat('es-MX', {
 const REMINDER_FUNCTION_FQFN =
   'projects/madnessscheds/locations/us-central1/functions/sendBookingReminder';
 
+// Parses date/time strings as local wall time in the given zone to avoid UTC drift.
+function parseDateTimeInTimeZone(dateStr, timeStr, timeZone) {
+  if (!dateStr || !timeStr) return null;
+
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hour, minute] = timeStr.split(':').map(Number);
+  if ([year, month, day, hour, minute].some((n) => Number.isNaN(n))) return null;
+
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const tzParts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+    .formatToParts(utcGuess)
+    .reduce((acc, part) => ({ ...acc, [part.type]: part.value }), {});
+
+  const offset =
+    Date.UTC(
+      Number(tzParts.year),
+      Number(tzParts.month) - 1,
+      Number(tzParts.day),
+      Number(tzParts.hour),
+      Number(tzParts.minute),
+      Number(tzParts.second || '0')
+    ) - utcGuess.getTime();
+
+  return new Date(utcGuess.getTime() - offset);
+}
+
 function resolveStartDate(booking = {}, classData = {}) {
   const candidates = [booking.startAt, classData.startAt];
 
@@ -45,7 +80,7 @@ function resolveStartDate(booking = {}, classData = {}) {
   const timeStr = booking.time || classData.time;
 
   if (dateStr && timeStr) {
-    const parsed = new Date(`${dateStr}T${timeStr}:00Z`);
+    const parsed = parseDateTimeInTimeZone(dateStr, timeStr, MX_TIME_ZONE);
     if (!Number.isNaN(parsed.getTime())) return parsed;
   }
 
