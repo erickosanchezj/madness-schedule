@@ -843,6 +843,12 @@
                 const isBooked = state.myBookings.some(b=>b.classId===cls.id);
                 const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // check if user already in waitlist
                 const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // notified users can book even if class shows full
+                const holdUserId = cls.waitlistHoldUserId;
+                const holdExpiresRaw = cls.waitlistHoldExpiresAt;
+                const holdExpiresAt = holdExpiresRaw?.toDate ? holdExpiresRaw.toDate() : (holdExpiresRaw ? new Date(holdExpiresRaw) : null);
+                const holdActive = holdUserId && holdExpiresAt && holdExpiresAt.getTime()>Date.now();
+                const holdForMe = holdActive && holdUserId===state.currentUser?.uid;
+                const effectiveAvailable = holdActive && !holdForMe ? 0 : available;
                 const safeId = DOMPurify.sanitize(cls.id);
                 let badge = `<div class="flex items-center justify-end gap-2">
               <!-- <span class="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Lugares disponibles</span> -->
@@ -850,7 +856,7 @@
             </div>`;
                 if (isBooked) {
                   badge = `<span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-indigo-300 border border-indigo-400/70 rounded-md bg-transparent">Reservada</span>`;
-                } else if (available<=0 && !notified) {
+                } else if (effectiveAvailable<=0 && !notified) {
                   // class full: show join or leave waitlist options
                   if (waitEntry) {
                     const pos = DOMPurify.sanitize(String(waitEntry.position||1));
@@ -858,9 +864,13 @@
                   } else {
                     badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md\">Unirse a lista de espera</button>`;
                   }
-                } else if (available<=0 && notified) {
+                } else if (effectiveAvailable<=0 && notified) {
                   // user has been notified of a free spot
                   badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
+                } else if (holdActive && holdForMe) {
+                  badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
+                } else if (holdActive && !holdForMe) {
+                  badge = `<span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-amber-300 border border-amber-400/60 rounded-md bg-transparent">Reservado para lista de espera</span>`;
                 }
                 const ymdUTC = cls.classDate || targetYMD;
                 const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
@@ -1119,6 +1129,12 @@
           const enrolled = Number(cls.enrolledCount||0);
           const availableSpots = Number(cls.capacity||0)-enrolled;
           const isBooked = state.myBookings.some(b=>b.classId===cls.id);
+          const holdUserId = cls.waitlistHoldUserId;
+          const holdExpiresRaw = cls.waitlistHoldExpiresAt;
+          const holdExpiresAt = holdExpiresRaw?.toDate ? holdExpiresRaw.toDate() : (holdExpiresRaw ? new Date(holdExpiresRaw) : null);
+          const holdActive = holdUserId && holdExpiresAt && holdExpiresAt.getTime()>Date.now();
+          const holdForMe = holdActive && holdUserId===state.currentUser?.uid;
+          const effectiveAvailable = holdActive && !holdForMe ? 0 : availableSpots;
           const subscriptionType = typeof state.subscriptionType === 'string' ? state.subscriptionType : 'monthly';
           const subscriptionStatus = typeof state.subscriptionStatus === 'string' ? state.subscriptionStatus : 'unpaid';
           const graceUntilDate = state.subscriptionGraceUntil instanceof Date && !Number.isNaN(state.subscriptionGraceUntil.getTime())
@@ -1157,9 +1173,11 @@
           const safeInstructor = DOMPurify.sanitize(cls.instructor || 'Por asignar');
           const safeId = DOMPurify.sanitize(cls.id);
           const capacityValue = Number(cls.capacity||0);
-          const availableLabel = capacityValue>0
-            ? `${enrolled}/${capacityValue} ocupados`
-            : 'Capacidad no definida';
+          const availableLabel = (() => {
+            if (holdActive && !holdForMe) return 'Reservado para lista de espera';
+            if (capacityValue>0) return `${enrolled}/${capacityValue} ocupados`;
+            return 'Capacidad no definida';
+          })();
           const durationLabel = (()=>{
             if (!Number.isFinite(durationMin) || durationMin<=0) return 'Duración no definida';
             const hours = Math.floor(durationMin/60);
@@ -1173,7 +1191,7 @@
           if (isBooked) {
             // already have a booking
             buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-3 rounded-xl" disabled>Ya estás inscrito</button>`;
-          } else if (availableSpots<=0 && !notified) {
+          } else if (effectiveAvailable<=0 && !notified) {
             // class is full: either join waitlist or allow leaving
             if (waitEntry) {
               const pos = DOMPurify.sanitize(String(waitEntry.position||1));
@@ -1181,6 +1199,11 @@
             } else {
               buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Unirse a lista de espera</button>`;
             }
+          } else if (holdActive && holdForMe) {
+            buttonHTML = `<div class="space-y-2">
+              <p class="text-center text-sm text-amber-300">Tienes 5 minutos para tomar este lugar.</p>
+              <button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Reservar ahora</button>
+            </div>`;
           }
           if (isMonthlyBlocked) {
             buttonHTML = `<div class="space-y-3">
@@ -1314,6 +1337,14 @@
                 const cls = classSnap.data();
                 const enrolled = Number(cls.enrolledCount||0);
                 const capacity = Number(cls.capacity||0);
+                const holdWaitlistId = cls.waitlistHoldWaitlistId;
+                const holdUserId = cls.waitlistHoldUserId;
+                const holdExpiresRaw = cls.waitlistHoldExpiresAt;
+                const holdExpiresAt = holdExpiresRaw?.toDate ? holdExpiresRaw.toDate() : (holdExpiresRaw ? new Date(holdExpiresRaw) : null);
+                const holdActive = holdUserId && holdWaitlistId && holdExpiresAt && holdExpiresAt.getTime() > Date.now();
+                if (!notified && holdActive && holdUserId !== uid) {
+                  throw new Error('Clase llena (turno de lista de espera activo).');
+                }
                 if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
                 let startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : (cls.startAt ? new Date(cls.startAt) : null);
                 if (!startDateObj || isNaN(startDateObj.getTime())){
@@ -1336,6 +1367,13 @@
                 });
                 tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
                 if (waitSnap.exists) tx.delete(waitRef);
+                if (cls.waitlistHoldWaitlistId === `${classId}_${uid}`) {
+                  tx.set(classRef, {
+                    waitlistHoldUserId: firebase.firestore.FieldValue.delete(),
+                    waitlistHoldWaitlistId: firebase.firestore.FieldValue.delete(),
+                    waitlistHoldExpiresAt: firebase.firestore.FieldValue.delete()
+                  }, { merge: true });
+                }
               });
               if (waitEntry){
                 const q = await db.collection('waitlists')
@@ -1438,7 +1476,22 @@
           leaveWaitlist: async (classId)=>{
             const uid = state.currentUser.uid;
             try{
-              await db.collection('waitlists').doc(`${classId}_${uid}`).delete();
+              const waitId = `${classId}_${uid}`;
+              const classRef = db.collection('classes').doc(classId);
+              await db.runTransaction(async tx=>{
+                const classSnap = await tx.get(classRef);
+                tx.delete(db.collection('waitlists').doc(waitId));
+                if (classSnap.exists) {
+                  const data = classSnap.data() || {};
+                  if (data.waitlistHoldWaitlistId === waitId) {
+                    tx.set(classRef, {
+                      waitlistHoldUserId: firebase.firestore.FieldValue.delete(),
+                      waitlistHoldWaitlistId: firebase.firestore.FieldValue.delete(),
+                      waitlistHoldExpiresAt: firebase.firestore.FieldValue.delete()
+                    }, { merge: true });
+                  }
+                }
+              });
               showToast('Saliste de la lista de espera');
             }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
           }

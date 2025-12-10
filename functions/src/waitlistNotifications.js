@@ -14,6 +14,24 @@ const WAITLIST_EXPIRATION_FQFN =
   'projects/madnessscheds/locations/us-central1/functions/onWaitlistExpiration';
 const NOTIFICATION_WINDOW_MS = 5 * 60 * 1000;
 
+async function clearClassHoldIfMatches(classId, waitlistId) {
+  if (!classId || !waitlistId) return false;
+  const classRef = db.collection('classes').doc(classId);
+  const classSnap = await classRef.get();
+  if (!classSnap.exists) return false;
+  const holdId = classSnap.get('waitlistHoldWaitlistId');
+  if (holdId !== waitlistId) return false;
+  await classRef.set(
+    {
+      waitlistHoldUserId: admin.firestore.FieldValue.delete(),
+      waitlistHoldWaitlistId: admin.firestore.FieldValue.delete(),
+      waitlistHoldExpiresAt: admin.firestore.FieldValue.delete(),
+    },
+    { merge: true }
+  );
+  return true;
+}
+
 async function processWaitlistNotification(entry) {
   const { id, classId, userId } = entry || {};
   if (!id || !classId || !userId) return;
@@ -83,13 +101,23 @@ async function processWaitlistNotification(entry) {
 
   await db.collection('notifications').add(notificationRecord);
 
-  await db.collection('waitlists').doc(id).set(
-    {
-      notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      expiresAt,
-    },
-    { merge: true }
-  );
+  await Promise.all([
+    db.collection('waitlists').doc(id).set(
+      {
+        notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt,
+      },
+      { merge: true }
+    ),
+    db.collection('classes').doc(classId).set(
+      {
+        waitlistHoldUserId: userId,
+        waitlistHoldWaitlistId: id,
+        waitlistHoldExpiresAt: expiresAt,
+      },
+      { merge: true }
+    ),
+  ]);
 
   const queue = getFunctions().taskQueue(WAITLIST_EXPIRATION_FQFN);
   await queue.enqueue(
@@ -139,12 +167,28 @@ exports.onWaitlistExpiration = onTaskDispatched(
 
     const ref = db.collection('waitlists').doc(waitlistId);
     const snap = await ref.get();
-    if (!snap.exists) return;
+    if (!snap.exists) {
+      await clearClassHoldIfMatches(classId, waitlistId);
+      const nextSnap = await db
+        .collection('waitlists')
+        .where('classId', '==', classId)
+        .orderBy('position')
+        .limit(1)
+        .get();
+      if (!nextSnap.empty) {
+        await processWaitlistNotification({
+          id: nextSnap.docs[0].id,
+          ...nextSnap.docs[0].data(),
+        });
+      }
+      return;
+    }
 
     const expires = snap.get('expiresAt');
     if (expires?.toDate && expires.toDate().getTime() > Date.now()) return;
 
     const position = snap.get('position') || 1;
+    await clearClassHoldIfMatches(classId, waitlistId);
     await ref.delete();
 
     const q = await db
