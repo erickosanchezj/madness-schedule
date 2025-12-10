@@ -11,7 +11,7 @@ const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
 const db = admin.firestore();
 const REMINDER_INTERVALS = [60, 30, 15];
 const MX_TIME_ZONE = 'America/Mexico_City';
-const bookingDateFormatter = new Intl.DateTimeFormat('en-CA', {
+const bookingDateFormatter = new Intl.DateTimeFormat('es-MX', {
   timeZone: MX_TIME_ZONE,
   year: 'numeric',
   month: '2-digit',
