@@ -10,9 +10,47 @@ const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
 
 const db = admin.firestore();
 const REMINDER_INTERVALS = [60, 30, 15];
+const MX_TIME_ZONE = 'America/Mexico_City';
+const bookingDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: MX_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+const bookingTimeFormatter = new Intl.DateTimeFormat('es-MX', {
+  timeZone: MX_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
 
 const REMINDER_FUNCTION_FQFN =
   'projects/madnessscheds/locations/us-central1/functions/sendBookingReminder';
+
+function resolveStartDate(booking = {}, classData = {}) {
+  const candidates = [booking.startAt, classData.startAt];
+
+  for (const candidate of candidates) {
+    if (candidate?.toDate) {
+      const asDate = candidate.toDate();
+      if (!Number.isNaN(asDate.getTime())) return asDate;
+    }
+
+    if (candidate instanceof Date && !Number.isNaN(candidate.getTime())) {
+      return candidate;
+    }
+  }
+
+  const dateStr = booking.classDate || classData.classDate;
+  const timeStr = booking.time || classData.time;
+
+  if (dateStr && timeStr) {
+    const parsed = new Date(`${dateStr}T${timeStr}:00Z`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  return null;
+}
 
 async function sendAdminBookingNotification(booking, classData, bookingId) {
   if (!booking || !booking.userId || !booking.classId) return;
@@ -32,8 +70,13 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
 
   const className =
     classData?.name || classData?.title || booking.className || 'Clase';
-  const classDate = booking.classDate || classData?.classDate || '';
-  const time = booking.time || classData?.time || '';
+  const startDate = resolveStartDate(booking, classData);
+  const classDate = startDate
+    ? bookingDateFormatter.format(startDate)
+    : booking.classDate || classData?.classDate || '';
+  const time = startDate
+    ? bookingTimeFormatter.format(startDate)
+    : booking.time || classData?.time || '';
   const userName = booking.userName || 'Miembro';
 
   const title = 'Nueva reserva';
