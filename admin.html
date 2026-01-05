@@ -372,6 +372,7 @@
             <select id="subscription-filter" class="bg-zinc-700 text-white p-2 rounded">
               <option value="all">Todos los usuarios</option>
               <option value="monthly">Solo Mensuales</option>
+              <option value="monthly-unpaid">Mensuales No Pagados</option>
               <option value="totalpass-pending">TotalPass Pendientes</option>
               <option value="unpaid">No Pagados</option>
             </select>
@@ -3472,6 +3473,9 @@
 
           if (filter === 'monthly') {
             query = query.where('subscriptionType','==','monthly');
+          } else if (filter === 'monthly-unpaid') {
+            query = query.where('subscriptionType','==','monthly')
+              .where('subscriptionStatus','==','unpaid');
           } else if (filter === 'totalpass-pending') {
             query = query.where('totalPass','==',true).where('totalPassVerified','==',false);
           } else if (filter === 'unpaid') {
