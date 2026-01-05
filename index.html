@@ -142,6 +142,11 @@
             return `${timeFmt.format(start)}–${timeFmt.format(end)}`;
           }
         };
+        function formatGraceDeadline(graceDate){
+          const fallback = 'el 10 de cada mes';
+          if (!(graceDate instanceof Date) || Number.isNaN(graceDate.getTime())) return fallback;
+          return graceDate.toLocaleDateString('es-MX', { timeZone: MX_TZ, day: 'numeric', month: 'long' });
+        }
         // Skeleton loader helpers mimic the layout of real content so loading feels smoother.
         const skeletonLoaders = {
           classCard(){
@@ -1055,6 +1060,10 @@
             if (!graceUntilDate) return false;
             return Date.now() <= graceUntilDate.getTime();
           })();
+          const graceDeadlineLabel = formatGraceDeadline(graceUntilDate);
+          const graceDeadlineMessage = isWithinGrace
+            ? `Paga antes del ${graceDeadlineLabel} para seguir reservando.`
+            : `Tu periodo de gracia terminó el ${graceDeadlineLabel}. Paga para seguir reservando.`;
           const subscriptionBadgeClass = subscriptionType === 'monthly'
             ? 'bg-blue-600'
             : subscriptionType === 'totalpass'
@@ -1078,7 +1087,7 @@
               ${showUnpaidAlert ? `
               <div class="bg-rose-900/60 border border-rose-700 text-rose-100 p-4 rounded-xl text-sm">
                 <p class="font-semibold">Suscripción mensual no pagada.</p>
-                <p class="text-rose-200 mt-1">Paga antes del 16 para seguir reservando.</p>
+                <p class="text-rose-200 mt-1">${graceDeadlineMessage}</p>
               </div>` : ''}
               <section aria-labelledby="profile-strikes" class="bg-zinc-800 rounded-2xl p-4 text-center space-y-2">
                 <h2 id="profile-strikes" class="text-lg font-semibold">Strikes por cancelación</h2>
@@ -1142,6 +1151,8 @@
             : null;
           const withinGrace = graceUntilDate ? (Date.now() <= graceUntilDate.getTime()) : false;
           const isMonthlyBlocked = subscriptionType === 'monthly' && subscriptionStatus !== 'paid' && !withinGrace;
+          const graceDeadlineLabel = formatGraceDeadline(graceUntilDate);
+          const graceDeadlineMessage = `Tu periodo de gracia terminó el ${graceDeadlineLabel}. Paga para seguir reservando.`;
           const waitEntry = state.waitlistEntries.find(w=>w.classId===cls.id); // user's waitlist entry if any
           const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // true if user has active waitlist notification
           const durationMin = Number(cls.duration||60);
@@ -1209,7 +1220,7 @@
             buttonHTML = `<div class="space-y-3">
               <div class="bg-rose-900/60 border border-rose-700 text-rose-100 p-4 rounded-xl text-sm">
                 <p class="font-semibold">Suscripción mensual no pagada.</p>
-                <p class="text-rose-200 mt-1">Paga antes del 16 para seguir reservando.</p>
+                <p class="text-rose-200 mt-1">${graceDeadlineMessage}</p>
               </div>
               <button class="w-full bg-zinc-700 text-zinc-500 font-bold py-3 rounded-xl" disabled>Reserva bloqueada</button>
             </div>`;
