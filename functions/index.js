@@ -22,8 +22,8 @@ const REMINDER_FUNCTION_FQFN =
   "projects/madnessscheds/locations/us-central1/functions/sendBookingReminder";
 const TOTALPASS_FUNCTION_FQFN =
   "projects/madnessscheds/locations/us-central1/functions/sendTotalPassReminder";
-// Grace window ends at start of the 16th; we add 15 full days from the reset moment.
-const FIFTEEN_DAY_MS = 15 * 24 * 60 * 60 * 1000;
+// Grace window ends at start of the 11th; we add 10 full days from the reset moment.
+const TEN_DAY_MS = 10 * 24 * 60 * 60 * 1000;
 
 /**
  * Member cancellation handled on the server to prevent clock tampering.
@@ -409,8 +409,8 @@ exports.resetMonthlySubscriptionStatuses = onSchedule(
   },
   async () => {
     const graceStart = new Date();
-    const graceUntilDate = new Date(graceStart.getTime() + FIFTEEN_DAY_MS);
-    // Stored as a Timestamp so clients can compare and block bookings after the 15th.
+    const graceUntilDate = new Date(graceStart.getTime() + TEN_DAY_MS);
+    // Stored as a Timestamp so clients can compare and block bookings after the 10th.
     const graceUntil = admin.firestore.Timestamp.fromDate(graceUntilDate);
 
     const snapshot = await db
