@@ -3289,25 +3289,27 @@
           const save = document.getElementById('save-attendance-btn');
 
           const currentBookings = this.state.bookingsMap.get(cls.id) || [];
+          // Exclude WhatsApp/manual bookings from the attendance list.
+          const visibleBookings = currentBookings.filter(booking=>!booking.isManualBooking);
           const attSnap = await this.db.collection('attendance').where('classId','==',cls.id).get();
           const existing = {};
           attSnap.forEach(doc=>{ const d=doc.data(); existing[d.userId] = d.status; });
 
           this.state.currentAttendance = {};
-          currentBookings.forEach(b=>{
+          visibleBookings.forEach(b=>{
             if (existing[b.userId]){
               this.state.currentAttendance[b.userId] = { status: existing[b.userId], userName: b.userName };
             }
           });
 
-          if (!currentBookings.length){
+          if (!visibleBookings.length){
             msg.textContent = 'No hay usuarios inscritos en esta clase.';
             list.innerHTML=''; save.classList.add('hidden');
             return;
           }
 
-          msg.textContent = `${currentBookings.length} usuarios inscritos.`;
-          list.innerHTML = currentBookings.map(b=>{
+          msg.textContent = `${visibleBookings.length} usuarios inscritos.`;
+          list.innerHTML = visibleBookings.map(b=>{
             const st = existing[b.userId];
             const selA = st==='attended' ? 'selected-attended':'';
             const selF = st==='absent'   ? 'selected-absent':'';
