@@ -2006,15 +2006,20 @@
 
             const blocks = classesArr.map(cls=>{
               const attendees = this.state.bookingsMap.get(cls.id)||[];
+              const manualBookings = attendees.filter(booking=>booking.isManualBooking);
+              const regularBookings = attendees.filter(booking=>!booking.isManualBooking);
               const waiters = (this.state.waitlistsMap.get(cls.id)||[])
                 .sort((a,b)=>(a.position||0)-(b.position||0))
                 .map(w=>w.userName||w.userId||'Anónimo');
               const enrolled = Number(cls.enrolledCount||0);
               const cap = Number(cls.capacity||0);
-              const names = attendees.map(booking=>{
+              const manualLabel = manualBookings.length === 1 ? 'Whatsapp booking' : 'Whatsapp bookings';
+              const manualRow = manualBookings.length
+                ? `<li class="text-zinc-400 ml-4">- ${manualBookings.length} ${manualLabel}</li>`
+                : '';
+              const names = regularBookings.map(booking=>{
                 const safeName = DOMPurify.sanitize(booking.userName || 'Anónimo');
-                const manualBadge = booking.isManualBooking ? '<span class="ml-2 inline-flex items-center gap-1 text-emerald-300 text-xs" title="Reserva manual (WhatsApp)">📱</span>' : '';
-                return `<li class="text-zinc-400 ml-4 flex items-center">- <span>${safeName}</span>${manualBadge}</li>`;
+                return `<li class="text-zinc-400 ml-4">- ${safeName}</li>`;
               }).join('');
               const waitNames = waiters.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
               const safeTime = DOMPurify.sanitize(cls.localTime || cls.time || '');
@@ -2026,7 +2031,7 @@
               return `
                 <div class="mb-3">
                   <p class="font-bold">${safeTime} - ${safeName} (${enrolled} de ${cap})</p>
-                  <ul class="list-none">${names}</ul>
+                  <ul class="list-none">${manualRow}${names}</ul>
                   ${waitHTML}
                 </div>`;
             });
