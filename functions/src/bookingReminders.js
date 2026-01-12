@@ -77,6 +77,10 @@ function resolveStartDate(booking = {}, classData = {}) {
 }
 async function sendAdminBookingNotification(booking, classData, bookingId) {
   if (!booking || !booking.userId || !booking.classId) return;
+  if (booking.isManualBooking) {
+    console.log('sendAdminBookingNotification: skipping manual/WhatsApp booking.');
+    return;
+  }
   const adminSnap = await db.collection('users').where('admin', '==', true).get();
   const tokens = [];
   const adminTokenSummary = [];
