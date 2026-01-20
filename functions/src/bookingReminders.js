@@ -239,6 +239,14 @@ exports.sendBookingReminder = onTaskDispatched(
     const { classId, userId, interval } = request.data || {};
     if (!classId || !userId) return;
 
+    // Skip if the booking was cancelled/deleted before the reminder fires.
+    const bookingId = `${classId}_${userId}`;
+    const bookingSnap = await db.collection('bookings').doc(bookingId).get();
+    if (!bookingSnap.exists) {
+      console.log('sendBookingReminder: booking missing, skipping.', { classId, userId });
+      return;
+    }
+
     const [classSnap, userSnap] = await Promise.all([
       db.collection('classes').doc(classId).get(),
       db.collection('users').doc(userId).get(),
