@@ -143,9 +143,11 @@
           }
         };
         function formatGraceDeadline(graceDate){
-          const fallback = 'el 10 de cada mes';
+          const fallback = '10 de cada mes';
           if (!(graceDate instanceof Date) || Number.isNaN(graceDate.getTime())) return fallback;
-          return graceDate.toLocaleDateString('es-MX', { timeZone: MX_TZ, day: 'numeric', month: 'long' });
+          // Grace is stored as the first blocked moment, so show the last allowed day instead.
+          const lastAllowedDay = new Date(graceDate.getTime() - 24 * 60 * 60 * 1000);
+          return lastAllowedDay.toLocaleDateString('es-MX', { timeZone: MX_TZ, day: 'numeric', month: 'long' });
         }
         // Skeleton loader helpers mimic the layout of real content so loading feels smoother.
         const skeletonLoaders = {
