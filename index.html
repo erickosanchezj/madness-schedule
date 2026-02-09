@@ -1049,8 +1049,9 @@
           const nameForText = safeDisplay || safeEmail;
           const placeholder = (nameForText.charAt(0) || 'U').toUpperCase();
           // true if push notifications are allowed and token saved
-          const pushEnabled = Notification.permission==='granted' && localStorage.getItem(LS_KEY);
-          const pushStatusText = pushEnabled ? 'Activadas' : 'Desactivadas';
+          const notificationsAvailable = typeof Notification !== 'undefined' && isPushSupported();
+          const pushEnabled = notificationsAvailable && Notification.permission === 'granted' && localStorage.getItem(LS_KEY);
+          const pushStatusText = pushEnabled ? 'Activadas' : (notificationsAvailable ? 'Desactivadas' : 'No disponible');
           const nameSubtitle = nameForText || 'Sin nombre';
           const { strikeCount, strikeMessage } = getStrikeInfo();
           const subscriptionType = typeof state.subscriptionType === 'string' ? state.subscriptionType : 'monthly';
