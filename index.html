@@ -13,7 +13,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
     <!-- PWA -->
@@ -29,10 +29,51 @@
     <link rel="apple-touch-icon" href="./images/icon-192x192.png">
 
     <style>
-      body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+      :root {
+        --brand-gradient: linear-gradient(135deg, #4ADE80 0%, #0D9488 100%);
+        --card-surface: linear-gradient(145deg, #18181b 0%, #1e1e22 100%);
+        --card-border: #27272a;
+        --glow: 0 18px 45px -25px rgba(74, 222, 128, 0.65);
+      }
+      body {
+        font-family: 'DM Sans', -apple-system, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        background:
+          radial-gradient(120% 120% at 20% 20%, rgba(74, 222, 128, 0.08), transparent),
+          radial-gradient(120% 120% at 80% 0%, rgba(13, 148, 136, 0.09), transparent),
+          #09090b;
+        color: #fff;
+      }
+      .heading-serif { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.02em; }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .transition-all { transition: all 0.3s ease-in-out; }
       .spinner { border-top-color: #6366f1; }
+      .card-panel {
+        background: var(--card-surface);
+        border: 1px solid var(--card-border);
+        border-radius: 24px;
+        box-shadow: 0 12px 40px -28px rgba(0, 0, 0, 0.85);
+      }
+      .card-panel:hover {
+        border-color: rgba(45, 212, 191, 0.35);
+        box-shadow: var(--glow);
+      }
+      .btn-primary {
+        background-image: var(--brand-gradient);
+        color: #0b1720;
+        border: 1px solid rgba(34, 197, 94, 0.55);
+        border-radius: 14px;
+        font-weight: 700;
+        box-shadow: var(--glow);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+      }
+      .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.05); }
+      .btn-primary:active { transform: translateY(0); filter: brightness(0.97); box-shadow: 0 10px 25px -20px rgba(0,0,0,0.6); }
+      .pill {
+        border-radius: 999px;
+        border: 1px solid var(--card-border);
+        background: rgba(39, 39, 42, 0.6);
+      }
     </style>
   </head>
   <body class="bg-zinc-900 text-white antialiased">
@@ -655,7 +696,7 @@
         function renderAuthScreen(isLogin=true){
           authContainer.innerHTML = `
             <div class="w-full max-w-md mx-auto">
-              <h1 class="text-4xl font-bold text-white mb-2">Madness - Reserva de clases</h1>
+              <h1 class="text-4xl font-bold text-white mb-2 heading-serif">Madness - Reserva de clases</h1>
               <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
               <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -780,9 +821,9 @@
 
             if (!upcoming.length) {
               return `
-            <div class="bg-zinc-800 rounded-2xl p-5 text-center space-y-4">
+            <div class="card-panel p-5 text-center space-y-4">
               <p class="text-zinc-300">Aún no tienes reservas. ¡Anímate a agendar una clase!</p>
-              <button data-action="scroll-to-schedule" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">Ver Horario</button>
+              <button data-action="scroll-to-schedule" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold btn-primary rounded-lg text-zinc-900">Ver Horario</button>
             </div>`;
             }
 
@@ -802,7 +843,7 @@
               const safeClassId = DOMPurify.sanitize(b.classId);
               const safeTimeStatus = DOMPurify.sanitize(timeStatus);
               return `
-              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+              <div class="card-panel p-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                   <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                   <div>
@@ -842,7 +883,7 @@
             ? Array(3).fill(0).map(() => skeletonLoaders.classCard()).join('')
             : (() => {
               if (!filtered.length) {
-                return `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
+                return `<div class="card-panel p-5 text-center text-zinc-400">No hay más clases por ${state.scheduleFilter==='today'?'hoy':'mañana'}.</div>`;
               }
               return filtered.map(cls=>{
                 const enrolled = Number(cls.enrolledCount||0);
@@ -869,7 +910,7 @@
                     const pos = DOMPurify.sanitize(String(waitEntry.position||1));
                     badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
                   } else {
-                    badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md\">Unirse a lista de espera</button>`;
+                    badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold btn-primary text-zinc-900 rounded-md\">Unirse a lista de espera</button>`;
                   }
                 } else if (effectiveAvailable<=0 && notified) {
                   // user has been notified of a free spot
@@ -890,7 +931,7 @@
                 const safeDayText = DOMPurify.sanitize(dayText);
                 const countdownClass = getCountdownClass(ymdUTC, hhmmUTC);
                 return `
-              <div data-action="navigate-details" data-class-id="${safeId}" class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-zinc-700">
+              <div data-action="navigate-details" data-class-id="${safeId}" class="card-panel p-4 flex items-center gap-4 cursor-pointer">
                 <img src="${coverHelper.forClass(cls)}" alt="${safeName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                 <div class="flex-1">
                   <p class="font-bold text-lg">${safeName}</p>
@@ -908,7 +949,7 @@
             const sanitized = DOMPurify.sanitize(activeDailyMessage.message || '');
             const formatted = sanitized.replace(/\n/g,'<br>');
             return `
-              <section aria-live="polite" class="bg-zinc-800 rounded-2xl p-4 flex items-start gap-3" data-message-id="${safeId}">
+              <section aria-live="polite" class="card-panel p-4 flex items-start gap-3" data-message-id="${safeId}">
                 <div class="flex-1 text-sm leading-relaxed text-zinc-100">${formatted}</div>
                 <button type="button" data-action="dismiss-message" class="text-zinc-400 hover:text-zinc-200">
                   <i data-lucide="x" class="w-5 h-5"></i>
@@ -919,7 +960,7 @@
           return `
             <div class="p-6 space-y-6">
               <header>
-                <h1 class="text-3xl font-bold tracking-tight">Tu Agenda</h1>
+                <h1 class="text-3xl font-bold tracking-tight heading-serif">Tu Agenda</h1>
                 <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
               </header>
               ${dailyMessageHTML}
@@ -930,9 +971,9 @@
               <section aria-labelledby="horario">
                 <div class="flex items-center justify-between mb-3">
                   <h2 id="horario" class="text-xl font-semibold">Horario</h2>
-                  <div class="flex space-x-2 bg-zinc-800 p-1 rounded-lg">
-                    <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='today'?'bg-indigo-600 text-white':''}">Hoy</button>
-                    <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='tomorrow'?'bg-indigo-600 text-white':''}">Mañana</button>
+                  <div class="flex space-x-2 pill p-1">
+                    <button data-action="set-filter" data-filter="today" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='today'?'btn-primary text-zinc-900':'text-zinc-200'}">Hoy</button>
+                    <button data-action="set-filter" data-filter="tomorrow" class="px-3 py-1 text-sm font-semibold rounded-md ${state.scheduleFilter==='tomorrow'?'btn-primary text-zinc-900':'text-zinc-200'}">Mañana</button>
                   </div>
                 </div>
                 <div class="space-y-4">${classesHTML}</div>
@@ -992,7 +1033,7 @@
               return `<span class="inline-flex items-center gap-1 rounded-full border border-zinc-600/60 bg-zinc-700/60 px-3 py-1 text-xs font-medium text-zinc-300">Sin registro</span>`;
             })();
             return `
-              <div class="bg-zinc-800 rounded-2xl p-4 flex items-center gap-4">
+              <div class="card-panel p-4 flex items-center gap-4">
                 <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
                 <div class="flex-1">
                   <p class="font-bold text-lg">${safeClassName}</p>
@@ -1004,13 +1045,13 @@
 
           const todayList = todays.length
             ? todays.map(renderCard).join('')
-            : `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">Aún no terminas clases hoy.</div>`;
+            : `<div class="card-panel p-5 text-center text-zinc-400">Aún no terminas clases hoy.</div>`;
 
           const tokenButton = (state.isTotalPass && todays.length)
             ? (() => {
                 const firstId = todays[0].booking.classId ? DOMPurify.sanitize(todays[0].booking.classId) : '';
                 const dataAttr = firstId ? ` data-class-id="${firstId}"` : '';
-                return `<button data-action="send-totalpass-daily"${dataAttr} class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg">Enviar Token del Día</button>`;
+                return `<button data-action="send-totalpass-daily"${dataAttr} class="w-full btn-primary py-3 rounded-lg text-zinc-900 font-bold">Enviar Token del Día</button>`;
               })()
             : '';
 
@@ -1018,15 +1059,15 @@
           if (recentPast.length) {
             historyList = recentPast.map(renderCard).join('');
           } else if (todays.length) {
-            historyList = `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases anteriores en los últimos 14 días.</div>`;
+            historyList = `<div class="card-panel p-5 text-center text-zinc-400">No hay clases anteriores en los últimos 14 días.</div>`;
           } else {
-            historyList = `<div class="bg-zinc-800 rounded-2xl p-5 text-center text-zinc-400">No hay clases completadas en los últimos 14 días.</div>`;
+            historyList = `<div class="card-panel p-5 text-center text-zinc-400">No hay clases completadas en los últimos 14 días.</div>`;
           }
 
           return `
             <div class="p-6 space-y-6">
               <header>
-                <h1 class="text-3xl font-bold tracking-tight">Historial</h1>
+                <h1 class="text-3xl font-bold tracking-tight heading-serif">Historial</h1>
                 <p class="text-zinc-400">Revisa las clases que ya terminaste.</p>
               </header>
               <section aria-labelledby="terminadas-hoy">
@@ -1083,7 +1124,7 @@
               <header class="text-center space-y-4">
                 <img src="${state.currentUser.photoURL || `https://placehold.co/100x100/18181b/ffffff?text=${placeholder}`}" class="w-24 h-24 rounded-full mx-auto border-4 border-zinc-700">
                 <div class="space-y-1">
-                  <h1 class="text-2xl font-bold">${nameForText}</h1>
+                  <h1 class="text-2xl font-bold heading-serif">${nameForText}</h1>
                   <p class="text-sm text-zinc-400">${safeEmail}</p>
                 </div>
               </header>
@@ -1092,12 +1133,12 @@
                 <p class="font-semibold">Suscripción mensual no pagada.</p>
                 <p class="text-rose-200 mt-1">${graceDeadlineMessage}</p>
               </div>` : ''}
-              <section aria-labelledby="profile-strikes" class="bg-zinc-800 rounded-2xl p-4 text-center space-y-2">
+              <section aria-labelledby="profile-strikes" class="card-panel p-4 text-center space-y-2">
                 <h2 id="profile-strikes" class="text-lg font-semibold">Strikes por cancelación</h2>
                 <p class="text-3xl font-bold text-rose-400">${strikeCount}/3</p>
                 <p class="text-sm text-zinc-400">${strikeMessage}</p>
               </section>
-              <div class="bg-zinc-800 rounded-2xl p-4 divide-y divide-zinc-700">
+              <div class="card-panel p-4 divide-y divide-zinc-700">
                 <a href="#" data-action="edit-name" class="flex items-center justify-between py-3">
                   <div class="flex flex-col">
                     <span>Editar Nombre</span>
@@ -1201,7 +1242,7 @@
             return `${minutes} min`;
           })();
           // default booking button
-          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Reservar Ahora</button>`;
+          let buttonHTML = `<button data-action="confirm-booking" data-class-id="${safeId}" class="w-full btn-primary py-3 rounded-xl text-zinc-900 font-bold">Reservar Ahora</button>`;
           if (isBooked) {
             // already have a booking
             buttonHTML = `<button class="w-full bg-zinc-700 text-zinc-400 font-bold py-3 rounded-xl" disabled>Ya estás inscrito</button>`;
@@ -1211,7 +1252,7 @@
               const pos = DOMPurify.sanitize(String(waitEntry.position||1));
               buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full bg-rose-800 text-rose-400 font-bold py-3 rounded-xl">Salir de la lista de espera</button></div>`;
             } else {
-              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Unirse a lista de espera</button>`;
+              buttonHTML = `<button data-action="join-waitlist" data-class-id="${safeId}" class="w-full btn-primary py-3 rounded-xl text-zinc-900 font-bold">Unirse a lista de espera</button>`;
             }
           } else if (holdActive && holdForMe) {
             buttonHTML = `<div class="space-y-2">
@@ -1237,12 +1278,12 @@
                 </button>
               </div>
               <div class="p-6 space-y-4 pb-40">
-                <h1 class="text-3xl font-bold">
+                <h1 class="text-3xl font-bold heading-serif">
                   ${safeName}
                   <span class="block text-lg font-semibold text-zinc-300 mt-1">${timeRange}</span>
                   ${safeDateContext ? `<span class="block text-sm text-zinc-400 mt-1">${safeDateContext}</span>` : ''}
                 </h1>
-                <section aria-labelledby="class-details" class="bg-zinc-800 p-4 rounded-xl space-y-4">
+                <section aria-labelledby="class-details" class="card-panel p-4 space-y-4">
                   <h2 id="class-details" class="text-lg font-semibold">Detalles</h2>
                   <ul class="space-y-4">
                     <li class="flex items-center gap-3">
