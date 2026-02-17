@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
     <!-- PWA -->
@@ -46,7 +46,7 @@
           #09090b;
         color: #fff;
       }
-      .heading-serif { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.02em; }
+      .heading-display { font-family: 'Archivo Black', 'Inter', sans-serif; letter-spacing: -0.02em; }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .transition-all { transition: all 0.3s ease-in-out; }
       .spinner { border-top-color: #6366f1; }
@@ -698,7 +698,7 @@
         function renderAuthScreen(isLogin=true){
           authContainer.innerHTML = `
             <div class="w-full max-w-md mx-auto">
-              <h1 class="text-4xl font-bold text-white mb-2 heading-serif">Madness - Reserva de clases</h1>
+              <h1 class="text-4xl font-bold text-white mb-2 heading-display">Madness - Reserva de clases</h1>
               <p class="text-zinc-400 mb-8">${isLogin ? 'Inicia sesión para continuar' : 'Crea una cuenta para empezar'}</p>
               <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="Correo electrónico" class="w-full bg-zinc-800 text-white p-3 rounded-md border border-zinc-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
@@ -962,7 +962,7 @@
           return `
             <div class="p-6 space-y-6">
               <header>
-                <h1 class="text-3xl font-bold tracking-tight heading-serif">Tu Agenda</h1>
+                <h1 class="text-3xl font-bold tracking-tight heading-display">Tu Agenda</h1>
                 <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
               </header>
               ${dailyMessageHTML}
@@ -1069,7 +1069,7 @@
           return `
             <div class="p-6 space-y-6">
               <header>
-                <h1 class="text-3xl font-bold tracking-tight heading-serif">Historial</h1>
+                <h1 class="text-3xl font-bold tracking-tight heading-display">Historial</h1>
                 <p class="text-zinc-400">Revisa las clases que ya terminaste.</p>
               </header>
               <section aria-labelledby="terminadas-hoy">
@@ -1280,7 +1280,7 @@
                 </button>
               </div>
               <div class="p-6 space-y-4 pb-40">
-                <h1 class="text-3xl font-bold heading-serif">
+                <h1 class="text-3xl font-bold heading-display">
                   ${safeName}
                   <span class="block text-lg font-semibold text-zinc-300 mt-1 font-sans">${timeRange}</span>
                   ${safeDateContext ? `<span class="block text-sm text-zinc-400 mt-1 font-sans">${safeDateContext}</span>` : ''}
