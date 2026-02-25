@@ -228,16 +228,27 @@
           padding: 0.4rem;
         }
       }
+      @media (prefers-reduced-motion: reduce) {
+        .class-block,
+        .toggle-indicator {
+          transition: none;
+        }
+        .class-block:hover {
+          transform: none;
+          box-shadow: none;
+        }
+      }
     </style>
   </head>
   <body class="bg-zinc-900 text-white">
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2" aria-live="polite" aria-atomic="true"></div>
 
+    <main id="main-content">
     <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
       <div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
         <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
-        <input type="email" id="email-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin" autocomplete="email">
-        <input type="password" id="password-input" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña" autocomplete="current-password">
+        <input type="email" id="email-input" aria-label="Correo de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin" autocomplete="email">
+        <input type="password" id="password-input" aria-label="Contraseña de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña" autocomplete="current-password">
         <div class="cf-turnstile mb-4" data-sitekey="0x4AAAAAABwCDMFGoF_Z-wjY"></div>
         <button id="login-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md">Entrar</button>
         <p id="error-message" class="text-rose-400 text-center mt-4 hidden"></p>
@@ -371,7 +382,7 @@
 
         <div class="bg-zinc-800 rounded-lg p-6">
           <div class="mb-4 flex gap-3 flex-wrap">
-            <select id="subscription-filter" class="bg-zinc-700 text-white p-2 rounded">
+            <select id="subscription-filter" aria-label="Filtro de suscripciones" class="bg-zinc-700 text-white p-2 rounded">
               <option value="all">Todos los usuarios</option>
               <option value="monthly">Solo Mensuales</option>
               <option value="monthly-unpaid">Mensuales No Pagados</option>
@@ -382,6 +393,7 @@
             <input
               type="text"
               id="user-search"
+              aria-label="Buscar usuario por nombre o correo"
               placeholder="Buscar por nombre o email..."
               class="bg-zinc-700 text-white p-2 rounded flex-1 min-w-[200px]"
             >
@@ -625,57 +637,58 @@
         <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
     </div>
+    </main>
 
     <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
       <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
         <input type="hidden" id="class-id">
         <div class="border-b border-zinc-700">
-          <nav class="flex space-x-4" aria-label="Tabs">
-            <button id="tab-details" class="px-3 py-2 font-medium text-sm rounded-t-md" aria-selected="true">Detalles</button>
-            <button id="tab-attendance" class="px-3 py-2 font-medium text-sm rounded-t-md hidden" aria-selected="false">Asistencia</button>
+          <nav class="flex space-x-4" role="tablist" aria-label="Tabs">
+            <button id="tab-details" type="button" role="tab" aria-controls="details-content" tabindex="0" class="px-3 py-2 font-medium text-sm rounded-t-md" aria-selected="true">Detalles</button>
+            <button id="tab-attendance" type="button" role="tab" aria-controls="attendance-content" tabindex="-1" class="px-3 py-2 font-medium text-sm rounded-t-md hidden" aria-selected="false" aria-hidden="true">Asistencia</button>
           </nav>
         </div>
-        <div id="details-content">
+        <div id="details-content" role="tabpanel" aria-labelledby="tab-details">
           <div class="mt-4">
-            <input type="text" id="class-name" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded">
+            <input type="text" id="class-name" aria-label="Nombre de la clase" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded">
             <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Escribe el nombre que verán los alumnos en el horario.</p>
           </div>
           <div class="mt-4">
-            <input type="text" id="class-instructor" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
+            <input type="text" id="class-instructor" aria-label="Instructor de la clase" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
             <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica quién impartirá la sesión.</p>
           </div>
           <div class="mt-4">
-            <input type="text" id="class-time" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
+            <input type="text" id="class-time" aria-label="Hora de la clase" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
             <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Coloca la hora de inicio en formato 24 horas.</p>
           </div>
           <p id="class-time-warning" class="mt-2 text-xs text-amber-400 hidden"></p>
           <div class="mt-4">
-            <textarea id="class-description" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
+            <textarea id="class-description" aria-label="Descripción de la clase" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
             <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Resume la dinámica o enfoque de la clase.</p>
           </div>
           <div class="grid grid-cols-2 gap-4 mt-4">
             <div class="flex flex-col">
-              <input type="date" id="class-date" placeholder="Fecha" class="w-full bg-zinc-700 p-2 rounded">
+              <input type="date" id="class-date" aria-label="Fecha de la clase" placeholder="Fecha" class="w-full bg-zinc-700 p-2 rounded">
               <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Selecciona la fecha exacta de la clase.</p>
             </div>
             <div class="flex flex-col">
-              <input type="number" id="class-capacity" placeholder="Capacidad" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
+              <input type="number" id="class-capacity" aria-label="Capacidad de la clase" placeholder="Capacidad" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
               <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Define el número máximo de asistentes.</p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4 mt-4">
             <div class="flex flex-col">
-              <input type="number" id="class-duration" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="120">
+              <input type="number" id="class-duration" aria-label="Duración en minutos" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="120">
               <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica cuánto dura la sesión en minutos.</p>
             </div>
             <div class="flex flex-col">
-              <input type="number" id="class-enrolled" placeholder="Inscritos" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
+              <input type="number" id="class-enrolled" aria-label="Personas inscritas" placeholder="Inscritos" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
               <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Consulta cuántos alumnos están inscritos ahora.</p>
             </div>
           </div>
           <div class="mt-4">
-            <input type="url" id="class-image" placeholder="URL de imagen" class="w-full bg-zinc-700 p-2 rounded">
+            <input type="url" id="class-image" aria-label="URL de imagen de la clase" placeholder="URL de imagen" class="w-full bg-zinc-700 p-2 rounded">
             <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Pega la URL de la foto o banner de la clase.</p>
           </div>
           <div class="mt-4 p-4 bg-zinc-700 rounded-lg border border-zinc-600">
@@ -707,7 +720,7 @@
             </p>
           </div>
         </div>
-        <div id="attendance-content" class="hidden">
+        <div id="attendance-content" class="hidden" role="tabpanel" aria-labelledby="tab-attendance" hidden>
           <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
           <div id="attendance-list" class="space-y-2"></div>
           <button id="save-attendance-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 hidden">Guardar Asistencia</button>
@@ -3109,6 +3122,8 @@
           const tabAttendance = document.getElementById('tab-attendance');
           if (tabAttendance){
             tabAttendance.classList.add('hidden');
+            tabAttendance.setAttribute('aria-hidden','true');
+            tabAttendance.setAttribute('tabindex','-1');
             tabAttendance.onclick = null;
           }
           this.switchTab('details');
@@ -3194,10 +3209,14 @@
           tabD.onclick = () => this.switchTab('details');
           if (this.isClassInProgressWindow(cls)){
             tabA.classList.remove('hidden');
+            tabA.removeAttribute('aria-hidden');
             tabA.onclick = () => this.switchTab('attendance');
             this.loadAttendeesForAttendance(cls);
           } else {
-            tabA.classList.add('hidden'); tabA.onclick = null;
+            tabA.classList.add('hidden');
+            tabA.setAttribute('aria-hidden','true');
+            tabA.setAttribute('tabindex','-1');
+            tabA.onclick = null;
           }
 
           // Event handlers for modal buttons
@@ -3279,13 +3298,23 @@
           const saveBtn = document.getElementById('save-button');
           if (tab==='details'){
             tabD.classList.add('border-b-2','border-indigo-500','text-indigo-400'); tabD.setAttribute('aria-selected','true');
+            tabD.setAttribute('tabindex','0');
             tabA.classList.remove('border-b-2','border-indigo-500','text-indigo-400'); tabA.setAttribute('aria-selected','false');
-            contD.classList.remove('hidden'); contA.classList.add('hidden');
+            tabA.setAttribute('tabindex','-1');
+            contD.classList.remove('hidden');
+            contD.removeAttribute('hidden');
+            contA.classList.add('hidden');
+            contA.setAttribute('hidden','');
             if (saveBtn) saveBtn.classList.remove('hidden');
           } else {
             tabA.classList.add('border-b-2','border-indigo-500','text-indigo-400'); tabA.setAttribute('aria-selected','true');
+            tabA.setAttribute('tabindex','0');
             tabD.classList.remove('border-b-2','border-indigo-500','text-indigo-400'); tabD.setAttribute('aria-selected','false');
-            contA.classList.remove('hidden'); contD.classList.add('hidden');
+            tabD.setAttribute('tabindex','-1');
+            contA.classList.remove('hidden');
+            contA.removeAttribute('hidden');
+            contD.classList.add('hidden');
+            contD.setAttribute('hidden','');
             if (saveBtn) saveBtn.classList.add('hidden');
           }
         },
@@ -3874,8 +3903,8 @@
               <p class="text-xs text-zinc-400 font-mono break-all">Dispositivo ${i+1}: ${displayToken}...</p>
               <div class="mt-2 space-y-1">${metaRows.join('')}</div>
               <div class="mt-3 space-y-2">
-                <input type="text" id="noti-title-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
-                <textarea id="noti-body-${indexBase}_${i}" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
+                <input type="text" id="noti-title-${indexBase}_${i}" aria-label="Título de la notificación" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm" placeholder="Título de la notificación">
+                <textarea id="noti-body-${indexBase}_${i}" aria-label="Cuerpo de la notificación" class="w-full bg-zinc-700 text-white p-2 rounded-md text-sm h-16" placeholder="Cuerpo del mensaje"></textarea>
                 <div class="flex gap-2">
                   <button data-token="${safeToken}" data-index="${indexBase}_${i}" data-uid="${safeUid}"
                           class="send-noti-btn flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md text-sm">
