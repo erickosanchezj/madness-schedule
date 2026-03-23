@@ -3812,9 +3812,8 @@
               return;
             }
 
-            this.state.userSearchResults = [];
-            container.innerHTML = snap.docs.map(doc => this.userSummaryCardHTML(doc)).join('');
-            container.classList.remove('hidden');
+            this.state.userSearchResults = snap.docs;
+            this.renderUserCards();
             if (hint){
               hint.textContent = `Mostrando ${snap.size} usuarios.`;
               hint.classList.remove('hidden');
@@ -3843,26 +3842,6 @@
           this.wireUserCardButtons();
         },
 
-        userSummaryCardHTML(userDoc){
-          const userData = userDoc.data() || {};
-          const safeName = DOMPurify.sanitize(userData.displayName || 'Usuario sin nombre');
-          const safeEmail = DOMPurify.sanitize(userData.email || '');
-          const strikesRaw = Number(userData.lateCancellations);
-          const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
-          const safeStrikes = DOMPurify.sanitize(String(strikesCount));
-          const statusLabel = userData.blacklisted === true ? 'Bloqueado' : 'Activo';
-          const statusClass = userData.blacklisted === true ? 'text-rose-300' : 'text-emerald-300';
-          return `
-            <div class="p-4 bg-zinc-700/50 rounded-lg">
-              <h4 class="font-bold">${safeName}</h4>
-              <p class="text-sm text-zinc-400">${safeEmail}</p>
-              <div class="mt-2 flex flex-wrap gap-3 text-xs">
-                <p class="text-amber-300">Strikes: ${safeStrikes} / 3</p>
-                <p class="${statusClass}">Estado: ${statusLabel}</p>
-              </div>
-            </div>`;
-        },
-
         // ---- USERS: Render tarjeta + cableado ----
         userCardHTML(userDoc, indexBase=0){
           const userData = userDoc.data() || {};
@@ -3873,10 +3852,9 @@
           const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
           const safeStrikes = DOMPurify.sanitize(String(strikesCount));
           const safeUid = DOMPurify.sanitize(userDoc.id);
-          const isBlacklisted = userData.blacklisted === true;
-          const strikesBtnLabel = isBlacklisted ? 'Ya bloqueado' : '3 Strikes';
-          const strikesBtnDisabled = isBlacklisted ? ' disabled' : '';
-          const strikesBtnClass = isBlacklisted
+          const strikesBtnLabel = strikesCount >= 3 ? 'Ya tiene 3 Strikes' : '3 Strikes';
+          const strikesBtnDisabled = strikesCount >= 3 ? ' disabled' : '';
+          const strikesBtnClass = strikesCount >= 3
             ? 'bg-zinc-600 text-zinc-300 cursor-not-allowed'
             : 'bg-rose-600 hover:bg-rose-700 text-white';
           const head = `
@@ -3985,10 +3963,8 @@
           const currentStrikesRaw = Number(targetData.lateCancellations);
           const currentStrikes = Number.isFinite(currentStrikesRaw) ? Math.max(0, currentStrikesRaw) : 0;
 
-          const isBlacklisted = targetData.blacklisted === true;
-
-          if (isBlacklisted){
-            this.showToast({ title:'Sin cambios', message:'Este usuario ya está bloqueado para reservar.', variant:'warn' });
+          if (currentStrikes >= 3){
+            this.showToast({ title:'Sin cambios', message:'Este usuario ya tiene 3 strikes.', variant:'warn' });
             return;
           }
 
