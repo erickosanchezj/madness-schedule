@@ -3797,11 +3797,13 @@
 
         // ---- USERS: Listar primera página ----
         async listUsersPage(){
-          const container = document.getElementById('user-details-container');
           const hint = document.getElementById('user-results-hint');
-          container.innerHTML='';
-          container.classList.add('hidden');
-          hint.classList.add('hidden');
+          const container = document.getElementById('user-details-container');
+          if (container){
+            container.innerHTML = '';
+            container.classList.add('hidden');
+          }
+          if (hint) hint.classList.add('hidden');
 
           try{
             const snap = await this.db.collection('users').get();
@@ -3810,26 +3812,34 @@
               return;
             }
 
-            container.innerHTML = snap.docs.map(doc => {
-              const data = doc.data() || {};
-              const safeName = DOMPurify.sanitize(data.displayName || 'Usuario sin nombre');
-              const safeEmail = DOMPurify.sanitize(data.email || '');
-              const strikesRaw = Number(data.lateCancellations);
-              const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
-              const safeStrikes = DOMPurify.sanitize(String(strikesCount));
-              return `
-            <div class="p-4 bg-zinc-700/50 rounded-lg">
-              <h4 class="font-bold">${safeName}</h4>
-              <p class="text-sm text-zinc-400">${safeEmail}</p>
-              <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3</p>
-            </div>`;
-            }).join('');
-            container.classList.remove('hidden');
-            hint.textContent = `Mostrando ${snap.size} usuarios.`;
-            hint.classList.remove('hidden');
+            this.state.userSearchResults = snap.docs;
+            this.renderUserCards();
+            if (hint){
+              hint.textContent = `Mostrando ${snap.size} usuarios.`;
+              hint.classList.remove('hidden');
+            }
           }catch(e){
             this.showToast({ title:'Error listando', message:e.message, variant:'error' });
           }
+        },
+
+        renderUserCards(){
+          const container = document.getElementById('user-details-container');
+          if (!container) return;
+
+          const docs = Array.isArray(this.state.userSearchResults)
+            ? this.state.userSearchResults
+            : [];
+
+          if (!docs.length){
+            container.innerHTML = '';
+            container.classList.add('hidden');
+            return;
+          }
+
+          container.innerHTML = docs.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
+          container.classList.remove('hidden');
+          this.wireUserCardButtons();
         },
 
         // ---- USERS: Render tarjeta + cableado ----
@@ -3841,11 +3851,24 @@
           const strikesRaw = Number(userData.lateCancellations);
           const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
           const safeStrikes = DOMPurify.sanitize(String(strikesCount));
+          const safeUid = DOMPurify.sanitize(userDoc.id);
+          const isBlacklisted = userData.blacklisted === true;
+          const strikesBtnLabel = isBlacklisted ? 'Ya bloqueado' : '3 Strikes';
+          const strikesBtnDisabled = isBlacklisted ? ' disabled' : '';
+          const strikesBtnClass = isBlacklisted
+            ? 'bg-zinc-600 text-zinc-300 cursor-not-allowed'
+            : 'bg-rose-600 hover:bg-rose-700 text-white';
           const head = `
             <div class="p-4 bg-zinc-700/50 rounded-lg">
               <h4 class="font-bold">${safeName}</h4>
               <p class="text-sm text-zinc-400">${safeEmail}</p>
               <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3</p>
+              <div class="mt-3">
+                <button data-action="set-three-strikes" data-user-id="${safeUid}"${strikesBtnDisabled}
+                        class="${strikesBtnClass} font-semibold py-2 px-3 rounded-md text-sm">
+                  ${strikesBtnLabel}
+                </button>
+              </div>
           `;
           if (!tokenEntries.length){
             return head + `<p class="text-sm text-zinc-400 mt-3">Sin dispositivos registrados.</p></div>`;
@@ -3853,7 +3876,6 @@
           const bodies = tokenEntries.map(([token, rawMeta],i)=>{
             const safeToken = DOMPurify.sanitize(token);
             const displayToken = DOMPurify.sanitize(safeToken.substring(0,30));
-            const safeUid = DOMPurify.sanitize(userDoc.id);
             const meta = rawMeta && typeof rawMeta === 'object' ? rawMeta : null;
 
             let registeredAtStr = '';
@@ -3928,6 +3950,58 @@
           document.querySelectorAll('.prune-token-btn').forEach(btn=>{
             btn.onclick = (event)=> this.pruneTokenManually(event);
           });
+          document.querySelectorAll('[data-action="set-three-strikes"]').forEach(btn=>{
+            btn.onclick = () => this.setUserToThreeStrikes(btn.dataset.userId);
+          });
+        },
+
+        async setUserToThreeStrikes(userId){
+          if (!userId) return;
+
+          const targetDoc = this.state.userSearchResults.find(doc => doc.id === userId);
+          const targetData = targetDoc?.data() || {};
+          const userLabel = targetData.displayName || targetData.email || 'este usuario';
+          const currentStrikesRaw = Number(targetData.lateCancellations);
+          const currentStrikes = Number.isFinite(currentStrikesRaw) ? Math.max(0, currentStrikesRaw) : 0;
+
+          const isBlacklisted = targetData.blacklisted === true;
+
+          if (isBlacklisted){
+            this.showToast({ title:'Sin cambios', message:'Este usuario ya está bloqueado para reservar.', variant:'warn' });
+            return;
+          }
+
+          const confirmed = confirm(`¿Dar 3 strikes a ${userLabel}? El usuario quedará bloqueado para reservar.`);
+          if (!confirmed) return;
+
+          try{
+            await this.db.collection('users').doc(userId).set({
+              lateCancellations: 3,
+              blacklisted: true,
+              blacklistedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge:true });
+
+            const refreshedDoc = await this.db.collection('users').doc(userId).get();
+            const index = this.state.userSearchResults.findIndex(doc => doc.id === userId);
+            if (index !== -1){
+              this.state.userSearchResults.splice(index, 1, refreshedDoc);
+            }
+            this.renderUserCards();
+
+            const blacklistContainer = document.getElementById('blacklisted-users-container');
+            if (blacklistContainer && blacklistContainer.innerHTML.trim()){
+              await this.listBlacklistedUsers();
+            }
+
+            this.showToast({
+              title:'3 strikes aplicados',
+              message: currentStrikes > 0
+                ? `Se agregaron ${3 - currentStrikes} strikes restantes y el usuario quedó bloqueado.`
+                : 'El usuario quedó con 3 strikes y fue bloqueado para reservar.'
+            });
+          }catch(e){
+            this.showToast({ title:'No se pudieron aplicar los strikes', message:e.message, variant:'error' });
+          }
         },
 
         // ---- USERS: Lista negra ----
