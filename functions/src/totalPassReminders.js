@@ -6,7 +6,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
 const { getFunctions } = require('firebase-admin/functions');
-const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
+const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
 
 const db = admin.firestore();
 
@@ -195,7 +195,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
       responseAggregate.failureCount += chunkResponse.failureCount;
     }
 
-    const prunePromises = [];
+    const invalidTokens = [];
     const failedTokens = [];
     responseAggregate.responses.forEach((res, idx) => {
       if (!res.success) {
@@ -205,7 +205,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
           code === 'messaging/invalid-registration-token' ||
           code === 'messaging/registration-token-not-registered';
         if (invalid) {
-          prunePromises.push(pruneTokenInUsers(token));
+          invalidTokens.push(token);
         } else {
           console.error('TotalPass notification failure', token, classId, code);
         }
@@ -213,7 +213,7 @@ exports.sendTotalPassReminder = onTaskDispatched(
       }
     });
 
-    await Promise.all(prunePromises);
+    await pruneMultipleTokensInUsers(invalidTokens);
     console.log('TotalPass reminder send summary', {
       classId,
       userId,

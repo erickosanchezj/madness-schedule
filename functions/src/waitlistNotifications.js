@@ -7,7 +7,7 @@ const { onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
 const { getFunctions } = require('firebase-admin/functions');
-const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
+const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
 
 const db = admin.firestore();
 const WAITLIST_EXPIRATION_FQFN =
@@ -68,7 +68,7 @@ async function processWaitlistNotification(entry) {
     res.failureCount += chunkRes.failureCount;
   }
 
-  const prunePromises = [];
+  const invalidTokens = [];
   const failedTokens = [];
   res.responses.forEach((r, idx) => {
     if (!r.success) {
@@ -78,14 +78,14 @@ async function processWaitlistNotification(entry) {
         code === 'messaging/invalid-registration-token' ||
         code === 'messaging/registration-token-not-registered';
       if (invalid) {
-        prunePromises.push(pruneTokenInUsers(token));
+        invalidTokens.push(token);
       } else {
         console.error('Notification failure', token, classId, code);
       }
       failedTokens.push({ token, errorCode: code || 'unknown' });
     }
   });
-  await Promise.all(prunePromises);
+  await pruneMultipleTokensInUsers(invalidTokens);
 
   const notificationRecord = {
     classId,
