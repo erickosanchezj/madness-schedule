@@ -912,7 +912,7 @@
         },
 
         // --- INIT / AUTH ---
-        init(){
+        async init(){
           const firebaseConfig = {
             apiKey: "AIzaSyBvvPDDlWsRqV4LdmNeZBuLfBn8k3_mI2A",
             authDomain: "madnessscheds.firebaseapp.com",
@@ -923,6 +923,11 @@
           };
           firebase.initializeApp(firebaseConfig);
           this.db = firebase.firestore();
+          try {
+            await firebase.firestore().enablePersistence({ synchronizeTabs: true });
+          } catch (e) {
+            console.warn('Persistence not enabled:', e && e.code);
+          }
           this.auth = firebase.auth();
           this.functions = firebase.app().functions('us-central1');
 
