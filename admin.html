@@ -622,6 +622,11 @@
           </div>
 
           <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
+          <div id="user-pagination-controls" class="mt-2 hidden flex flex-wrap gap-2">
+            <button id="user-prev-page-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página anterior</button>
+            <button id="user-next-page-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página siguiente</button>
+            <button id="user-show-all-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1 px-3 rounded-md text-sm">Mostrar todos</button>
+          </div>
           <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
         </div>
       </section>
@@ -766,8 +771,16 @@
           attendanceData: null,
           attendanceLastAt: 0,
           unsubCapacity: null,
+          attendanceRangeKey: '',
           attendanceTickTimer: null,
           userSearchResults: [],
+          userPageSize: 20,
+          userPage: 1,
+          lastUserDoc: null,
+          userPageStart: 0,
+          userPageEnd: 0,
+          hasNextUserPage: false,
+          userHasPreviousPage: false,
           blacklistedUsers: [],
           analyticsTracker: {
             bookingTimeline: {},
@@ -1012,7 +1025,13 @@
 
           // Users: find + list
           document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
-          document.getElementById('list-users-btn').onclick = () => this.listUsersPage();
+          document.getElementById('list-users-btn').onclick = () => this.startUsersPagination();
+          const userPrevBtn = document.getElementById('user-prev-page-btn');
+          const userNextBtn = document.getElementById('user-next-page-btn');
+          const userShowAllBtn = document.getElementById('user-show-all-btn');
+          if (userPrevBtn) userPrevBtn.onclick = () => this.listUsersPreviousPage();
+          if (userNextBtn) userNextBtn.onclick = () => this.listUsersPage();
+          if (userShowAllBtn) userShowAllBtn.onclick = () => this.listAllUsers();
 
           const subscriptionFilter = document.getElementById('subscription-filter');
           const userSearchInput = document.getElementById('user-search');
@@ -2628,15 +2647,13 @@
         },
 
         startAttendancePolling(){
-          this.fetchAttendanceData(true);
           this.stopAttendancePolling();
-          this.state.unsubCapacity = this.db.collection('bookings').onSnapshot(()=>{
-            this.fetchAttendanceData(true);
-          });
+          this.fetchAttendanceData(true);
           this.state.attendanceTickTimer = setInterval(()=>{ this.updateAttendanceLegend(); }, 1000);
         },
         stopAttendancePolling(){
           if (this.state.unsubCapacity){ this.state.unsubCapacity(); this.state.unsubCapacity=null; }
+          this.state.attendanceRangeKey = '';
           if (this.state.attendanceTickTimer){ clearInterval(this.state.attendanceTickTimer); this.state.attendanceTickTimer=null; }
         },
 
@@ -2644,6 +2661,7 @@
           this.showDashboardSkeletons();
           const now = Date.now();
           const { start, end } = this.getSelectedAttendanceRange();
+          this.ensureAttendanceScopedListener(start, end);
           const report = {};
           const labels = [];
           const aggregateContext = {
@@ -2784,6 +2802,23 @@
               this.updateCapacityGauge();
             }
           }
+        },
+        ensureAttendanceScopedListener(start, end){
+          const rangeKey = `${start}__${end}`;
+          if (this.state.attendanceRangeKey === rangeKey && this.state.unsubCapacity){
+            return;
+          }
+          if (this.state.unsubCapacity){
+            this.state.unsubCapacity();
+            this.state.unsubCapacity = null;
+          }
+          this.state.attendanceRangeKey = rangeKey;
+          this.state.unsubCapacity = this.db.collection('bookings')
+            .where('classDate', '>=', start)
+            .where('classDate', '<=', end)
+            .onSnapshot(()=>{
+              this.fetchAttendanceData(true);
+            });
         },
 
         updateAttendanceLegend(){
@@ -3483,9 +3518,15 @@
             }
 
             this.state.userSearchResults = results;
-            container.innerHTML = results.map((doc, idx)=> this.userCardHTML(doc, idx)).join('');
-            container.classList.remove('hidden');
-            this.wireUserCardButtons();
+            this.state.userPage = 1;
+            this.state.userPageStart = 1;
+            this.state.userPageEnd = results.length;
+            this.state.userHasPreviousPage = false;
+            this.state.hasNextUserPage = false;
+            this.state.lastUserDoc = null;
+            this.renderUserCards();
+            this.updateUserResultsHint();
+            this.toggleUserPaginationControls(false);
           }catch(e){
             this.showToast({ title:'Error al buscar', message:e.message, variant:'error' });
           }
@@ -3796,6 +3837,13 @@
         },
 
         // ---- USERS: Listar primera página ----
+        async startUsersPagination(){
+          this.state.lastUserDoc = null;
+          this.state.userPage = 1;
+          this.state.userHasPreviousPage = false;
+          this.state.hasNextUserPage = false;
+          await this.listUsersPage();
+        },
         async listUsersPage(){
           const hint = document.getElementById('user-results-hint');
           const container = document.getElementById('user-details-container');
@@ -3806,21 +3854,98 @@
           if (hint) hint.classList.add('hidden');
 
           try{
+            const shouldResetPage = !this.state.lastUserDoc;
+            let query = this.db.collection('users')
+              .orderBy('displayName')
+              .limit(this.state.userPageSize);
+            if (this.state.lastUserDoc){
+              query = query.startAfter(this.state.lastUserDoc);
+            }
+            const snap = await query.get();
+            if (snap.empty){
+              if (shouldResetPage){
+                this.showToast({ title:'Sin usuarios', variant:'warn' });
+                this.toggleUserPaginationControls(false);
+              } else {
+                this.showToast({ title:'No hay más usuarios', variant:'warn' });
+              }
+              return;
+            }
+
+            this.state.userSearchResults = snap.docs;
+            this.state.userPage = shouldResetPage ? 1 : this.state.userPage + 1;
+            this.state.userPageStart = ((this.state.userPage - 1) * this.state.userPageSize) + 1;
+            this.state.userPageEnd = this.state.userPageStart + snap.docs.length - 1;
+            this.state.userHasPreviousPage = this.state.userPage > 1;
+            this.state.hasNextUserPage = snap.docs.length === this.state.userPageSize;
+            this.renderUserCards();
+            this.updateUserResultsHint();
+            this.toggleUserPaginationControls(true);
+            this.state.lastUserDoc = snap.docs[snap.docs.length - 1] || null;
+          }catch(e){
+            this.showToast({ title:'Error listando', message:e.message, variant:'error' });
+          }
+        },
+        async listUsersPreviousPage(){
+          if (this.state.userPage <= 1){
+            this.showToast({ title:'Ya estás en la primera página', variant:'warn' });
+            return;
+          }
+          this.state.lastUserDoc = null;
+          const targetPage = this.state.userPage - 1;
+          this.state.userPage = 1;
+          this.state.userHasPreviousPage = false;
+          this.state.hasNextUserPage = false;
+          for (let i = 0; i < targetPage; i += 1){
+            // Simple 80/20 approach: replay forward pagination to reach the previous page.
+            // This avoids adding complex reverse cursors to the admin panel state.
+            // eslint-disable-next-line no-await-in-loop
+            await this.listUsersPage();
+          }
+        },
+        async listAllUsers(){
+          const hint = document.getElementById('user-results-hint');
+          try{
             const snap = await this.db.collection('users').get();
             if (snap.empty){
               this.showToast({ title:'Sin usuarios', variant:'warn' });
               return;
             }
-
             this.state.userSearchResults = snap.docs;
+            this.state.userPage = 1;
+            this.state.userPageStart = 1;
+            this.state.userPageEnd = snap.docs.length;
+            this.state.lastUserDoc = null;
+            this.state.hasNextUserPage = false;
+            this.state.userHasPreviousPage = false;
             this.renderUserCards();
             if (hint){
-              hint.textContent = `Mostrando ${snap.size} usuarios.`;
+              hint.textContent = `Mostrando 1-${snap.docs.length} de usuarios (vista completa).`;
               hint.classList.remove('hidden');
             }
+            this.toggleUserPaginationControls(false);
           }catch(e){
             this.showToast({ title:'Error listando', message:e.message, variant:'error' });
           }
+        },
+        updateUserResultsHint(){
+          const hint = document.getElementById('user-results-hint');
+          if (!hint) return;
+          if (!this.state.userPageStart || !this.state.userPageEnd){
+            hint.classList.add('hidden');
+            return;
+          }
+          hint.textContent = `Mostrando ${this.state.userPageStart}-${this.state.userPageEnd} de usuarios.`;
+          hint.classList.remove('hidden');
+        },
+        toggleUserPaginationControls(show){
+          const controls = document.getElementById('user-pagination-controls');
+          const prevBtn = document.getElementById('user-prev-page-btn');
+          const nextBtn = document.getElementById('user-next-page-btn');
+          if (!controls) return;
+          controls.classList.toggle('hidden', !show);
+          if (prevBtn) prevBtn.disabled = !this.state.userHasPreviousPage;
+          if (nextBtn) nextBtn.disabled = !this.state.hasNextUserPage;
         },
 
         renderUserCards(){

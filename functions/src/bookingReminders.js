@@ -6,7 +6,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
 const { getFunctions } = require('firebase-admin/functions');
-const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
+const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
 const db = admin.firestore();
 const REMINDER_INTERVALS = [60, 30, 15];
 const MX_TIME_ZONE = 'America/Mexico_City';
@@ -123,7 +123,7 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
     res.failureCount += chunkRes.failureCount;
   }
 
-  const prunePromises = [];
+  const invalidTokens = [];
   const failedTokens = [];
   res.responses.forEach((r, idx) => {
     if (!r.success) {
@@ -133,14 +133,14 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
         code === 'messaging/invalid-registration-token' ||
         code === 'messaging/registration-token-not-registered';
       if (invalid) {
-        prunePromises.push(pruneTokenInUsers(token));
+        invalidTokens.push(token);
       } else {
         console.error('Admin booking notification failure', token, booking.classId, code);
       }
       failedTokens.push({ token, errorCode: code || 'unknown' });
     }
   });
-  await Promise.all(prunePromises);
+  await pruneMultipleTokensInUsers(invalidTokens);
 
   const notificationRecord = {
     classId: booking.classId,
@@ -274,7 +274,7 @@ exports.sendBookingReminder = onTaskDispatched(
       res.failureCount += chunkRes.failureCount;
     }
 
-    const prunePromises = [];
+    const invalidTokens = [];
     const failedTokens = [];
     res.responses.forEach((r, idx) => {
       if (!r.success) {
@@ -284,7 +284,7 @@ exports.sendBookingReminder = onTaskDispatched(
           code === 'messaging/invalid-registration-token' ||
           code === 'messaging/registration-token-not-registered';
         if (invalid) {
-          prunePromises.push(pruneTokenInUsers(token));
+          invalidTokens.push(token);
         } else {
           console.error('Notification failure', token, classId, code);
         }
@@ -292,7 +292,7 @@ exports.sendBookingReminder = onTaskDispatched(
       }
     });
 
-    await Promise.all(prunePromises);
+    await pruneMultipleTokensInUsers(invalidTokens);
     const notificationRecord = {
       classId,
       userId,

@@ -5,7 +5,7 @@
 
 const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
-const { pruneTokenInUsers } = require('../lib/pruneTokenInUsers');
+const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
 
 const db = admin.firestore();
 const TITLE = 'Cuenta desbloqueada';
@@ -27,7 +27,7 @@ exports.onUserUnlockNotification = onDocumentUpdated(
 
     let successCount = 0;
     let failureCount = 0;
-    const prunePromises = [];
+    const invalidTokens = [];
 
     for (let i = 0; i < tokens.length; i += 500) {
       const chunk = tokens.slice(i, i + 500);
@@ -48,7 +48,7 @@ exports.onUserUnlockNotification = onDocumentUpdated(
             code === 'messaging/invalid-registration-token' ||
             code === 'messaging/registration-token-not-registered';
           if (invalid) {
-            prunePromises.push(pruneTokenInUsers(token));
+            invalidTokens.push(token);
           } else {
             console.error('Unlock notification failure', token, code);
           }
@@ -56,7 +56,7 @@ exports.onUserUnlockNotification = onDocumentUpdated(
       });
     }
 
-    await Promise.all(prunePromises);
+    await pruneMultipleTokensInUsers(invalidTokens);
 
     await db.collection('notifications').add({
       type: 'account_unlocked',
