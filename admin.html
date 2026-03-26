@@ -3852,16 +3852,11 @@
         async listUsersPage(){
           const hint = document.getElementById('user-results-hint');
           const container = document.getElementById('user-details-container');
-          if (container){
-            container.innerHTML = '';
-            container.classList.add('hidden');
-          }
-          if (hint) hint.classList.add('hidden');
 
           try{
             const shouldResetPage = !this.state.lastUserDoc;
             let query = this.db.collection('users')
-              .orderBy('displayName')
+              .orderBy(firebase.firestore.FieldPath.documentId())
               .limit(this.state.userPageSize);
             if (this.state.lastUserDoc){
               query = query.startAfter(this.state.lastUserDoc);
@@ -3876,6 +3871,12 @@
               }
               return;
             }
+
+            if (container){
+              container.innerHTML = '';
+              container.classList.add('hidden');
+            }
+            if (hint) hint.classList.add('hidden');
 
             this.state.userSearchResults = snap.docs;
             this.state.userPage = shouldResetPage ? 1 : this.state.userPage + 1;

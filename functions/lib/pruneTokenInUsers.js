@@ -49,10 +49,12 @@ async function pruneMultipleTokensInUsers(tokens = []) {
     const snap = await db.collection('users').get();
     if (snap.empty) return { prunedDocs: 0 };
 
-    const batch = db.batch();
+    let batch = db.batch();
+    let pendingWrites = 0;
     let prunedDocs = 0;
+    const MAX_BATCH_WRITES = 500;
 
-    snap.forEach((doc) => {
+    for (const doc of snap.docs) {
       const tokenMap = doc.get('fcmTokens') || {};
       const updates = {};
       let hasChanges = false;
@@ -66,13 +68,26 @@ async function pruneMultipleTokensInUsers(tokens = []) {
 
       if (hasChanges) {
         batch.set(doc.ref, updates, { merge: true });
+        pendingWrites += 1;
         prunedDocs += 1;
+
+        if (pendingWrites === MAX_BATCH_WRITES) {
+          // Firestore write batches have a hard limit of 500 operations.
+          // Commit and start a new batch to avoid all-or-nothing failures.
+          // eslint-disable-next-line no-await-in-loop
+          await batch.commit();
+          batch = db.batch();
+          pendingWrites = 0;
+        }
       }
-    });
+    }
 
     if (!prunedDocs) return { prunedDocs: 0 };
 
-    await batch.commit();
+    if (pendingWrites > 0) {
+      await batch.commit();
+    }
+
     return { prunedDocs };
   } catch (e) {
     console.error('Failed pruning tokens in users:', e);
