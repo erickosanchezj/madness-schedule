@@ -684,7 +684,7 @@
           </div>
           <div class="grid grid-cols-2 gap-4 mt-4">
             <div class="flex flex-col">
-              <input type="number" id="class-duration" aria-label="Duración en minutos" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="120">
+              <input type="number" id="class-duration" aria-label="Duración en minutos" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="960">
               <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica cuánto dura la sesión en minutos.</p>
             </div>
             <div class="flex flex-col">
@@ -3198,7 +3198,7 @@
           }
 
           const safeCapacity = Math.round(Math.min(30, Math.max(1, Number(data.capacity) || 15)));
-          const safeDuration = Math.round(Math.min(120, Math.max(30, Number(data.duration) || 60)));
+          const safeDuration = Math.round(Math.min(960, Math.max(30, Number(data.duration) || 60)));
           data.capacity = safeCapacity;
           data.duration = safeDuration;
 
@@ -4418,7 +4418,7 @@
             const capacityBase = Number.isFinite(capacityRaw) ? capacityRaw : Number(cls.capacity || 15) || 15;
             const durationBase = Number.isFinite(durationRaw) ? durationRaw : originalDuration || 60;
             const capacity = Math.max(1, Math.min(30, Math.round(capacityBase)));
-            const duration = Math.max(30, Math.min(120, Math.round(durationBase)));
+            const duration = Math.max(30, Math.min(960, Math.round(durationBase)));
 
             if (!name || !effectiveTime || !effectiveDate){
               this.showToast({ title:'Campos requeridos', message:'Nombre, hora y fecha son obligatorios', variant:'error' });
