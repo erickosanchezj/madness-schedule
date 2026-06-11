@@ -66,7 +66,12 @@ async function findNextEligibleEntry(classId) {
     const userSnap = userId
       ? await db.collection('users').doc(userId).get()
       : null;
-    if (userSnap?.get('blacklisted') === true) continue;
+    if (userSnap?.get('blacklisted') === true) {
+      // Remove blacklisted users from the queue as we encounter them so they never block it.
+      await db.collection('waitlists').doc(doc.id).delete();
+      await rebalanceWaitlistPositions(classId, doc.get('position') || 1);
+      continue;
+    }
 
     // Skip users who already have an active 5-minute booking window.
     const expires = doc.get('expiresAt');
