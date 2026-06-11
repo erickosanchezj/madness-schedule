@@ -32,6 +32,56 @@ async function clearClassHoldIfMatches(classId, waitlistId) {
   return true;
 }
 
+async function rebalanceWaitlistPositions(classId, removedPosition) {
+  if (!classId || !removedPosition) return;
+
+  // Keep waitlist positions compact after removing someone from the queue.
+  const snap = await db
+    .collection('waitlists')
+    .where('classId', '==', classId)
+    .where('position', '>', removedPosition)
+    .get();
+  if (snap.empty) return;
+
+  const batch = db.batch();
+  snap.forEach((doc) =>
+    batch.update(doc.ref, { position: (doc.get('position') || 1) - 1 })
+  );
+  await batch.commit();
+}
+
+async function findNextEligibleEntry(classId) {
+  if (!classId) return null;
+
+  // Look at the front of the queue only. This keeps the function cheap and simple.
+  const snap = await db
+    .collection('waitlists')
+    .where('classId', '==', classId)
+    .orderBy('position')
+    .limit(10)
+    .get();
+
+  for (const doc of snap.docs) {
+    const userId = doc.get('userId');
+    const userSnap = userId
+      ? await db.collection('users').doc(userId).get()
+      : null;
+    if (userSnap?.get('blacklisted') === true) continue;
+
+    // Skip users who already have an active 5-minute booking window.
+    const expires = doc.get('expiresAt');
+    const alreadyActive =
+      doc.get('notifiedAt') &&
+      expires?.toDate &&
+      expires.toDate().getTime() > Date.now();
+    if (alreadyActive) continue;
+
+    return { id: doc.id, ...doc.data() };
+  }
+
+  return null;
+}
+
 async function processWaitlistNotification(entry) {
   const { id, classId, userId } = entry || {};
   if (!id || !classId || !userId) return;
@@ -40,6 +90,15 @@ async function processWaitlistNotification(entry) {
     db.collection('users').doc(userId).get(),
     db.collection('classes').doc(classId).get(),
   ]);
+
+  if (userSnap.get('blacklisted') === true) {
+    // Blacklisted users cannot take waitlist spots, so remove them and move on.
+    await db.collection('waitlists').doc(id).delete();
+    await rebalanceWaitlistPositions(classId, entry.position || 1);
+    const nextEntry = await findNextEligibleEntry(classId);
+    if (nextEntry) await processWaitlistNotification(nextEntry);
+    return;
+  }
 
   const tokens = Object.keys(userSnap.get('fcmTokens') || {});
   if (tokens.length === 0) return;
@@ -135,26 +194,7 @@ exports.onBookingDelete = onDocumentDeleted(
     const classId = booking?.classId;
     if (!classId) return;
 
-    const snap = await db
-      .collection('waitlists')
-      .where('classId', '==', classId)
-      .orderBy('position')
-      .limit(10)
-      .get();
-
-    const now = Date.now();
-    let entry = null;
-    snap.forEach((doc) => {
-      if (entry) return;
-      const expires = doc.get('expiresAt');
-      if (
-        !doc.get('notifiedAt') ||
-        (expires?.toDate && expires.toDate().getTime() <= now)
-      ) {
-        entry = { id: doc.id, ...doc.data() };
-      }
-    });
-
+    const entry = await findNextEligibleEntry(classId);
     if (entry) await processWaitlistNotification(entry);
   }
 );
@@ -169,18 +209,8 @@ exports.onWaitlistExpiration = onTaskDispatched(
     const snap = await ref.get();
     if (!snap.exists) {
       await clearClassHoldIfMatches(classId, waitlistId);
-      const nextSnap = await db
-        .collection('waitlists')
-        .where('classId', '==', classId)
-        .orderBy('position')
-        .limit(1)
-        .get();
-      if (!nextSnap.empty) {
-        await processWaitlistNotification({
-          id: nextSnap.docs[0].id,
-          ...nextSnap.docs[0].data(),
-        });
-      }
+      const nextEntry = await findNextEligibleEntry(classId);
+      if (nextEntry) await processWaitlistNotification(nextEntry);
       return;
     }
 
@@ -191,28 +221,9 @@ exports.onWaitlistExpiration = onTaskDispatched(
     await clearClassHoldIfMatches(classId, waitlistId);
     await ref.delete();
 
-    const q = await db
-      .collection('waitlists')
-      .where('classId', '==', classId)
-      .where('position', '>', position)
-      .get();
-    const batch = db.batch();
-    q.forEach((doc) =>
-      batch.update(doc.ref, { position: (doc.get('position') || 1) - 1 })
-    );
-    await batch.commit();
+    await rebalanceWaitlistPositions(classId, position);
 
-    const nextSnap = await db
-      .collection('waitlists')
-      .where('classId', '==', classId)
-      .orderBy('position')
-      .limit(1)
-      .get();
-    if (!nextSnap.empty) {
-      await processWaitlistNotification({
-        id: nextSnap.docs[0].id,
-        ...nextSnap.docs[0].data(),
-      });
-    }
+    const nextEntry = await findNextEligibleEntry(classId);
+    if (nextEntry) await processWaitlistNotification(nextEntry);
   }
 );

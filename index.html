@@ -1515,6 +1515,13 @@
           joinWaitlist: async (classId)=>{
             const uid = state.currentUser.uid;
             try{
+              // Blocked users cannot join the waitlist, even before server-side cleanup runs.
+              const userSnap = await db.collection('users').doc(uid).get();
+              if (userSnap.exists && userSnap.data()?.blacklisted === true) {
+                alert('Tu cuenta está bloqueada. No puedes unirte a la lista de espera.');
+                return;
+              }
+
               const snap = await db.collection('waitlists')
                 .where('classId', '==', classId)
                 .orderBy('position', 'desc')
@@ -1536,6 +1543,8 @@
             const uid = state.currentUser.uid;
             try{
               const waitId = `${classId}_${uid}`;
+              const leavingEntry = state.waitlistEntries.find(w=>w.classId===classId);
+              const leavingPosition = leavingEntry?.position || null;
               const classRef = db.collection('classes').doc(classId);
               await db.runTransaction(async tx=>{
                 const classSnap = await tx.get(classRef);
@@ -1551,6 +1560,20 @@
                   }
                 }
               });
+
+              if (leavingPosition) {
+                // Close the gap so the next waitlist user moves up immediately.
+                const snap = await db.collection('waitlists')
+                  .where('classId', '==', classId)
+                  .where('position', '>', leavingPosition)
+                  .get();
+                const batch = db.batch();
+                snap.forEach(doc=>{
+                  batch.update(doc.ref, { position: (doc.data().position || 1) - 1 });
+                });
+                await batch.commit();
+              }
+
               showToast('Saliste de la lista de espera');
             }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
           }
