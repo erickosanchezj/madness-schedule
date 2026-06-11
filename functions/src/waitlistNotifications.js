@@ -194,6 +194,7 @@ exports.onBookingDelete = onDocumentDeleted(
     const classId = booking?.classId;
     if (!classId) return;
 
+    // Use the shared helper so this path applies the same blacklist and active-window checks.
     const entry = await findNextEligibleEntry(classId);
     if (entry) await processWaitlistNotification(entry);
   }
