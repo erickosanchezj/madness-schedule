@@ -1515,6 +1515,13 @@
           joinWaitlist: async (classId)=>{
             const uid = state.currentUser.uid;
             try{
+              // Blocked users cannot join the waitlist, even before server-side cleanup runs.
+              const userSnap = await db.collection('users').doc(uid).get();
+              if (userSnap.exists && userSnap.data()?.blacklisted === true) {
+                alert('Tu cuenta está bloqueada. No puedes unirte a la lista de espera.');
+                return;
+              }
+
               const snap = await db.collection('waitlists')
                 .where('classId', '==', classId)
                 .orderBy('position', 'desc')
@@ -1537,6 +1544,8 @@
             try{
               const waitId = `${classId}_${uid}`;
               const classRef = db.collection('classes').doc(classId);
+              // Position rebalancing is handled server-side by onWaitlistExpiration.
+              // Client only needs to delete its own doc and clear the hold if it held one.
               await db.runTransaction(async tx=>{
                 const classSnap = await tx.get(classRef);
                 tx.delete(db.collection('waitlists').doc(waitId));
