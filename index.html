@@ -1425,8 +1425,9 @@
             }
           },
           navigateTo: (screen, data={})=>{
-            const needsRealtime = ['agenda','history','classDetails'].includes(screen);
-            if (needsRealtime) attachAgendaListeners(); else detachListeners();
+            // Keep listeners alive while logged in so tab changes reuse cached state.
+            // Detaching on Perfil and re-attaching on Agenda can cause extra Firestore reads.
+            attachAgendaListeners();
             state.currentScreen = screen;
             if (data.classId) state.selectedClassId = data.classId;
             render();
