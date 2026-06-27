@@ -22,13 +22,64 @@
     <link rel="icon" type="image/png" sizes="512x512" href="./images/admin-512x512.png">
     <link rel="apple-touch-icon" href="./images/admin-192x192.png">
     <style>
-      body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      :root {
+        --hour-height: 64px;
+        --surface-ring: 0 0 0 1px rgba(255, 255, 255, 0.08);
+        --surface-ring-hover: 0 0 0 1px rgba(255, 255, 255, 0.13);
+        --surface-shadow: 0 18px 48px -32px rgba(0, 0, 0, 0.9);
+      }
+      html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      h1, h2, h3 { text-wrap: balance; }
+      p, li, button, a, input, select, textarea, th, td { text-wrap: pretty; }
+      main, table, #toast-container { font-variant-numeric: tabular-nums; }
+      img {
+        outline: 1px solid rgba(255, 255, 255, 0.1);
+        outline-offset: -1px;
+      }
       :focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: .5rem; }
+      button, a, input, select, textarea, summary {
+        transition-property: background-color, color, box-shadow, transform, border-color, opacity;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
+      }
+      button, summary, input, select, textarea {
+        min-height: 44px;
+      }
+      button:active, summary:active {
+        transform: scale(0.96);
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+        transform: none;
+      }
+      input:focus, select:focus, textarea:focus {
+        box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.24);
+        outline: none;
+      }
+      .bg-zinc-800.rounded-lg,
+      section.bg-zinc-800,
+      .day-column,
+      .day-grid,
+      .calendar-header .day-label {
+        box-shadow: var(--surface-ring), var(--surface-shadow);
+      }
+      .bg-zinc-800.rounded-lg:hover,
+      section.bg-zinc-800:hover,
+      .day-column:hover {
+        box-shadow: var(--surface-ring-hover), var(--surface-shadow);
+      }
       .attendance-btn.selected-attended { background-color: #10b981; color: white; }
       .attendance-btn.selected-absent { background-color: #f43f5e; color: white; }
       #toast-container { pointer-events: none; }
       .toast { pointer-events: auto; }
-      :root { --hour-height: 64px; }
       .calendar-header {
         display: grid;
         grid-template-columns: 70px repeat(7, minmax(0, 1fr));
@@ -129,7 +180,9 @@
         flex-direction: column;
         gap: 0.35rem;
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        transition-property: transform, box-shadow;
+        transition-duration: 150ms;
+        transition-timing-function: ease-out;
       }
       .class-block:hover {
         transform: translateY(-1px);
@@ -229,6 +282,12 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
         .class-block,
         .toggle-indicator {
           transition: none;
@@ -376,11 +435,24 @@
       </section>
 
       <section aria-labelledby="subscription-title" class="mt-8">
-        <h2 id="subscription-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">
-          Gestión de Suscripciones
-        </h2>
+        <div class="flex items-center justify-between gap-4 mb-4 border-b border-zinc-700 pb-2">
+          <h2 id="subscription-title" class="text-2xl font-bold text-emerald-400">
+            Gestión de Suscripciones
+          </h2>
+          <button
+            type="button"
+            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+            data-toggle-target="subscription-section-body"
+            data-expanded-label="Colapsar"
+            data-collapsed-label="Expandir"
+            aria-controls="subscription-section-body"
+            aria-expanded="false"
+          >
+            <span data-toggle-label>Expandir</span>
+          </button>
+        </div>
 
-        <div class="bg-zinc-800 rounded-lg p-6">
+        <div id="subscription-section-body" class="bg-zinc-800 rounded-lg p-6 hidden">
           <div class="mb-4 flex gap-3 flex-wrap">
             <select id="subscription-filter" aria-label="Filtro de suscripciones" class="bg-zinc-700 text-white p-2 rounded">
               <option value="all">Todos los usuarios</option>
@@ -576,24 +648,37 @@
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="daily-message-title">
         <div class="flex items-center justify-between gap-4 mb-4">
           <h2 id="daily-message-title" class="text-2xl font-bold">Mensaje del Día</h2>
+          <button
+            type="button"
+            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+            data-toggle-target="daily-message-section-body"
+            data-expanded-label="Colapsar"
+            data-collapsed-label="Expandir"
+            aria-controls="daily-message-section-body"
+            aria-expanded="false"
+          >
+            <span data-toggle-label>Expandir</span>
+          </button>
         </div>
-        <form id="daily-message-form" class="space-y-4">
-          <input type="hidden" id="daily-message-id">
-          <div>
-            <label for="daily-message-text" class="block text-sm font-medium text-zinc-300 mb-2">Mensaje para los alumnos</label>
-            <textarea id="daily-message-text" class="w-full bg-zinc-700 text-white p-3 rounded-md h-28" placeholder="Ej: Está lloviendo hoy, maneja con cuidado." required></textarea>
-            <p id="daily-message-form-status" class="text-xs text-indigo-300 mt-2 hidden"></p>
-          </div>
-          <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
-            <input type="checkbox" id="daily-message-active" class="w-4 h-4 accent-indigo-600" checked>
-            Mostrar mensaje en la app
-          </label>
-          <div class="flex flex-wrap gap-2">
-            <button type="submit" id="daily-message-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar Mensaje</button>
-            <button type="button" id="daily-message-reset" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Limpiar</button>
-          </div>
-        </form>
-        <div id="daily-messages-list" class="mt-6 space-y-4 text-sm"></div>
+        <div id="daily-message-section-body" class="hidden">
+          <form id="daily-message-form" class="space-y-4">
+            <input type="hidden" id="daily-message-id">
+            <div>
+              <label for="daily-message-text" class="block text-sm font-medium text-zinc-300 mb-2">Mensaje para los alumnos</label>
+              <textarea id="daily-message-text" class="w-full bg-zinc-700 text-white p-3 rounded-md h-28" placeholder="Ej: Está lloviendo hoy, maneja con cuidado." required></textarea>
+              <p id="daily-message-form-status" class="text-xs text-indigo-300 mt-2 hidden"></p>
+            </div>
+            <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
+              <input type="checkbox" id="daily-message-active" class="w-4 h-4 accent-indigo-600" checked>
+              Mostrar mensaje en la app
+            </label>
+            <div class="flex flex-wrap gap-2">
+              <button type="submit" id="daily-message-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar Mensaje</button>
+              <button type="button" id="daily-message-reset" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Limpiar</button>
+            </div>
+          </form>
+          <div id="daily-messages-list" class="mt-6 space-y-4 text-sm"></div>
+        </div>
       </section>
 
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
