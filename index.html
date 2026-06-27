@@ -378,7 +378,7 @@
           }
           dailyMessageRotation.index = 0;
           state.dailyMessage = dailyMessageRotation.messages[0];
-          scheduleRender();
+          scheduleAgendaDataRender();
           dailyMessageRotation.intervalId = setInterval(()=>{
             if (!dailyMessageRotation.messages.length){
               stopDailyMessageRotation();
@@ -386,7 +386,7 @@
             }
             dailyMessageRotation.index = (dailyMessageRotation.index + 1) % dailyMessageRotation.messages.length;
             state.dailyMessage = dailyMessageRotation.messages[dailyMessageRotation.index];
-            scheduleRender();
+            scheduleAgendaDataRender();
           }, DAILY_MESSAGE_ROTATION_MS);
         }
 
@@ -409,6 +409,10 @@
           if (renderQueued) return;
           renderQueued=true;
           requestAnimationFrame(()=>{ renderQueued=false; render(); });
+        }
+        function scheduleAgendaDataRender(){
+          // Agenda data can update in the background, but Perfil should not rebuild for it.
+          if (['agenda','history','classDetails'].includes(state.currentScreen)) scheduleRender();
         }
 
         // Screen via querystring
@@ -467,33 +471,33 @@
           if (listenersAttached || !state.currentUser) return;
           state.loading.classes = true;
           state.loading.bookings = true;
-          scheduleRender();
+          scheduleAgendaDataRender();
           const nowMinus5 = new Date(Date.now()-5*60*1000);
           unsubClasses = db.collection('classes').where('startAt','>=',nowMinus5).orderBy('startAt','asc').limit(100)
             .onSnapshot(snap=>{
               state.classes = snap.docs.map(d=>({id:d.id,...d.data()}));
               state.loading.classes = false;
-              scheduleRender();
+              scheduleAgendaDataRender();
             }, err=>{
               console.error('Error clases:', err);
               state.loading.classes = false;
-              scheduleRender();
+              scheduleAgendaDataRender();
             });
           unsubMyBookings = db.collection('bookings').where('userId','==',state.currentUser.uid)
             .onSnapshot(snap=>{
               state.myBookings = snap.docs.map(d=>({id:d.id,...d.data()}));
               state.loading.bookings = false;
-              scheduleRender();
+              scheduleAgendaDataRender();
             }, err=>{
               console.error('Error mis reservas:', err);
               state.loading.bookings = false;
-              scheduleRender();
+              scheduleAgendaDataRender();
             });
           unsubWaitlist = db.collection('waitlists')
             .where('userId', '==', state.currentUser.uid)
             .onSnapshot(snap => {
               state.waitlistEntries = snap.docs.map(d=>({id:d.id,...d.data()}));
-              scheduleRender();
+              scheduleAgendaDataRender();
             });
           unsubAttendance = db.collection('attendance')
             .where('userId', '==', state.currentUser.uid)
@@ -506,7 +510,7 @@
                 records[data.classId] = { status: rawStatus };
               });
               state.attendanceRecords = records;
-              scheduleRender();
+              scheduleAgendaDataRender();
             }, err => {
               console.error('Error asistencia usuario:', err);
             });
@@ -546,13 +550,13 @@
               if (!activeMessages.length){
                 stopDailyMessageRotation();
                 state.dailyMessage = null;
-                scheduleRender();
+                scheduleAgendaDataRender();
                 return;
               }
               if (activeMessages.length === 1){
                 stopDailyMessageRotation();
                 state.dailyMessage = activeMessages[0];
-                scheduleRender();
+                scheduleAgendaDataRender();
                 return;
               }
               startDailyMessageRotation(activeMessages);
@@ -561,7 +565,7 @@
               stopDailyMessageRotation();
               state.dailyMessageList = [];
               state.dailyMessage = null;
-              scheduleRender();
+              scheduleAgendaDataRender();
             });
           listenersAttached=true;
         }
@@ -1425,10 +1429,11 @@
             }
           },
           navigateTo: (screen, data={})=>{
-            const needsRealtime = ['agenda','history','classDetails'].includes(screen);
-            if (needsRealtime) attachAgendaListeners(); else detachListeners();
             state.currentScreen = screen;
             if (data.classId) state.selectedClassId = data.classId;
+            // Keep listeners alive while logged in so tab changes reuse cached state.
+            // Perfil should not start agenda reads, but it also should not detach them.
+            if (['agenda','history','classDetails'].includes(screen)) attachAgendaListeners();
             render();
           },
           setScheduleFilter: (filter)=>{ state.scheduleFilter=filter; render(); },
