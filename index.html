@@ -445,7 +445,12 @@
         window.showToast = showToast;
 
         // Firestore listeners
+        const AGENDA_REFRESH_MIN_MS = 60000;
+        const AGENDA_SCREENS = ['agenda', 'history', 'classDetails'];
         let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, unsubDailyMessage=null, unsubAttendance=null, listenersAttached=false;
+        let lastAgendaResumeRefreshAt = 0;
+        let pendingAgendaResumeRefresh = false;
+        let resumeRefreshHandlersAttached = false;
         function detachListeners(){
           if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
           if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
@@ -466,6 +471,24 @@
           }
           scheduleRender();
           listenersAttached=false;
+          pendingAgendaResumeRefresh=false;
+        }
+        function refreshAgendaListenersOnResume(force=false){
+          if (!state.currentUser) return;
+
+          const isAgendaScreen = AGENDA_SCREENS.includes(state.currentScreen);
+          if (!isAgendaScreen) {
+            pendingAgendaResumeRefresh = listenersAttached;
+            return;
+          }
+
+          const now = Date.now();
+          if (!force && now - lastAgendaResumeRefreshAt < AGENDA_REFRESH_MIN_MS) return;
+          lastAgendaResumeRefreshAt = now;
+          pendingAgendaResumeRefresh = false;
+
+          if (listenersAttached) detachListeners();
+          attachAgendaListeners();
         }
         function attachAgendaListeners(){
           if (listenersAttached || !state.currentUser) return;
@@ -737,8 +760,19 @@
                 try { await ensureFreshFcmToken(auth.currentUser.uid); } catch {}
               }
             }, { once:true });
+            if (!resumeRefreshHandlersAttached) {
+              document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') refreshAgendaListenersOnResume();
+              });
+              window.addEventListener('pageshow', refreshAgendaListenersOnResume);
+              window.addEventListener('focus', refreshAgendaListenersOnResume);
+              resumeRefreshHandlersAttached = true;
+            }
 
-            if (state.currentScreen === 'agenda') attachAgendaListeners();
+            if (state.currentScreen === 'agenda') {
+              lastAgendaResumeRefreshAt = Date.now();
+              attachAgendaListeners();
+            }
             scheduleRender();
           } else {
             state.currentUser = null;
@@ -1433,7 +1467,13 @@
             if (data.classId) state.selectedClassId = data.classId;
             // Keep listeners alive while logged in so tab changes reuse cached state.
             // Perfil should not start agenda reads, but it also should not detach them.
-            if (['agenda','history','classDetails'].includes(screen)) attachAgendaListeners();
+            if (AGENDA_SCREENS.includes(screen)) {
+              if (pendingAgendaResumeRefresh) {
+                refreshAgendaListenersOnResume(true);
+              } else {
+                attachAgendaListeners();
+              }
+            }
             render();
           },
           setScheduleFilter: (filter)=>{ state.scheduleFilter=filter; render(); },
