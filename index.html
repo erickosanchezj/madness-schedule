@@ -445,7 +445,11 @@
         window.showToast = showToast;
 
         // Firestore listeners
+        const AGENDA_REFRESH_MIN_MS = 60000;
+        const AGENDA_SCREENS = ['agenda', 'history', 'classDetails'];
         let unsubClasses=null, unsubMyBookings=null, unsubWaitlist=null, unsubUser=null, unsubDailyMessage=null, unsubAttendance=null, listenersAttached=false;
+        let lastAgendaResumeRefreshAt = 0;
+        let resumeRefreshHandlersAttached = false;
         function detachListeners(){
           if (unsubClasses){ try{unsubClasses();}catch{}; unsubClasses=null; }
           if (unsubMyBookings){ try{unsubMyBookings();}catch{}; unsubMyBookings=null; }
@@ -466,6 +470,16 @@
           }
           scheduleRender();
           listenersAttached=false;
+        }
+        function refreshAgendaListenersOnResume(){
+          if (!state.currentUser || !AGENDA_SCREENS.includes(state.currentScreen)) return;
+
+          const now = Date.now();
+          if (now - lastAgendaResumeRefreshAt < AGENDA_REFRESH_MIN_MS) return;
+          lastAgendaResumeRefreshAt = now;
+
+          if (listenersAttached) detachListeners();
+          attachAgendaListeners();
         }
         function attachAgendaListeners(){
           if (listenersAttached || !state.currentUser) return;
@@ -737,8 +751,19 @@
                 try { await ensureFreshFcmToken(auth.currentUser.uid); } catch {}
               }
             }, { once:true });
+            if (!resumeRefreshHandlersAttached) {
+              document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') refreshAgendaListenersOnResume();
+              });
+              window.addEventListener('pageshow', refreshAgendaListenersOnResume);
+              window.addEventListener('focus', refreshAgendaListenersOnResume);
+              resumeRefreshHandlersAttached = true;
+            }
 
-            if (state.currentScreen === 'agenda') attachAgendaListeners();
+            if (state.currentScreen === 'agenda') {
+              lastAgendaResumeRefreshAt = Date.now();
+              attachAgendaListeners();
+            }
             scheduleRender();
           } else {
             state.currentUser = null;
