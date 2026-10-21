@@ -96,6 +96,10 @@ async function processWaitlistNotification(entry) {
     db.collection('classes').doc(classId).get(),
   ]);
 
+  // Booking-delete events can arrive after an admin removes the class.
+  // Never write a hold because that would recreate a partial class document.
+  if (!classSnap.exists) return;
+
   if (userSnap.get('blacklisted') === true) {
     // Blacklisted users cannot take waitlist spots, so remove them and move on.
     await db.collection('waitlists').doc(id).delete();
@@ -106,7 +110,14 @@ async function processWaitlistNotification(entry) {
   }
 
   const tokens = Object.keys(userSnap.get('fcmTokens') || {});
-  if (tokens.length === 0) return;
+  if (tokens.length === 0) {
+    // A member who cannot receive the opportunity must not block the queue.
+    await db.collection('waitlists').doc(id).delete();
+    await rebalanceWaitlistPositions(classId, entry.position || 1);
+    const nextEntry = await findNextEligibleEntry(classId);
+    if (nextEntry) await processWaitlistNotification(nextEntry);
+    return;
+  }
 
   const className = classSnap.get('name') || classSnap.get('title') || 'Clase';
   const expirationTime = Date.now() + NOTIFICATION_WINDOW_MS;

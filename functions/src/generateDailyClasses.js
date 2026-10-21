@@ -110,7 +110,9 @@ exports.generateDailyClasses = onSchedule(
             ? 13
             : 15;
 
-        const docRef = db.collection("classes").doc();
+        // Stable IDs make scheduler retries and overlapping runs idempotent.
+        const classKey = `${classDate}_${timeUTC.replace(":", "")}`;
+        const docRef = db.collection("classes").doc(`generated_${classKey}`);
         batch.set(docRef, {
           name: entry?.name,
           time: timeUTC,

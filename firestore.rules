@@ -18,54 +18,17 @@ service cloud.firestore {
         && request.auth.token.admin == true;
     }
     
-    function cooldownOk(uid) {
-      let userDoc = get(/databases/$(db)/documents/users/$(uid));
-      // Cooldown is okay if the user has no 'lastCancelAt' field OR if the time since last cancel is >= 15 minutes
-      return !('lastCancelAt' in userDoc.data) || (request.time.toMillis() - userDoc.data.lastCancelAt.toMillis() >= 15 * 60 * 1000);
-    }
-
     // ===== CLASSES (Refined) =====
     match /classes/{classId} {
       allow read: if true;
       allow create, update, delete: if isAdmin();
 
-      // Members can nudge the enrollment count by one.
-      // First booking initializes the count when it is missing.
-      allow update: if isAdmin() ||
-      (
-        isSignedIn()
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['enrolledCount'])
-        && (
-          (
-            resource.data.enrolledCount == null
-            && request.resource.data.enrolledCount == 1
-          )
-          || (
-            resource.data.enrolledCount != null
-            && (
-              request.resource.data.enrolledCount == resource.data.enrolledCount + 1 ||
-              request.resource.data.enrolledCount == resource.data.enrolledCount - 1
-            )
-          )
-        )
-      );
     }
 
     // ===== BOOKINGS =====
     match /bookings/{bookingId} {
-      allow get: if isSignedIn();
       allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isAdmin() || (
-        isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.classId is string
-        && request.resource.data.className is string
-        && request.resource.data.startAt is timestamp
-        && cooldownOk(request.auth.uid)
-      );
-      // Booking cancellations must go through the callable Cloud Function.
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     // ===== USERS (Final, Simpler Ruleset) =====
@@ -106,17 +69,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // ===== WAITLISTS ===== // MODIFIED 2025-OCT-03
+    // ===== WAITLISTS =====
     match /waitlists/{waitlistId} {    
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;    
-      
-      // Allow reading all waitlists for a class when user is joining  
-      allow list: if isSignedIn() || isAdmin();  
-      
-      allow get: if isAdmin() ||    
-      (isSignedIn() && (resource == null || resource.data.userId == request.auth.uid));    
-      
-      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();    
+      allow get, list: if isAdmin() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
     
     // ===== NOTIFICATIONS (admin-only) =====

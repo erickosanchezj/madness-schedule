@@ -212,6 +212,9 @@
         const messaging = firebase.messaging();
         const functionsSvc = firebase.app().functions('us-central1');
         const cancelBookingCallable = functionsSvc.httpsCallable('cancelBooking');
+        const createBookingCallable = functionsSvc.httpsCallable('createBooking');
+        const joinWaitlistCallable = functionsSvc.httpsCallable('joinWaitlist');
+        const leaveWaitlistCallable = functionsSvc.httpsCallable('leaveWaitlist');
 
         // ---- Enable client cache (multi-tab safe)
         try {
@@ -1486,78 +1489,8 @@
           },
           setScheduleFilter: (filter)=>{ state.scheduleFilter=filter; render(); },
           confirmBooking: async (classId)=>{
-            const uid = state.currentUser.uid;
-            const classRef = db.collection('classes').doc(classId);
-            const bookingRef = db.collection('bookings').doc(`${classId}_${uid}`);
-            const userRef = db.collection('users').doc(uid);
-            const waitRef = db.collection('waitlists').doc(`${classId}_${uid}`);
-            const waitEntry = state.waitlistEntries.find(w=>w.classId===classId); // user's waitlist entry
-            const notified = waitEntry && waitEntry.notifiedAt && (!waitEntry.expiresAt || asDate(waitEntry.expiresAt).getTime()>Date.now()); // valid notification
             try{
-              await db.runTransaction(async tx=>{
-                const [classSnap, bookingSnap, userSnap, waitSnap] = await Promise.all([
-                  tx.get(classRef), tx.get(bookingRef), tx.get(userRef), tx.get(waitRef)
-                ]);
-                if (!classSnap.exists) throw new Error('La clase ya no existe.');
-                if (bookingSnap.exists) throw new Error('Ya tienes reserva para esta clase.');
-                const userData = userSnap.exists ? userSnap.data() : {};
-                if (userData.blacklisted === true) {
-                  throw new Error('Tu cuenta está en revisión por cancelaciones tardías. Escríbenos para apoyarte.');
-                }
-                const lastCancelAt = userData.lastCancelAt ? asDate(userData.lastCancelAt) : null;
-                if (lastCancelAt && Date.now() - lastCancelAt.getTime() < FIFTEEN_MINUTES_MS) {
-                  throw new Error('Debes esperar 15 minutos después de cancelar para reservar de nuevo.');
-                }
-                const cls = classSnap.data();
-                const enrolled = Number(cls.enrolledCount||0);
-                const capacity = Number(cls.capacity||0);
-                const holdWaitlistId = cls.waitlistHoldWaitlistId;
-                const holdUserId = cls.waitlistHoldUserId;
-                const holdExpiresRaw = cls.waitlistHoldExpiresAt;
-                const holdExpiresAt = holdExpiresRaw?.toDate ? holdExpiresRaw.toDate() : (holdExpiresRaw ? new Date(holdExpiresRaw) : null);
-                const holdActive = holdUserId && holdWaitlistId && holdExpiresAt && holdExpiresAt.getTime() > Date.now();
-                if (!notified && holdActive && holdUserId !== uid) {
-                  throw new Error('Clase llena (turno de lista de espera activo).');
-                }
-                if (enrolled>=capacity && !notified) throw new Error('Clase llena.');
-                let startDateObj = cls.startAt?.toDate ? cls.startAt.toDate() : (cls.startAt ? new Date(cls.startAt) : null);
-                if (!startDateObj || isNaN(startDateObj.getTime())){
-                  if (cls.classDate){
-                    const hhmm = cls.time || '00:00';
-                    startDateObj = new Date(`${cls.classDate}T${hhmm}:00Z`);
-                  }
-                }
-                if (!startDateObj || isNaN(startDateObj.getTime())){
-                  throw new Error('La clase no tiene horario válido.');
-                }
-                const startAtTs = cls.startAt?.toDate ? cls.startAt : firebase.firestore.Timestamp.fromDate(startDateObj);
-                const classDate = cls.classDate || dateHelper.getYYYYMMDD(startDateObj);
-                const time = cls.time || timeFmt.format(startDateObj);
-                tx.set(bookingRef, {
-                  classId, userId: uid,
-                  userName: state.currentUser.displayName || state.currentUser.email,
-                  startAt: startAtTs, classDate, time, className: cls.name,
-                  createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                tx.update(classRef, { enrolledCount: firebase.firestore.FieldValue.increment(1) });
-                if (waitSnap.exists) tx.delete(waitRef);
-                if (cls.waitlistHoldWaitlistId === `${classId}_${uid}`) {
-                  tx.set(classRef, {
-                    waitlistHoldUserId: firebase.firestore.FieldValue.delete(),
-                    waitlistHoldWaitlistId: firebase.firestore.FieldValue.delete(),
-                    waitlistHoldExpiresAt: firebase.firestore.FieldValue.delete()
-                  }, { merge: true });
-                }
-              });
-              if (waitEntry){
-                const q = await db.collection('waitlists')
-                  .where('classId','==',classId)
-                  .where('position','>',waitEntry.position||0)
-                  .get(); // entries behind user
-                const batch = db.batch();
-                q.forEach(doc=> batch.update(doc.ref,{ position: (doc.data().position||1)-1 })); // shift positions up
-                await batch.commit();
-              }
+              await createBookingCallable({ classId });
               showModal({ success:true, title:'¡Reserva Exitosa!' });
             }catch(err){ alert(`No se pudo reservar\n\n${err.message}`); }
           },
@@ -1628,53 +1561,14 @@
             }
           },
           joinWaitlist: async (classId)=>{
-            const uid = state.currentUser.uid;
             try{
-              // Blocked users cannot join the waitlist, even before server-side cleanup runs.
-              const userSnap = await db.collection('users').doc(uid).get();
-              if (userSnap.exists && userSnap.data()?.blacklisted === true) {
-                alert('Tu cuenta está bloqueada. No puedes unirte a la lista de espera.');
-                return;
-              }
-
-              const snap = await db.collection('waitlists')
-                .where('classId', '==', classId)
-                .orderBy('position', 'desc')
-                .limit(1)
-                .get();
-
-              const maxPosition = snap.empty ? 0 : (snap.docs[0].data().position || 0);
-
-              await db.collection('waitlists').doc(`${classId}_${uid}`).set({
-                classId,
-                userId: uid,
-                position: maxPosition + 1,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-              });
+              await joinWaitlistCallable({ classId });
               showToast('Unido a la lista de espera', 'success');
             }catch(err){ alert(`No se pudo unir a la lista de espera\n\n${err.message}`); }
           },
           leaveWaitlist: async (classId)=>{
-            const uid = state.currentUser.uid;
             try{
-              const waitId = `${classId}_${uid}`;
-              const classRef = db.collection('classes').doc(classId);
-              // Position rebalancing is handled server-side by onWaitlistExpiration.
-              // Client only needs to delete its own doc and clear the hold if it held one.
-              await db.runTransaction(async tx=>{
-                const classSnap = await tx.get(classRef);
-                tx.delete(db.collection('waitlists').doc(waitId));
-                if (classSnap.exists) {
-                  const data = classSnap.data() || {};
-                  if (data.waitlistHoldWaitlistId === waitId) {
-                    tx.set(classRef, {
-                      waitlistHoldUserId: firebase.firestore.FieldValue.delete(),
-                      waitlistHoldWaitlistId: firebase.firestore.FieldValue.delete(),
-                      waitlistHoldExpiresAt: firebase.firestore.FieldValue.delete()
-                    }, { merge: true });
-                  }
-                }
-              });
+              await leaveWaitlistCallable({ classId });
               showToast('Saliste de la lista de espera');
             }catch(err){ alert(`No se pudo salir de la lista de espera\n\n${err.message}`); }
           }
