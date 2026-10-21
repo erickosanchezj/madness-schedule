@@ -1,26 +1,10 @@
-# Generated Firebase config (built from .env by build-config.js)  
-firebase-config.js  
-sw-firebase-config.js  
-  
-# Environment variables  
 .env  
 .env.*  
-  
-# Dependencies  
 node_modules/  
-  
-# Build output  
-functions/lib/  
-  
-# Firebase  
+firebase-config.js  
+sw-firebase-config.js  
 .firebase/  
-service-account*.json  
-  
-# Logs  
-*.log  
-  
-# OS files  
+firebase-debug.log  
+firestore-debug.log  
+ui-debug.log  
 .DS_Store  
-Thumbs.db  
-localScripts/
-settings.local.json
