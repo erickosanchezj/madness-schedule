@@ -71,21 +71,11 @@ exports.generateDailyClasses = onSchedule(
 
     const batch = db.batch();
     const created = [];
+    const existingTimesByDate = new Map();
 
     for (const target of targets) {
       const templateForDay = weeklySchedule[String(target.dow)] || [];
       if (!templateForDay.length) continue;
-
-      const existingSnap = await db
-        .collection("classes")
-        .where("classDate", "==", target.date)
-        .get();
-
-      const existingTimes = new Set(
-        existingSnap.docs
-          .map((doc) => doc.get("time"))
-          .filter((value) => typeof value === "string" && value.length)
-      );
 
       for (const entry of templateForDay) {
         const rawTime = (entry?.time || "").trim();
@@ -98,6 +88,18 @@ exports.generateDailyClasses = onSchedule(
           duration
         );
 
+        // classDate is stored in UTC, which can be the next local calendar day.
+        if (!existingTimesByDate.has(classDate)) {
+          const existingSnap = await db
+            .collection("classes")
+            .where("classDate", "==", classDate)
+            .get();
+          existingTimesByDate.set(
+            classDate,
+            new Set(existingSnap.docs.map((doc) => doc.get("time")))
+          );
+        }
+        const existingTimes = existingTimesByDate.get(classDate);
         if (existingTimes.has(timeUTC)) {
           continue;
         }
@@ -120,7 +122,8 @@ exports.generateDailyClasses = onSchedule(
           duration,
           classDate,
           capacity,
-          enrolledCount: 0,
+          // Incrementing by zero initializes new classes without resetting live counts.
+          enrolledCount: admin.firestore.FieldValue.increment(0),
           startAt,
           endAt,
           description: `Clase de ${entry?.name}`,
@@ -129,7 +132,7 @@ exports.generateDailyClasses = onSchedule(
             `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(
               entry?.name || "Clase"
             )}`,
-        });
+        }, { merge: true });
 
         existingTimes.add(timeUTC);
         created.push({

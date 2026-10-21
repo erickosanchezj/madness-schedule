@@ -34,10 +34,12 @@ async function createBooking(request) {
   const bookingRef = db.collection("bookings").doc(`${classId}_${uid}`);
   const userRef = db.collection("users").doc(uid);
   const waitRef = db.collection("waitlists").doc(`${classId}_${uid}`);
+  const classWaitersQuery = db.collection("waitlists").where("classId", "==", classId);
 
   await db.runTransaction(async (tx) => {
-    const [classSnap, bookingSnap, userSnap, waitSnap] = await Promise.all([
+    const [classSnap, bookingSnap, userSnap, waitSnap, classWaitersSnap] = await Promise.all([
       tx.get(classRef), tx.get(bookingRef), tx.get(userRef), tx.get(waitRef),
+      tx.get(classWaitersQuery),
     ]);
     if (!classSnap.exists) throw new HttpsError("not-found", "La clase ya no existe.");
     if (bookingSnap.exists) throw new HttpsError("already-exists", "Ya tienes reserva para esta clase.");
@@ -93,7 +95,16 @@ async function createBooking(request) {
         waitlistHoldExpiresAt: admin.firestore.FieldValue.delete(),
       } : {}),
     });
-    if (waitSnap.exists) tx.delete(waitRef);
+    if (waitSnap.exists) {
+      const removedPosition = Number(waitSnap.get("position") || 0);
+      tx.delete(waitRef);
+      classWaitersSnap.docs.forEach((doc) => {
+        const position = Number(doc.get("position") || 0);
+        if (doc.id !== waitRef.id && position > removedPosition) {
+          tx.update(doc.ref, { position: position - 1 });
+        }
+      });
+    }
   });
 
   return { ok: true };
