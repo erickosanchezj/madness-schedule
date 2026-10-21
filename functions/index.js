@@ -12,6 +12,7 @@ const db = admin.firestore();
 const FieldValue = admin.firestore.FieldValue;
 
 const { pruneTokenInUsers } = require("./lib/pruneTokenInUsers");
+const memberBooking = require("./src/memberBooking");
 
 // Allowed origins for admin-only callable functions served to the web dashboard.
 const ADMIN_PANEL_ORIGINS = ["https://madness.chinito.cc"];
@@ -24,6 +25,10 @@ const TOTALPASS_FUNCTION_FQFN =
   "projects/madnessscheds/locations/us-central1/functions/sendTotalPassReminder";
 // Grace window ends at start of the 11th; we add 10 full days from the reset moment.
 const TEN_DAY_MS = 10 * 24 * 60 * 60 * 1000;
+
+exports.createBooking = onCall({ region: "us-central1" }, memberBooking.createBooking);
+exports.joinWaitlist = onCall({ region: "us-central1" }, memberBooking.joinWaitlist);
+exports.leaveWaitlist = onCall({ region: "us-central1" }, memberBooking.leaveWaitlist);
 
 /**
  * Member cancellation handled on the server to prevent clock tampering.
