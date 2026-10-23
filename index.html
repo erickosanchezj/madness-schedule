@@ -194,7 +194,7 @@
       }
       .class-detail-hero {
         position: relative;
-        min-height: clamp(24rem, 52dvh, 26rem);
+        min-height: clamp(22rem, 46dvh, 23rem);
         overflow: hidden;
         isolation: isolate;
       }
@@ -235,7 +235,7 @@
         position: absolute;
         z-index: 2;
         right: 0;
-        bottom: 1.75rem;
+        bottom: 1.25rem;
         left: 0;
         padding: 0 1.5rem;
       }
@@ -273,34 +273,34 @@
       .class-detail-body {
         position: relative;
         z-index: 2;
-        margin-top: -0.6rem;
-        padding: 0 1.5rem calc(var(--bottom-nav-height) + 6.5rem);
+        margin-top: -0.35rem;
+        padding: 0 1.5rem;
       }
       .class-detail-card {
         border: 1px solid rgba(255, 255, 255, 0.13);
         border-radius: 1.85rem;
         background: linear-gradient(145deg, rgba(31, 30, 36, 0.96), rgba(20, 19, 24, 0.94));
         box-shadow: 0 22px 44px -32px rgba(255, 146, 30, 0.55), 0 14px 36px -26px #000;
-        padding: 1.4rem;
+        padding: 1.1rem;
       }
       .class-detail-card h2 {
-        margin-bottom: 0.9rem;
-        font-size: 1.6rem;
+        margin-bottom: 0.6rem;
+        font-size: 1.5rem;
         font-weight: 800;
         letter-spacing: -0.035em;
       }
       .class-detail-row {
         display: grid;
-        grid-template-columns: 4.6rem minmax(0, 1fr);
-        gap: 0.9rem;
+        grid-template-columns: 3.35rem minmax(0, 1fr);
+        gap: 0.8rem;
         align-items: center;
-        padding: 0.85rem 0;
+        padding: 0.6rem 0;
       }
       .class-detail-row + .class-detail-row { border-top: 1px solid rgba(255, 255, 255, 0.1); }
       .class-detail-icon {
         display: flex;
-        width: 4.6rem;
-        height: 4.6rem;
+        width: 3.35rem;
+        height: 3.35rem;
         align-items: center;
         justify-content: center;
         border: 1px solid rgba(255, 255, 255, 0.06);
@@ -316,7 +316,7 @@
       .class-detail-value {
         margin-top: 0.2rem;
         color: #fff;
-        font-size: 1.05rem;
+        font-size: 1rem;
         font-weight: 700;
       }
       .class-detail-occupancy {
@@ -340,12 +340,9 @@
         transition: width 180ms ease-out;
       }
       .class-detail-cta {
-        position: fixed;
-        right: 0;
-        bottom: var(--bottom-nav-height);
-        left: 0;
-        z-index: 31;
-        padding: 0.75rem 1.5rem;
+        position: relative;
+        z-index: 2;
+        padding: 1.35rem 1.5rem;
         pointer-events: none;
       }
       .class-detail-cta > * {
