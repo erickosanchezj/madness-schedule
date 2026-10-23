@@ -128,10 +128,19 @@
         width: calc(100% + 3rem);
         max-width: none;
         height: auto;
-        margin: 1.5rem -1.5rem -2.25rem;
+        margin: 0 -1.5rem;
         outline: none;
         pointer-events: none;
         user-select: none;
+      }
+      .agenda-screen {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100dvh - 5rem);
+      }
+      .agenda-floral-dock {
+        margin-top: auto !important;
+        padding-top: 1.5rem;
       }
       button, [role="button"], .nav-button, a, input {
         transition-property: background-color, color, box-shadow, transform, border-color, opacity;
@@ -161,7 +170,7 @@
   <body class="bg-zinc-900 text-white antialiased">
     <!-- App -->
     <div id="app-container" class="h-screen flex-col overflow-hidden bg-zinc-900 hidden">
-      <main id="main-content" class="flex-1 overflow-y-auto pb-32 no-scrollbar"></main>
+      <main id="main-content" class="flex-1 overflow-y-auto pb-20 no-scrollbar"></main>
       <!-- NavBar -->
       <nav class="fixed bottom-0 left-0 right-0 bg-zinc-800/80 backdrop-blur-lg border-t border-zinc-700 z-[30]">
         <div id="nav-bar" class="flex justify-around h-20 max-w-md mx-auto">
@@ -1071,7 +1080,7 @@
           })() : '';
 
           return `
-            <div class="p-6 space-y-6">
+            <div class="agenda-screen p-6 space-y-6">
               <header>
                 <h1 class="text-3xl font-bold tracking-tight heading-display">Tu Agenda</h1>
                 <p class="text-zinc-400">Tus reservas próximas y el horario.</p>
@@ -1091,7 +1100,9 @@
                 </div>
                 <div class="space-y-4">${classesHTML}</div>
               </section>
-              <img src="images/cempasuchil-border.png" alt="" aria-hidden="true" class="agenda-floral-border" loading="lazy" decoding="async">
+              <div class="agenda-floral-dock">
+                <img src="images/cempasuchil-border.png" alt="" aria-hidden="true" class="agenda-floral-border" loading="lazy" decoding="async">
+              </div>
             </div>`;
         }
 
