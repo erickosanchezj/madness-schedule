@@ -137,12 +137,16 @@
         min-height: calc(100dvh - 5rem);
         padding-bottom: calc(1.5rem + min(47vw, 17rem));
       }
+      .agenda-screen > :not(.agenda-floral-dock) {
+        position: relative;
+        z-index: 1;
+      }
       .agenda-floral-dock {
         position: fixed;
         right: 0;
         bottom: 5rem;
         left: 0;
-        z-index: 20;
+        z-index: 0;
         overflow: hidden;
         line-height: 0;
         pointer-events: none;
