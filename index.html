@@ -123,6 +123,16 @@
       .segmented-control button:not(.btn-primary):hover {
         background: rgba(255, 255, 255, 0.06);
       }
+      .agenda-floral-border {
+        display: block;
+        width: calc(100% + 3rem);
+        max-width: none;
+        height: auto;
+        margin: 1.5rem -1.5rem -2.25rem;
+        outline: none;
+        pointer-events: none;
+        user-select: none;
+      }
       button, [role="button"], .nav-button, a, input {
         transition-property: background-color, color, box-shadow, transform, border-color, opacity;
         transition-duration: 150ms;
@@ -1081,6 +1091,7 @@
                 </div>
                 <div class="space-y-4">${classesHTML}</div>
               </section>
+              <img src="images/cempasuchil-border.png" alt="" aria-hidden="true" class="agenda-floral-border" loading="lazy" decoding="async">
             </div>`;
         }
 
