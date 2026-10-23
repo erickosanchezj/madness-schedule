@@ -40,10 +40,10 @@
 
     <style>
       :root {
-        --brand-gradient: linear-gradient(135deg, #4ADE80 0%, #0D9488 100%);
+        --brand-gradient: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
         --card-surface: linear-gradient(145deg, #18181b 0%, #1e1e22 100%);
         --card-border: #27272a;
-        --glow: 0 18px 45px -25px rgba(74, 222, 128, 0.65);
+        --glow: 0 18px 45px -25px rgba(249, 115, 22, 0.65);
         --surface-ring: 0 0 0 1px rgba(255, 255, 255, 0.08);
         --surface-ring-hover: 0 0 0 1px rgba(255, 255, 255, 0.13);
       }
@@ -55,8 +55,8 @@
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         -webkit-tap-highlight-color: transparent;
         background:
-          radial-gradient(120% 120% at 20% 20%, rgba(74, 222, 128, 0.08), transparent),
-          radial-gradient(120% 120% at 80% 0%, rgba(13, 148, 136, 0.09), transparent),
+          radial-gradient(120% 120% at 20% 20%, rgba(251, 146, 60, 0.08), transparent),
+          radial-gradient(120% 120% at 80% 0%, rgba(234, 88, 12, 0.09), transparent),
           #09090b;
         color: #fff;
       }
@@ -89,7 +89,7 @@
       .btn-primary {
         background-image: var(--brand-gradient);
         color: #0b1720;
-        border: 1px solid rgba(34, 197, 94, 0.55);
+        border: 1px solid rgba(249, 115, 22, 0.55);
         border-radius: 14px;
         font-weight: 700;
         box-shadow: var(--glow);
@@ -337,7 +337,7 @@
           return r===0 ? `empieza en ${h} h` : `empieza en ${h} h ${r} min`;
         }
 
-        function getCountdownClass(ymd, hhmm, defaultClass='text-emerald-300'){
+        function getCountdownClass(ymd, hhmm, defaultClass='text-orange-300'){
           if(!ymd||!hhmm) return defaultClass;
           const startTs=new Date(`${ymd}T${hhmm}:00Z`).getTime();
           if(Number.isNaN(startTs)) return defaultClass;
@@ -467,8 +467,8 @@
           if (!toastEl) return;
           const { html = false, duration = 3000 } = opts;
           if (html) toastEl.innerHTML = message; else toastEl.textContent = message;
-          toastEl.classList.remove('opacity-0', 'bg-green-600', 'bg-red-600', 'bg-zinc-800');
-          const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-800';
+          toastEl.classList.remove('opacity-0', 'bg-orange-600', 'bg-red-600', 'bg-zinc-800');
+          const color = type === 'success' ? 'bg-orange-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-800';
           toastEl.classList.add(color, 'opacity-100');
           toastEl.focus();
           clearTimeout(toastTimeout);
@@ -963,7 +963,7 @@
               const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
               const cover = coverHelper.forClassName(b.className, b.className);
               const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
-              const countdownClass = getCountdownClass(ymdUTC, hhmmUTC, 'text-emerald-400');
+              const countdownClass = getCountdownClass(ymdUTC, hhmmUTC, 'text-orange-400');
               const showCancelButton = timeStatus !== 'en curso';
               const safeClassName = DOMPurify.sanitize(b.className || '');
               const safeDayText = DOMPurify.sanitize(dayText);
@@ -1026,8 +1026,8 @@
                 const effectiveAvailable = holdActive && !holdForMe ? 0 : available;
                 const safeId = DOMPurify.sanitize(cls.id);
                 let badge = `<div class="flex items-center justify-end gap-2">
-              <!-- <span class="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Lugares disponibles</span> -->
-              <span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-emerald-500/50 text-emerald-100 rounded-md">Reservar!</span>
+              <!-- <span class="text-[10px] font-semibold uppercase tracking-wide text-orange-300">Lugares disponibles</span> -->
+              <span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold bg-orange-500/50 text-orange-100 rounded-md">Reservar!</span>
             </div>`;
                 if (isBooked) {
                   badge = `<span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-indigo-300 border border-indigo-400/70 rounded-md bg-transparent">Reservada</span>`;
@@ -1063,7 +1063,7 @@
                 <div class="flex-1">
                   <p class="font-bold text-lg">${safeName}</p>
                   <p class="text-zinc-400 text-sm">con ${safeInstructor}</p>
-                  <p class="text-sm mt-1 text-emerald-400">${safeDayText} • ${hhmm}</p>
+                  <p class="text-sm mt-1 text-orange-400">${safeDayText} • ${hhmm}</p>
                   <p class="${countdownClass} text-xs mt-0.5">${timeUntilLabel(ymdUTC, hhmmUTC)}</p>
                 </div>
                 <div class="text-right">${badge}</div>
@@ -1155,7 +1155,7 @@
               const status = attendance?.status || '';
               const normalized = status.toLowerCase();
               if (normalized === 'attended'){
-                return `<span class="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-300">Asististe</span>`;
+                return `<span class="inline-flex items-center gap-1 rounded-full border border-orange-500/40 bg-orange-500/20 px-3 py-1 text-xs font-medium text-orange-300">Asististe</span>`;
               }
               if (normalized === 'absent'){
                 return `<span class="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-medium text-rose-300">Falta registrada</span>`;
@@ -1270,7 +1270,7 @@
               </section>
 
               <section class="flex gap-4">
-                <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer" class="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl py-3 flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg">
+                <a href="https://wa.me/5215539887713" target="_blank" rel="noopener noreferrer" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-3 flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg">
                   <i data-lucide="message-circle" class="w-5 h-5"></i>
                   <span class="font-bold">WhatsApp</span>
                 </a>
@@ -1306,7 +1306,7 @@
                     <span class="text-xs text-zinc-500">${pushStatusText}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <i data-lucide="${pushEnabled?'bell-ring':'bell-off'}" class="w-5 h-5 ${pushEnabled?'text-emerald-400':'text-zinc-500'}"></i>
+                    <i data-lucide="${pushEnabled?'bell-ring':'bell-off'}" class="w-5 h-5 ${pushEnabled?'text-orange-400':'text-zinc-500'}"></i>
                     <i data-lucide="chevron-right" class="w-5 h-5 text-zinc-500"></i>
                   </div>
                 </button>
@@ -1688,7 +1688,7 @@
 
           if (!buttons) {
             modalContent.innerHTML = `
-              <div class="w-16 h-16 ${success?'bg-emerald-500/20 text-emerald-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
+              <div class="w-16 h-16 ${success?'bg-orange-500/20 text-orange-400':'bg-rose-500/20 text-rose-400'} rounded-full flex items-center justify-center mx-auto">
                 <i data-lucide="${success?'check':'trash-2'}" class="w-10 h-10"></i>
               </div>
               <h2 class="text-2xl font-bold">${safeTitle}</h2>
