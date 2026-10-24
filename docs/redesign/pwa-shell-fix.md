@@ -45,3 +45,15 @@ verification. Safari's actual rubber-band compositor is not reproduced by these
 assertions. Recheck launch and downward dragging on the reported iPhone after
 loading the update. Finish drafts, fully quit and reopen the PWA; there is no need
 to reinstall or clear site data.
+
+The follow-up restores the floating class back button over the photo, removing
+its separate header strip. It stays anchored to the class screen while details
+scroll, below the top safe area. Hero text reserves space beneath its 48px touch
+target; feedback and booking actions retain their own rows. The stylesheet URL
+is updated so a fresh load retrieves this change.
+
+The existing workflow, 45 booking-state and shell checks pass again. Additional
+Chromium checks at 390×844, 320×568 and 844×390 with simulated 47px/34px safe areas
+confirm the photo starts at the content edge, the back button stays pinned and
+tappable during scrolling, focus works, the initial title clears the button,
+and navigation still reaches the viewport bottom. This is not device testing.
