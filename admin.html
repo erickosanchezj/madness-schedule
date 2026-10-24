@@ -14,8 +14,9 @@
       gtag('config', 'G-897Y4PVBEN');
     </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Madness - Panel de Administrador</title>
+    <meta name="description" content="Madness: horarios, reservas y gestión de clases de entrenamiento.">
     <meta name="theme-color" content="#18181b" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
@@ -29,288 +30,16 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./images/admin-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="./images/admin-512x512.png">
     <link rel="apple-touch-icon" href="./images/admin-192x192.png">
-    <style>
-      :root {
-        --hour-height: 64px;
-        --surface-ring: 0 0 0 1px rgba(255, 255, 255, 0.08);
-        --surface-ring-hover: 0 0 0 1px rgba(255, 255, 255, 0.13);
-        --surface-shadow: 0 18px 48px -32px rgba(0, 0, 0, 0.9);
-      }
-      html {
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        -webkit-tap-highlight-color: transparent;
-      }
-      h1, h2, h3 { text-wrap: balance; }
-      p, li, button, a, input, select, textarea, th, td { text-wrap: pretty; }
-      main, table, #toast-container { font-variant-numeric: tabular-nums; }
-      img {
-        outline: 1px solid rgba(255, 255, 255, 0.1);
-        outline-offset: -1px;
-      }
-      :focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: .5rem; }
-      button, a, input, select, textarea, summary {
-        transition-property: background-color, color, box-shadow, transform, border-color, opacity;
-        transition-duration: 150ms;
-        transition-timing-function: ease-out;
-      }
-      button, summary, input, select, textarea {
-        min-height: 44px;
-      }
-      button:active, summary:active {
-        transform: scale(0.96);
-      }
-      button:disabled {
-        cursor: not-allowed;
-        opacity: 0.65;
-        transform: none;
-      }
-      input:focus, select:focus, textarea:focus {
-        box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.24);
-        outline: none;
-      }
-      .bg-zinc-800.rounded-lg,
-      section.bg-zinc-800,
-      .day-column,
-      .day-grid,
-      .calendar-header .day-label {
-        box-shadow: var(--surface-ring), var(--surface-shadow);
-      }
-      .bg-zinc-800.rounded-lg:hover,
-      section.bg-zinc-800:hover,
-      .day-column:hover {
-        box-shadow: var(--surface-ring-hover), var(--surface-shadow);
-      }
-      .attendance-btn.selected-attended { background-color: #10b981; color: white; }
-      .attendance-btn.selected-absent { background-color: #f43f5e; color: white; }
-      #toast-container { pointer-events: none; }
-      .toast { pointer-events: auto; }
-      .calendar-header {
-        display: grid;
-        grid-template-columns: 70px repeat(7, minmax(0, 1fr));
-        gap: 0.5rem;
-        align-items: stretch;
-      }
-      .calendar-header .day-label {
-        text-align: center;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.75rem;
-        background: rgba(39, 39, 42, 0.8);
-        border: 1px solid rgba(63, 63, 70, 0.6);
-      }
-      .calendar-grid {
-        display: grid;
-        grid-template-columns: 70px repeat(7, minmax(0, 1fr));
-        gap: 0.5rem;
-        align-items: stretch;
-        position: relative;
-      }
-      .time-column {
-        position: relative;
-        padding-top: 0.5rem;
-      }
-      .time-slot {
-        height: var(--hour-height);
-        font-size: 0.75rem;
-        color: #a1a1aa;
-        display: flex;
-        align-items: flex-start;
-        justify-content: flex-end;
-        padding-right: 0.5rem;
-      }
-      .time-slot::after {
-        content: '';
-        position: relative;
-        display: block;
-        width: 8px;
-        height: 1px;
-        margin-top: 0.5rem;
-        margin-left: 0.5rem;
-        background: rgba(113, 113, 122, 0.5);
-      }
-      .day-grid {
-        position: relative;
-        min-height: calc(var(--hour-height) * 16);
-        background: rgba(24, 24, 27, 0.7);
-        border: 1px solid rgba(63, 63, 70, 0.8);
-        border-radius: 0.75rem;
-        overflow: hidden;
-      }
-      .day-grid::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: repeating-linear-gradient(
-          to bottom,
-          rgba(63, 63, 70, 0.6) 0px,
-          rgba(63, 63, 70, 0.6) 1px,
-          transparent 1px,
-          transparent var(--hour-height)
-        );
-        pointer-events: none;
-      }
-      .current-time-line {
-        position: absolute;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent 5%, rgba(129, 140, 248, 0.9) 35%, rgba(16, 185, 129, 0.95) 65%, transparent 95%);
-        box-shadow: 0 0 12px rgba(59, 130, 246, 0.35);
-        z-index: 5;
-        pointer-events: none;
-      }
-      .current-time-line::before {
-        content: '';
-        position: absolute;
-        left: var(--current-time-indicator-x, 12px);
-        top: 50%;
-        transform: translateY(-50%);
-        width: 10px;
-        height: 10px;
-        border-radius: 9999px;
-        background: #22d3ee;
-        border: 2px solid rgba(24, 24, 27, 0.9);
-        box-shadow: 0 0 8px rgba(34, 211, 238, 0.55);
-      }
-      .class-block {
-        position: absolute;
-        border-radius: 0.75rem;
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(129, 140, 248, 0.85));
-        border: 1px solid rgba(129, 140, 248, 0.6);
-        padding: 0.5rem;
-        color: #f4f4f5;
-        font-size: 0.75rem;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-        cursor: pointer;
-        transition-property: transform, box-shadow;
-        transition-duration: 150ms;
-        transition-timing-function: ease-out;
-      }
-      .class-block:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.35);
-      }
-      .class-block.running {
-        border: 2px solid rgba(16, 185, 129, 0.9);
-        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
-      }
-      .class-block .class-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 0.25rem;
-      }
-      .class-block .class-meta span {
-        font-size: 0.7rem;
-        color: rgba(228, 228, 231, 0.95);
-      }
-      .empty-day-message {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: #71717a;
-        font-size: 0.75rem;
-        text-align: center;
-        pointer-events: none;
-      }
-      .today-column {
-        background: rgba(67, 56, 202, 0.16);
-        border-color: rgba(99, 102, 241, 0.7);
-        box-shadow: inset 0 0 0 2px rgba(129, 140, 248, 0.35);
-      }
-      .day-column {
-        background: rgba(24, 24, 27, 0.75);
-        border: 1px solid rgba(63, 63, 70, 0.7);
-        border-radius: 0.75rem;
-        padding: 1rem;
-      }
-      .day-column summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        list-style: none;
-      }
-      .day-column summary::-webkit-details-marker {
-        display: none;
-      }
-      .toggle-indicator {
-        transition: transform 0.2s ease;
-      }
-      .day-column[open] .toggle-indicator {
-        transform: rotate(180deg);
-      }
-      .day-label.today-label {
-        background: rgba(67, 56, 202, 0.35);
-        border-color: rgba(99, 102, 241, 0.7);
-        color: #e0e7ff;
-      }
-      @media (max-width: 1024px) {
-        .calendar-header,
-        .calendar-grid {
-          grid-template-columns: 70px repeat(7, 180px);
-        }
-      }
-      @media (max-width: 768px) {
-        .calendar-container .min-w-[960px] {
-          min-width: 0;
-        }
-        .calendar-header,
-        .calendar-grid {
-          grid-template-columns: 60px 1fr;
-        }
-        .calendar-header .day-label {
-          display: none;
-        }
-        .calendar-header .day-label.today-label {
-          display: block;
-        }
-        .calendar-grid .day-grid {
-          display: none;
-        }
-        .calendar-grid .day-grid.today-column {
-          display: block;
-        }
-      }
-      @media (max-width: 640px) {
-        :root { --hour-height: 52px; }
-        .calendar-header,
-        .calendar-grid {
-          grid-template-columns: 60px 1fr;
-        }
-        .class-block {
-          font-size: 0.7rem;
-          padding: 0.4rem;
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          scroll-behavior: auto !important;
-          transition-duration: 0.01ms !important;
-        }
-        .class-block,
-        .toggle-indicator {
-          transition: none;
-        }
-        .class-block:hover {
-          transform: none;
-          box-shadow: none;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="./styles/app.css">
+    <script src="./scripts/app-accessibility.js" defer></script>
+    <link rel="stylesheet" href="./styles/admin.css">
   </head>
-  <body class="bg-zinc-900 text-white">
+  <body data-app="admin" class="bg-zinc-900 text-white">
+    <a class="skip-link" href="#main-content">Ir al contenido</a>
+    <noscript>Activa JavaScript para acceder a Madness.</noscript>
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2" aria-live="polite" aria-atomic="true"></div>
 
-    <main id="main-content">
+    <main tabindex="-1" id="main-content">
     <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
       <div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
         <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
@@ -328,9 +57,14 @@
         <button id="logout-btn" class="text-rose-400 hover:text-rose-300 font-semibold">Cerrar Sesión</button>
       </div>
 
+      <nav class="admin-nav" aria-label="Secciones de administración">
+        <a href="#week-title">Clases</a><a href="#reservas-title">Reservas</a>
+        <a href="#subscription-title">Suscripciones</a><a href="#asistencia-title">Reportes</a>
+        <a href="#daily-message-title">Mensajes</a><a href="#usuarios-title">Usuarios</a>
+      </nav>
       <div class="mb-6 flex flex-wrap gap-3">
         <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
-          <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Generar/Verificar Clases (Próxima Semana)
+          <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Completar semana
         </button>
         <button id="create-class-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">
           <i data-lucide="plus" class="inline-block -mt-1 mr-2"></i>Crear Nueva Clase
@@ -343,7 +77,7 @@
           <div class="calendar-container space-y-4">
             <div class="overflow-x-auto pb-2">
               <div class="lg:min-w-[960px] space-y-2">
-                <div class="calendar-header text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                <div class="calendar-header text-xs font-semibold normal-case text-zinc-400">
                   <div class="text-right pr-2">Hora</div>
                   <div class="day-label">Lunes</div>
                   <div class="day-label">Martes</div>
@@ -502,7 +236,7 @@
           </div>
 
           <div id="subscription-loading" class="text-center py-8 text-zinc-400 hidden">
-            Cargando usuarios...
+            Cargando usuarios…
           </div>
         </div>
       </section>
@@ -525,8 +259,8 @@
         <div id="attendance-section-body" class="space-y-4 hidden">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 gap-2">
             <div class="flex items-center gap-4">
-              <span id="att-last">Última actualización: —</span>
-              <span id="att-next">Próxima actualización en: —</span>
+              <span id="att-last">Última actualización: Sin datos</span>
+              <span id="att-next">Próxima actualización en: Sin datos</span>
             </div>
             <button id="att-refresh" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
               <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
@@ -594,19 +328,19 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-zinc-300">
               <div>
                 <p class="text-zinc-500">Tendencia 7 días</p>
-                <p id="capacity-trend" class="font-semibold">—</p>
+                <p id="capacity-trend" class="font-semibold">Sin datos</p>
               </div>
               <div>
                 <p class="text-zinc-500">Alertas</p>
-                <p id="capacity-alert" class="font-semibold">—</p>
+                <p id="capacity-alert" class="font-semibold">Sin datos</p>
               </div>
               <div>
                 <p class="text-zinc-500">Vs. semana pasada</p>
-                <p id="capacity-compare" class="font-semibold">—</p>
+                <p id="capacity-compare" class="font-semibold">Sin datos</p>
               </div>
               <div>
                 <p class="text-zinc-500">Proyección día</p>
-                <p id="capacity-projection" class="font-semibold">—</p>
+                <p id="capacity-projection" class="font-semibold">Sin datos</p>
               </div>
             </div>
           </div>
@@ -1500,7 +1234,7 @@
                 <li class="mb-3">
                   <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/40 space-y-4">
                     <div class="flex flex-col gap-1">
-                      <p class="text-[11px] uppercase tracking-wide text-zinc-400">${safeType}</p>
+                      <p class="text-[11px] normal-case text-zinc-400">${safeType}</p>
                       ${titleSection}
                       <p class="text-xs text-zinc-400">${safeWhen}</p>
                     </div>
@@ -2045,16 +1779,16 @@
               const visibleEnd = Math.min(eventEnd, TOTAL_MINUTES);
               if (visibleEnd <= 0 || visibleStart >= TOTAL_MINUTES) return;
 
-              const topPx = (visibleStart / 60) * hourHeight;
-              const heightPx = Math.max(((visibleEnd - visibleStart) / 60) * hourHeight, 34);
               const widthPercent = 100 / Math.max(event.overlapSpan || 1, 1);
               const leftPercent = widthPercent * event.column;
 
               const block = document.createElement('div');
               block.className = 'class-block';
               if (this.isClassRunningNow(cls)) block.classList.add('running');
-              block.style.top = `${topPx}px`;
-              block.style.height = `${heightPx}px`;
+              // CSS units stay aligned when orientation changes the hour-height token.
+              block.style.setProperty('--class-start-hour', String(visibleStart / 60));
+              block.style.setProperty('--class-duration-hours', String((visibleEnd - visibleStart) / 60));
+              block.dataset.overlap = String(event.overlapSpan || 1);
               block.style.left = `calc(${leftPercent}% + 3px)`;
               block.style.width = `calc(${widthPercent}% - 6px)`;
               block.setAttribute('role','button');
@@ -2068,10 +1802,12 @@
               const endLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.endMs)));
               const capacityClass = enrolled >= capacity && capacity > 0 ? 'text-rose-200' : 'text-emerald-200';
               block.setAttribute('aria-label', `Editar ${safeName} de ${startLabel} a ${endLabel}`);
+              block.title = `${safeName}: ${startLabel} - ${endLabel}`;
 
               block.innerHTML = `
                 <div class="class-meta">
-                  <strong class="text-sm text-white leading-tight">${safeName} (${startLabel} - ${endLabel})</strong>
+                  <strong class="text-sm text-white leading-tight">${safeName}</strong>
+                  <time class="class-start">${startLabel}</time>
                 </div>
                 <span class="text-xs font-semibold ${capacityClass}">${safeInstructor || 'Instructor por asignar'} - ${enrolled} / ${capacity || '—'}</span>
               `;
@@ -2926,7 +2662,7 @@
           if (this.state.attendanceLastAt){
             const fmt = new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit'});
             lastEl.textContent = `Última actualización: ${fmt.format(new Date(this.state.attendanceLastAt))}`;
-          } else lastEl.textContent = 'Última actualización: —';
+          } else lastEl.textContent = 'Última actualización: Sin datos';
           nextEl.textContent = 'Actualización en vivo';
         },
 

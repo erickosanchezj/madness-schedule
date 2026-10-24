@@ -1,0 +1,134 @@
+/* Hallmark · app screen · genre: modern-minimal · theme: brand · redesign: full · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3 · weakest: density, retain calendar and improve mobile forms */
+/* Hallmark · waive 39b · calendar class-blocks encode actual duration on the hour grid with at least 44px hit targets · a one-hour event must occupy the same 64px as its hour slot */
+/* Hallmark · waive 72 · native closed weekly details retain hidden roster descendants in the render probe · expanded rosters keep 40px bottom padding; preserve native disclosure semantics */
+/* Hallmark · answered F4 · attendance status controls retain distinct labeled attended/absent states, separate from primary actions */
+/* styles/admin.css: calendar geometry and staff surfaces. */
+/* RELEVANT FILES: admin.html, styles/app.css, styles/tokens.css */
+:root { --calendar-color-1: rgba(255, 255, 255, 0.08); --calendar-color-2: rgba(255, 255, 255, 0.13); --calendar-color-3: rgba(0, 0, 0, 0.9); --calendar-color-4: rgba(255, 255, 255, 0.1); --calendar-color-5: #818cf8; --calendar-color-6: rgba(129, 140, 248, 0.24); --calendar-color-7: #10b981; --calendar-color-8: white; --calendar-color-9: #f43f5e; --calendar-color-10: rgba(39, 39, 42, 0.8); --calendar-color-11: rgba(63, 63, 70, 0.6); --calendar-color-12: #a1a1aa; --calendar-color-13: rgba(113, 113, 122, 0.5); --calendar-color-14: rgba(24, 24, 27, 0.7); --calendar-color-15: rgba(63, 63, 70, 0.8); --calendar-color-16: rgba(129, 140, 248, 0.9); --calendar-color-17: rgba(16, 185, 129, 0.95); --calendar-color-18: rgba(59, 130, 246, 0.35); --calendar-color-19: #22d3ee; --calendar-color-20: rgba(24, 24, 27, 0.9); --calendar-color-21: rgba(34, 211, 238, 0.55); --calendar-color-22: rgba(37, 99, 235, 0.9); --calendar-color-23: rgba(129, 140, 248, 0.85); --calendar-color-24: rgba(129, 140, 248, 0.6); --calendar-color-25: #f4f4f5; --calendar-color-26: rgba(15, 23, 42, 0.35); --calendar-color-27: rgba(16, 185, 129, 0.9); --calendar-color-28: rgba(16, 185, 129, 0.3); --calendar-color-29: rgba(228, 228, 231, 0.95); --calendar-color-30: #71717a; --calendar-color-31: rgba(67, 56, 202, 0.16); --calendar-color-32: rgba(99, 102, 241, 0.7); --calendar-color-33: rgba(129, 140, 248, 0.35); --calendar-color-34: rgba(24, 24, 27, 0.75); --calendar-color-35: rgba(63, 63, 70, 0.7); --calendar-color-36: rgba(67, 56, 202, 0.35); --calendar-color-37: #e0e7ff; }
+:root { --hour-height: 64px; --surface-ring: 0 0 0 1px var(--calendar-color-1); --surface-ring-hover: 0 0 0 1px var(--calendar-color-2); --surface-shadow: 0 18px 48px -32px var(--calendar-color-3); }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { font-family: var(--font-body); -webkit-tap-highlight-color: transparent; }
+      h1, h2, h3 { text-wrap: balance; }
+      p, li, button, a, input, select, textarea, th, td { text-wrap: pretty; }
+      main, table, #toast-container { font-variant-numeric: tabular-nums; }
+img { outline: 1px solid var(--calendar-color-4); outline-offset: -1px; }
+      :focus-visible { outline: 2px solid var(--calendar-color-5); outline-offset: 2px; border-radius: .5rem; }
+button, a, input, select, textarea, summary { transition-property: background-color, color, box-shadow, transform, border-color, opacity; transition-duration: 150ms; transition-timing-function: ease-out; }
+button, summary, input, select, textarea { min-height: 44px; }
+button:active, summary:active { transform: scale(0.96); }
+button:disabled { cursor: not-allowed; opacity: 0.65; transform: none; }
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px var(--calendar-color-6); outline: none; }
+      .bg-zinc-800.rounded-lg,
+      section.bg-zinc-800,
+      .day-column,
+      .day-grid,
+.calendar-header .day-label { box-shadow: var(--surface-ring), var(--surface-shadow); }
+      .bg-zinc-800.rounded-lg:hover,
+      section.bg-zinc-800:hover,
+.day-column:hover { box-shadow: var(--surface-ring-hover), var(--surface-shadow); }
+      .attendance-btn.selected-attended { color: var(--color-accent-ink) !important; background-color: var(--calendar-color-7); color: var(--calendar-color-8); }
+      .attendance-btn.selected-absent { color: var(--color-accent-ink) !important; background-color: var(--calendar-color-9); color: var(--calendar-color-8); }
+      #toast-container { pointer-events: none; }
+      .toast { pointer-events: auto; }
+.calendar-header { display: grid; grid-template-columns: 70px repeat(7, minmax(0, 1fr)); gap: var(--space-xs); align-items: stretch; }
+.calendar-header .day-label { text-align: center; padding: var(--space-xs) var(--space-sm); border-radius: 0.75rem; background: var(--calendar-color-10); border: 1px solid var(--calendar-color-11); }
+.calendar-grid { display: grid; grid-template-columns: 70px repeat(7, minmax(0, 1fr)); gap: var(--space-xs); align-items: stretch; position: relative; }
+.time-column { position: relative; padding-top: var(--space-xs); }
+.time-slot { height: var(--hour-height); font-size: 0.75rem; color: var(--calendar-color-12); display: flex; align-items: flex-start; justify-content: flex-end; padding-right: var(--space-xs); }
+.time-slot::after { content: ''; position: relative; display: block; width: 8px; height: 1px; margin-top: var(--space-xs); margin-left: var(--space-xs); background: var(--calendar-color-13); }
+.day-grid { position: relative; min-height: calc(var(--hour-height) * 16); background: var(--calendar-color-14); border: 1px solid var(--calendar-color-15); border-radius: 0.75rem; overflow: hidden; }
+.day-grid::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient( to bottom, var(--calendar-color-11) 0px, var(--calendar-color-11) 1px, transparent 1px, transparent var(--hour-height) ); pointer-events: none; }
+.current-time-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-paper-3); box-shadow: 0 0 12px var(--calendar-color-18); z-index: 5; pointer-events: none; }
+.current-time-line::before { content: ''; position: absolute; left: var(--current-time-indicator-x, 12px); top: 50%; transform: translateY(-50%); width: 10px; height: 10px; border-radius: 9999px; background: var(--calendar-color-19); border: 2px solid var(--calendar-color-20); box-shadow: 0 0 8px var(--calendar-color-21); }
+.class-block { position: absolute; border-radius: 0.75rem; background: var(--color-paper-3); border: 1px solid var(--calendar-color-24); padding: var(--space-xs); color: var(--calendar-color-25); font-size: 0.75rem; overflow: hidden; display: flex; flex-direction: column; gap: 0.35rem; cursor: pointer; transition-property: transform, box-shadow; transition-duration: 150ms; transition-timing-function: ease-out; }
+.class-block:hover { transform: translateY(-1px); box-shadow: 0 10px 18px var(--calendar-color-26); }
+.class-block.running { border: 2px solid var(--calendar-color-27); box-shadow: 0 0 0 2px var(--calendar-color-28); }
+.class-block .class-meta { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2xs); }
+.class-block .class-meta span { font-size: 0.7rem; color: var(--calendar-color-29); }
+.empty-day-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--calendar-color-30); font-size: 0.75rem; text-align: center; pointer-events: none; }
+.today-column { background: var(--calendar-color-31); border-color: var(--calendar-color-32); box-shadow: inset 0 0 0 2px var(--calendar-color-33); }
+.day-column { background: var(--calendar-color-34); border: 1px solid var(--calendar-color-35); border-radius: 0.75rem; padding: var(--space-md); }
+.day-column summary { display: flex; align-items: center; justify-content: space-between; list-style: none; }
+.day-column summary::-webkit-details-marker { display: none; }
+.toggle-indicator { transition: transform 0.2s ease; }
+.day-column[open] .toggle-indicator { transform: rotate(180deg); }
+.day-label.today-label { background: var(--calendar-color-36); border-color: var(--calendar-color-32); color: var(--calendar-color-37); }
+      @media (max-width: 1024px) {
+        .calendar-header,
+.calendar-grid { grid-template-columns: 70px repeat(7, 180px); }
+      }
+      @media (max-width: 768px) {
+.calendar-container .min-w-[960px] { min-width: 0; }
+        .calendar-header,
+.calendar-grid { grid-template-columns: 60px minmax(0, 1fr); }
+.calendar-header .day-label { display: none; }
+.calendar-header .day-label.today-label { display: block; }
+.calendar-grid .day-grid { display: none; }
+.calendar-grid .day-grid.today-column { display: block; }
+      }
+      @media (max-width: 640px) {
+        :root { --hour-height: 52px; }
+        .calendar-header,
+.calendar-grid { grid-template-columns: 60px minmax(0, 1fr); }
+.class-block { font-size: 0.7rem; padding: 0.4rem; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+        .class-block,
+.toggle-indicator { transition: none; }
+.class-block:hover { transform: none; box-shadow: none; }
+      }
+#admin-panel { max-width: 1440px; margin-inline: auto; }
+#admin-panel > .space-y-6 > section { padding-block: var(--space-lg); border-top: 1px solid var(--color-rule); background: none; border-radius: 0; box-shadow: none; }
+#login-screen { min-height: 100dvh; }
+#class-modal > div { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.class-block { background: var(--color-paper-3); color: var(--color-ink); }
+.class-block.running { border-color: var(--color-accent); }
+@media (max-width: 640px) { #admin-panel { padding: var(--space-md); } #admin-panel > div:first-child { align-items: flex-start; gap: var(--space-md); } #admin-panel h1 { font-size: 1.44rem; } #admin-panel section { padding-inline: 0; } }
+
+.admin-nav { display: flex; gap: var(--space-md); overflow-x: auto; padding-block: var(--space-sm); margin-bottom: var(--space-lg); border-bottom: 1px solid var(--color-rule); }
+.admin-nav a { display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; color: var(--color-ink-2); }
+#admin-panel h2 { color: var(--color-ink) !important; }
+#admin-panel section.bg-zinc-800 { background: none !important; }
+#admin-panel .day-column { box-shadow: none; }
+.attendance-btn.selected-attended { background: var(--color-accent); color: var(--color-accent-ink); }
+.attendance-btn.selected-absent { background: var(--color-error); color: var(--color-accent-ink); }
+
+.empty-day-message { color: var(--color-muted); }
+#logout-btn, #gen-classes-btn { white-space: nowrap; flex-shrink: 0; }
+#admin-panel > div:first-child { flex-wrap: wrap; }
+#admin-panel .bg-teal-600 { background: var(--color-accent); color: var(--color-accent-ink); }
+#admin-panel .day-column { padding-bottom: var(--space-lg); }
+input:not([type='checkbox']):not([type='radio']), select, textarea { border: 1px solid var(--color-field-edge); }
+
+#admin-panel input { min-width: 0; }
+#admin-panel .day-column { padding-bottom: var(--space-xl); }
+.class-block .class-meta { flex-direction: column; }
+@media (max-width: 640px) {
+  #usuarios-title ~ div .flex:has(input) { flex-wrap: wrap; }
+  #usuarios-title ~ div .flex > input { flex-basis: 100%; width: 100%; }
+}
+@media (max-width: 640px) {
+  #subscription-section-body { padding-inline: 0; }
+  #subscription-section-body table, #subscription-section-body tbody { display: block; width: 100%; }
+  #subscription-section-body thead { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+  #subscription-section-body tr { display: block; border-bottom: 1px solid var(--color-rule); padding-block: var(--space-sm); }
+  #subscription-section-body td { display: block; padding: var(--space-xs); overflow-wrap: anywhere; }
+  #subscription-section-body td::before { display: block; font-size: .75rem; color: var(--color-muted); margin-bottom: var(--space-2xs); }
+  #subscription-section-body td:nth-child(2)::before { content: 'Tipo de suscripción'; }
+  #subscription-section-body td:nth-child(3)::before { content: 'Estado TotalPass'; }
+  #subscription-section-body td:nth-child(4)::before { content: 'Estado de pago'; }
+  #subscription-section-body td:nth-child(5)::before { content: 'Último pago'; }
+  #subscription-section-body td:nth-child(6) { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+}
+
+.class-block { top: calc(var(--class-start-hour) * var(--hour-height)); height: max(44px, calc(var(--class-duration-hours) * var(--hour-height))); }
+.day-grid { container-type: inline-size; }
+@container (max-width: 180px) {
+  .class-block { padding: var(--space-2xs); }
+  .class-block .class-meta { gap: 0; }
+  .class-block strong { font-size: .75rem; }
+  .class-block .class-start { font-size: .6875rem; white-space: nowrap; }
+  .class-block > span { display: none; }
+}
