@@ -3,9 +3,8 @@
 /* Hallmark · finish-review: subagent · ship · 2 findings resolved: toolbar and feedback no longer cover content */
 /* styles/cempasuchil.css: integrates the seasonal artwork and class-detail layout. */
 /* RELEVANT FILES: index.html, styles/app.css, styles/tokens.css, images/cempasuchil-border.png */
-.agenda-screen { isolation: isolate; min-height: calc(100dvh - var(--nav-height) - var(--safe-bottom)); }
-.agenda-screen > :not(.agenda-floral-dock) { position: relative; z-index: 1; }
-.agenda-floral-dock { position: fixed; inset-inline: 0; bottom: calc(var(--nav-height) + var(--safe-bottom)); margin: 0 !important; line-height: 0; z-index: 0; pointer-events: none; }
+.agenda-screen { min-height: 100%; }
+.agenda-floral-dock { position: absolute; inset-inline: 0; bottom: 0; margin: 0; line-height: 0; z-index: 0; pointer-events: none; }
 .agenda-floral-border { display: block; width: 100%; max-width: 760px; height: auto; max-height: 240px; object-fit: cover; object-position: bottom; margin-inline: auto; outline: none; user-select: none; }
 .app-bottom-nav { border-radius: 0; }
 body[data-app='member'] .app-bottom-nav .nav-button.active-nav::before { top: auto; bottom: var(--space-2xs); }
@@ -41,8 +40,8 @@ body[data-app='member'] .app-bottom-nav .nav-button.active-nav::before { top: au
 @media (prefers-reduced-motion: reduce) { .class-detail-booking-button { transition: none; } }
 
 /* Keep chrome and feedback outside the scroll pane so neither covers class information. */
-body[data-app='member'] #main-content.has-class-details { padding-bottom: calc(var(--nav-height) + var(--safe-bottom)); }
-.class-detail-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; height: calc(100dvh - var(--nav-height) - var(--safe-top) - var(--safe-bottom)); min-height: 0; }
+body[data-app='member'] #main-content.has-class-details { padding-bottom: 0; }
+.class-detail-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; height: 100%; min-height: 0; }
 .class-detail-toolbar { padding: var(--space-xs) var(--space-md); background: var(--color-paper); color: var(--color-ink); }
 .class-detail-back { position: static; }
 .class-detail-content { min-height: 0; overflow-y: auto; scroll-padding-block: var(--space-md); padding-bottom: var(--space-md); }
@@ -51,3 +50,15 @@ body[data-app='member'] #main-content.has-class-details { padding-bottom: calc(v
 .class-detail-feedback #toast { position: static; transform: none; width: auto; max-width: none; margin: 0 var(--space-lg); }
 .class-detail-feedback #toast.opacity-0 { display: none; }
 @media (max-height: 700px) { .class-detail-hero { min-height: 224px; } }
+
+/* A single shell owns the viewport; scrolling never repositions the navigation or artwork. */
+html { height: 100%; }
+body[data-app='member'] { display: flex; flex-direction: column; height: 100%; height: 100dvh; overflow-y: hidden; overscroll-behavior-y: none; }
+body[data-app='member'] #app-container { flex: 1 1 0; height: auto; min-height: 0; overflow: hidden; }
+.app-stage { position: relative; isolation: isolate; z-index: 0; flex: 1 1 0; min-height: 0; }
+body[data-app='member'] #main-content { position: relative; z-index: 1; height: 100%; min-height: 0; padding-bottom: var(--space-lg); scroll-padding-bottom: var(--space-lg); overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+body[data-app='member'] .app-bottom-nav { position: relative; z-index: 1; flex: 0 0 auto; padding-bottom: var(--safe-bottom); }
+#main-content.has-class-details > div { height: 100%; }
+body[data-app='member'] #auth-container { flex: 1 1 0; height: auto; min-height: 0; overflow-y: auto; justify-content: flex-start; overscroll-behavior-y: contain; }
+#auth-container .auth-panel { flex: 0 0 auto; margin-block: auto; }
+body[data-app='member'] > .connection-status { flex: 0 0 auto; }

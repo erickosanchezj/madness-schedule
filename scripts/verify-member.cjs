@@ -94,5 +94,40 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
    console.log('Class-detail states and reachable actions',width,height,scenarios.length,'PASS');
   }
  }
+
+ if(!before && process.argv.includes('--shell')){
+  // Safe-area values are simulated; these checks do not emulate Safari's compositor.
+  for(const [width,height] of [[390,844],[390,720],[390,844],[844,390],[320,568]]){
+   await page.setViewport({width,height});
+   await page.evaluate(()=>{
+    document.documentElement.style.setProperty('--safe-top','47px');
+    document.documentElement.style.setProperty('--safe-bottom','34px');
+    Object.assign(__preview.classes[0],{name:'TRX',instructor:'Por asignar',capacity:13,enrolledCount:4});
+    document.getElementById('toast').classList.remove('opacity-100');document.getElementById('toast').classList.add('opacity-0');
+    __preview.app.navigateTo('agenda');
+   });
+   await settle(page);
+   for(const scroll of [0,1000,0]){
+    const metrics=await page.evaluate(scroll=>{
+     const main=document.getElementById('main-content'),dock=document.getElementById('agenda-background');
+     main.scrollTop=scroll;
+     window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
+     const box=e=>e.getBoundingClientRect(),nav=box(document.querySelector('.app-bottom-nav')),flowers=box(dock);
+     return {gap:innerHeight-nav.bottom,mainGap:nav.top-box(main).bottom,flowerGap:nav.top-flowers.bottom,navHeight:nav.height,rootScroll:document.scrollingElement.scrollTop,absolute:getComputedStyle(dock).position==='absolute',sibling:dock.parentElement===main.parentElement,accent:getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim()};
+    },scroll);
+    if(Math.abs(metrics.gap)>1||Math.abs(metrics.mainGap)>1||Math.abs(metrics.flowerGap)>1||metrics.navHeight!==107||metrics.rootScroll||!metrics.absolute||!metrics.sibling||metrics.accent!=='#ff921e')throw Error('PWA shell '+JSON.stringify({width,height,scroll,...metrics}));
+   }
+   await page.evaluate(()=>{
+    const row=document.querySelector('.class-row');row.scrollIntoView({block:'end'});
+    const dock=document.getElementById('agenda-background');dock.style.pointerEvents='auto';
+    const r=row.getBoundingClientRect(), y=Math.min(r.bottom-8,document.querySelector('nav').getBoundingClientRect().top-8);
+    if(!row.contains(document.elementFromPoint(r.left+8,y)))throw Error('Flowers cover a class row');
+    dock.style.pointerEvents='';
+   });
+   await page.screenshot({path:prefix+`-shell-${width}x${height}.png`,fullPage:true});
+   console.log('PWA shell, safe area, scroll/resume and flower order',width,height,'PASS');
+  }
+  await page.evaluate(()=>{__preview.app.navigateTo('history');if(!document.getElementById('agenda-background').hidden)throw Error('Flowers leaked into history');});
+ }
  await browser.close();
 })();

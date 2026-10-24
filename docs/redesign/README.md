@@ -4,7 +4,8 @@
 <!-- RELEVANT FILES: index.html, admin.html, service-worker.js, firebase.json -->
 # Madness mobile PWA redesign
 
-Latest update: [Cempasúchil integration and deployment hold](cempasuchil.md).
+Latest fix: [Installed PWA shell correction](pwa-shell-fix.md).
+Seasonal integration: [Cempasúchil details](cempasuchil.md).
 The redesign branch has since been used for a successful Pages deployment;
 pushing further updates can publish them automatically.
 

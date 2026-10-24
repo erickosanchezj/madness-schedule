@@ -4,7 +4,7 @@
 /* Hallmark · finish-review: subagent · 4 findings · resolved visibility, search, density and calendar resize alignment */
 /* styles/app.css: shared mobile shell, member screens and accessible controls. */
 /* RELEVANT FILES: styles/tokens.css, styles/admin.css, index.html, admin.html */
-@import url('./tokens.css');
+@import url('./tokens.css?v=20261024-shell');
 * { box-sizing: border-box; }
 html, body { overflow-x: clip; }
 html { scrollbar-color: var(--color-muted) var(--color-paper); scroll-padding-top: var(--space-lg); }
@@ -130,3 +130,5 @@ label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-
 
 #generic-modal { width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; color: var(--color-ink); }
 body .font-medium { font-weight: 600; }
+
+#toast.opacity-0 { pointer-events: none; }
