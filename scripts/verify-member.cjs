@@ -8,7 +8,11 @@ const toolsDir = process.env.MADNESS_TEST_TOOLS || '/tmp/hallmark/node_modules';
 const puppeteer = require(path.join(toolsDir,'puppeteer-core'));
 const root=path.resolve(__dirname,'..');
 const before=process.argv.includes('--before');
-fs.mkdirSync(root+'/docs/redesign/screenshots',{recursive:true});
+const baselineRef=process.env.MADNESS_BEFORE_REF || 'dfd478e';
+const screenshotDir=process.env.MADNESS_SCREENSHOTS || root+'/docs/redesign/screenshots';
+const tailwindRequests=[];
+const pageErrors=[];
+fs.mkdirSync(screenshotDir,{recursive:true});
 fs.mkdirSync(root+'/.hallmark/render',{recursive:true});
 const fontCSS = ['inter-latin-400-normal','inter-latin-500-normal','inter-latin-600-normal','inter-latin-700-normal'].map((n,i)=>`@font-face { font-family: Inter; font-weight: ${[400,500,600,700][i]}; src: url(data:font/woff2;base64,${fs.readFileSync(path.join(toolsDir,'@fontsource/inter/files/'+n+'.woff2')).toString('base64')}); }`).join('') + `@font-face {font-family: 'Archivo Black'; src: url(data:font/woff2;base64,${fs.readFileSync(path.join(toolsDir,'@fontsource/archivo-black/files/archivo-black-latin-400-normal.woff2')).toString('base64')});}`;
 async function settle(page) { await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(i=>{i.loading='eager';return i.decode().catch(()=>{})}));}); }
@@ -31,10 +35,10 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
 (async()=>{
  const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  const page=await browser.newPage();await page.setRequestInterception(true);
- page.on('request',r=>{const u=r.url();if(u.startsWith('http://localhost:8085/index.html')){let html=(before ? require('child_process').execFileSync('git',['show','051e5c6:index.html'],{cwd:root,encoding:'utf8'}) : fs.readFileSync(root+'/index.html','utf8'));html=html.replace('// Íconos\n        lucide.createIcons();',`window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes,user};\n        // Íconos\n        lucide.createIcons();`);return r.respond({contentType:'text/html',body:html});}if(u.includes('firebase-app-compat.js'))return r.respond({contentType:'text/javascript',body:stub});if(u.includes('tailwindcss.com'))return r.respond({contentType:'text/javascript',body:''});if(u.includes('purify.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'dompurify/dist/purify.min.js'))});if(u.includes('unpkg.com/lucide'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'lucide/dist/umd/lucide.min.js'))});if(u.startsWith('http://localhost:8085/'))return r.continue();return r.respond({body:'',contentType:'text/javascript'});});
- page.on('pageerror',e=>console.log('PAGEERROR',e.message));
- await page.setViewport({width:390,height:844,deviceScaleFactor:1});await page.goto('http://localhost:8085/index.html');await page.addStyleTag({path:'/tmp/madness-tailwind.css'});await page.waitForFunction(()=>window.__preview);await page.addStyleTag({content:fontCSS});await settle(page);
- const prefix=root+'/docs/redesign/screenshots/'+(before?'before':'after');
+ page.on('request',r=>{const u=r.url();if(u.includes('tailwindcss.com'))tailwindRequests.push(u);if(before&&u.endsWith('/baseline-tailwind.css'))return r.respond({contentType:'text/css',body:fs.readFileSync('/tmp/static-tailwind-baseline.css')});if(u.startsWith('http://localhost:8085/index.html')){let html=(before ? require('child_process').execFileSync('git',['show',baselineRef+':index.html'],{cwd:root,encoding:'utf8'}) : fs.readFileSync(root+'/index.html','utf8'));html=html.replace('// Íconos\n        lucide.createIcons();',`window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes,user};\n        // Íconos\n        lucide.createIcons();`);if(before)html=html.replace('<script src="https://cdn.tailwindcss.com"></script>','<link rel="stylesheet" href="/baseline-tailwind.css">');return r.respond({contentType:'text/html',body:html});}if(u.includes('firebase-app-compat.js'))return r.respond({contentType:'text/javascript',body:stub});if(u.includes('tailwindcss.com'))return r.respond({contentType:'text/javascript',body:''});if(u.includes('purify.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'dompurify/dist/purify.min.js'))});if(u.includes('unpkg.com/lucide'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'lucide/dist/umd/lucide.min.js'))});if(u.startsWith('http://localhost:8085/'))return r.continue();return r.respond({body:'',contentType:'text/javascript'});});
+ page.on('pageerror',e=>{pageErrors.push(e.message);console.log('PAGEERROR',e.message)});
+ await page.setViewport({width:390,height:844,deviceScaleFactor:1});await page.goto('http://localhost:8085/index.html');await page.waitForFunction(()=>window.__preview);await page.addStyleTag({content:fontCSS});await settle(page);
+ const prefix=screenshotDir+'/'+(before?'before':'after');
  await page.screenshot({path:prefix+'-login.png',fullPage:true});
  await page.evaluate(()=>{const p=__preview;p.state.currentUser=p.user;p.state.classes=p.classes;p.state.loading={classes:false,bookings:false};p.state.subscriptionStatus='paid';document.querySelector('#auth-container').style.display='none';document.querySelector('#app-container').style.display='flex';p.render();});
  for(const screen of ['agenda','history','profile','classDetails']){await page.evaluate(screen=>{__preview.state.currentScreen=screen;__preview.state.selectedClassId='fixture-trx';__preview.render()},screen);await settle(page);await page.screenshot({path:prefix+'-'+screen+'.png',fullPage:true});if(!before){fs.mkdirSync(root+'/.hallmark/render',{recursive:true});let snapshot=await page.content();snapshot=snapshot.replace(/<script[\s\S]*?<\/script>/g,'');fs.writeFileSync(root+'/.hallmark/render/'+screen+'.html',snapshot.replaceAll('./styles/','/styles/').replaceAll('src="images/','src="/images/').replaceAll('src="./images/','src="/images/').replace(/<link[^>]+fonts\.googleapis[^>]+>/g,''));}}
@@ -129,5 +133,13 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
   }
   await page.evaluate(()=>{__preview.app.navigateTo('history');if(!document.getElementById('agenda-background').hidden)throw Error('Flowers leaked into history');});
  }
- await browser.close();
+ if(!before){
+ await require('./verify-tailwind-states.cjs').member(page,prefix);
+ if(tailwindRequests.length)throw Error('Tailwind CDN requested');
+ const css=await page.evaluate(()=>({links:[...document.querySelectorAll('link[rel=stylesheet]')].filter(e=>e.href.includes('/styles/tailwind.css')).length,loaded:[...document.styleSheets].some(s=>s.href?.includes('/styles/tailwind.css')),runtime:!!window.tailwind}));
+ if(css.links!==1||!css.loaded||css.runtime)throw Error('Static Tailwind check '+JSON.stringify(css));
+ console.log('Committed CSS loaded once; no Tailwind CDN requests or runtime',JSON.stringify(css));
+ if(pageErrors.length)throw Error('Browser errors: '+pageErrors.join('; '));
+}
+await browser.close();
 })();

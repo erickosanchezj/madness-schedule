@@ -1,0 +1,46 @@
+# docs/static-tailwind/checks.txt
+# Records isolated member/admin browser check outputs and the clean rebuild.
+# Preserves verification evidence for the committed static stylesheet.
+# RELEVANT FILES: README.md, scripts/verify-member.cjs, scripts/verify-admin.cjs
+width 320 overflow false
+width 375 overflow false
+width 430 overflow false
+width 768 overflow false
+width 1280 overflow false
+width 1920 overflow false
+Profile writes 2
+Callables exercised [ 'createBooking', 'joinWaitlist', 'leaveWaitlist', 'cancelBooking' ]
+Offline banner, reconnection, draft preservation passed
+Class-detail states and reachable actions 320 568 9 PASS
+Class-detail states and reachable actions 390 844 9 PASS
+Class-detail states and reachable actions 844 390 9 PASS
+Class-detail states and reachable actions 768 1024 9 PASS
+Class-detail states and reachable actions 1280 800 9 PASS
+PWA shell, safe area, scroll/resume and flower order 390 844 PASS
+PWA shell, safe area, scroll/resume and flower order 390 720 PASS
+PWA shell, safe area, scroll/resume and flower order 390 844 PASS
+PWA shell, safe area, scroll/resume and flower order 844 390 PASS
+PWA shell, safe area, scroll/resume and flower order 320 568 PASS
+Floating back control: safe areas, scrolling, hit testing and focus PASS
+Committed CSS loaded once; no Tailwind CDN requests or runtime {"links":1,"loaded":true,"runtime":false}
+admin 390 overflow false
+calendar alignment 390 -7
+admin 768 overflow false
+calendar alignment 768 -7
+admin 1280 overflow false
+calendar alignment 1280 -7
+Populated subscription table at 320px: no page overflow
+admin dialog Escape passed
+Admin tabs, attendance selections, toast variants and safe-area viewport matrix PASS
+Committed CSS loaded once; no Tailwind CDN requests or runtime {"links":1,"loaded":true,"runtime":false}
+
+> build:css
+> tailwindcss -c tailwind.config.cjs -i styles/tailwind.input.css -o styles/tailwind.css --minify
+
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+Rebuilding...
+
+Done in 378ms.
