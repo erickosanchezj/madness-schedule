@@ -44,7 +44,7 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
   await page.setViewport({width:390,height:844});await page.evaluate(()=>{__preview.state.currentScreen='profile';__preview.render()});await page.click('[data-action="edit-name"]');await page.waitForSelector('#name-dialog[open]');await page.type('#display-name',' actualizado');await page.click('#name-dialog button[type="submit"]');await page.waitForFunction(()=>!document.querySelector('#name-dialog')?.open);await page.waitForFunction(()=>__calls.some(c=>c.collection==='users'));await settle(page);console.log('Profile writes',await page.evaluate(()=>__calls.length));
   await page.evaluate(()=>__preview.showModal({title:'¿Abrir WhatsApp?',message:'Se abrirá WhatsApp para enviar tu código de TotalPass.',buttons:[{text:'Cancelar'},{text:'Abrir WhatsApp',primary:true}]}));await page.waitForFunction(()=>document.querySelector('#generic-modal').contains(document.activeElement));await page.keyboard.press('Escape');
  }
- 
+
  if(!before){
   await page.waitForFunction(()=>document.querySelector('#generic-modal').classList.contains('hidden'));
   await page.evaluate(async()=>{await __preview.app.joinWaitlist('fixture-hiit');await __preview.app.leaveWaitlist('fixture-hiit');});
