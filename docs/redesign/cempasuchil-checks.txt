@@ -1,0 +1,64 @@
+Cempasuchil integration verification, 2026-10-24
+Linux Chromium; isolated fixtures; no production writes.
+
+Member and class states
+width 320 overflow false
+width 375 overflow false
+width 430 overflow false
+width 768 overflow false
+width 1280 overflow false
+width 1920 overflow false
+Profile writes 2
+Callables exercised [ 'createBooking', 'joinWaitlist', 'leaveWaitlist', 'cancelBooking' ]
+Offline banner, reconnection, draft preservation passed
+Class-detail states and reachable actions 320 568 9 PASS
+Class-detail states and reachable actions 390 844 9 PASS
+Class-detail states and reachable actions 844 390 9 PASS
+Class-detail states and reachable actions 768 1024 9 PASS
+Class-detail states and reachable actions 1280 800 9 PASS
+
+Admin
+admin 390 overflow false
+calendar alignment 390 -7
+admin 768 overflow false
+calendar alignment 768 -7
+admin 1280 overflow false
+calendar alignment 1280 -7
+Populated subscription table at 320px: no page overflow
+admin dialog Escape passed
+
+Hallmark source
+admin.html
+  WARN 47c :1534 placeholder image service placehold.co | fix: A labelled data-slot in the theme colours, or a real asset
+  WARN 70 :1179 a script prints success ("${this.dayShortFmt.format(sen…") with no request behind it | fix: No success state until the form posts somewhere; an empty data-endpoint and a handoff note
+  WARN 74 :49 default palette instead of theme tokens: 32 distinct palette classes (bg-zinc-900 bg-zinc-800 bg-zinc-700 bg-indigo-600) | fix: Extend the Tailwind theme with the Hallmark tokens and use those names
+index.html
+  WARN 74 :61 default palette instead of theme tokens: 5 distinct palette classes (bg-zinc-900 bg-zinc-800 border-zinc-700 text-orang…
+styles/app.css
+  WARN F4 :63 2 filled primary-button recipes: .btn-primary + .nav-button.active-nav | fix: One filled primary per page; demote the rest to outline/quiet variants
+  ANSWERED F4 :63 4 filled primary-button recipes: .btn-primary + .nav-button.active-nav + .attendance…
+  ANSWERED F6 :80 numeric selector .connection-status at display size without tabular figures
+.hallmark/before.json
+  WARN kept :1 not compared, because this run did not render them: http://localhost:8085 | fix: Render the same pages or URLs the before record holds
+styles/admin.css
+  ANSWERED F4 :96 4 filled primary-button recipes: .attendance-btn.selected-attended + .attendance-btn…
+sloplint: 0 FAIL, 6 WARN, 3 ANSWERED across 6 file(s).
+kept: links 2/2, handlers 4/4, script hooks 118/118; before 68 FAIL, 0 REFLEX, now 0 FAIL, 0 REFLEX
+
+Hallmark render
+render tier: 20 screenshots in /workspace/madness-schedule/.hallmark/shots (1280x800, 1440x900, 1920x1080 folds; 1440 and 375 full pages)
+http://localhost:8085/.hallmark/render/admin.html
+  WAIVED 39b :1 [1440px] control height outside 32 to 52px: div.class-block 64px, div.class-block 64px, div.class-block 64px
+  WAIVED 72 :1 [1440px] text crowds the edge of its box: details.day-column bottom -118px
+styles/admin.css
+  ANSWERED F4 :96 4 filled primary-button recipes: .attendance-btn.selected-attended + .attendance-btn…
+styles/app.css
+  ANSWERED F6 :80 numeric selector .connection-status at display size without tabular figures
+sloplint: 0 FAIL, 0 WARN, 2 WAIVED, 2 ANSWERED across 4 file(s) and 4 URL(s).
+
+Inline/new script syntax PASS
+git diff --check PASS
+npm test: placeholder only
+npm run build: missing required Firebase environment variables, no files written
+Fresh finish review: ship; 2/2 findings resolved
+Push: owner authorized proceeding after the Pages deployment trigger was explained

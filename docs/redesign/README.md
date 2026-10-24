@@ -4,6 +4,10 @@
 <!-- RELEVANT FILES: index.html, admin.html, service-worker.js, firebase.json -->
 # Madness mobile PWA redesign
 
+Latest update: [Cempasúchil integration and deployment hold](cempasuchil.md).
+The redesign branch has since been used for a successful Pages deployment;
+pushing further updates can publish them automatically.
+
 Branch: `redesign/madness-mobile-pwa`. Base: `051e5c640eb24d952464599f2264c6cf66ded65b`.
 The original branch was `work`; the working tree was clean. The remote is
 `https://github.com/erickosanchezj/madness-schedule.git`. Default branch: `main`.
@@ -20,7 +24,8 @@ member records or a successfully authenticated Firebase session. External reques
 are intercepted. Existing Inter and Archivo Black fonts are supplied temporarily
 from font packages for faithful captures. Original screenshots use the same setup.
 
-Shared styling preserves the dark zinc surfaces, green brand accent and typefaces.
+Shared styling preserves dark surfaces and the existing typefaces. The latest
+integration uses the orange accent from the cempasúchil feature branch.
 Agenda keeps upcoming reservations ahead of the schedule, with compact class rows
 and more room for full-class actions. Profile settings use clearer rows.
 Navigation retains Agenda, Historial and Perfil. Calendar event placement now uses

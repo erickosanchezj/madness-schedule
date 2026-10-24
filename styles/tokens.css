@@ -4,20 +4,21 @@
 /* RELEVANT FILES: styles/app.css, index.html, admin.html */
 :root {
   color-scheme: dark;
-  --color-paper: #18181b;
-  --color-paper-2: #212124;
-  --color-paper-3: #2b2b30;
+  --color-paper: #121115;
+  --color-paper-2: #1b1a20;
+  --color-paper-3: #2b2930;
   --color-ink: #f4f4f5;
   --color-ink-2: #d4d4d8;
   --color-muted: #a1a1aa;
   --color-rule: #3f3f46;
   --color-field-edge: #777780;
-  --color-accent: #4ade80;
-  --color-accent-hover: #86efac;
-  --color-accent-ink: #112318;
-  --color-focus: #86efac;
+  --color-accent: #ff921e;
+  --color-accent-hover: #fbad65;
+  --color-accent-ink: #291607;
+  --color-focus: #ffb870;
   --color-error: #fda4af;
   --color-warning: #fcd34d;
+  --color-photo-overlay: rgb(18 17 21 / 25%);
   --color-overlay: rgb(9 9 11 / 80%);
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Archivo Black', 'Inter', sans-serif;

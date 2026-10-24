@@ -1,0 +1,53 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full · nav: kept three destinations · signature: cempasuchil and class photo · posture: restrained · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: fit, keep content scrollable on short screens */
+/* Hallmark · finish-review: subagent · ship · 2 findings resolved: toolbar and feedback no longer cover content */
+/* styles/cempasuchil.css: integrates the seasonal artwork and class-detail layout. */
+/* RELEVANT FILES: index.html, styles/app.css, styles/tokens.css, images/cempasuchil-border.png */
+.agenda-screen { isolation: isolate; min-height: calc(100dvh - var(--nav-height) - var(--safe-bottom)); }
+.agenda-screen > :not(.agenda-floral-dock) { position: relative; z-index: 1; }
+.agenda-floral-dock { position: fixed; inset-inline: 0; bottom: calc(var(--nav-height) + var(--safe-bottom)); margin: 0 !important; line-height: 0; z-index: 0; pointer-events: none; }
+.agenda-floral-border { display: block; width: 100%; max-width: 760px; height: auto; max-height: 240px; object-fit: cover; object-position: bottom; margin-inline: auto; outline: none; user-select: none; }
+.app-bottom-nav { border-radius: 0; }
+body[data-app='member'] .app-bottom-nav .nav-button.active-nav::before { top: auto; bottom: var(--space-2xs); }
+.text-orange-100, .text-orange-300, .text-orange-400 { color: var(--color-accent) !important; }
+.bg-orange-500, .bg-orange-600 { background-color: var(--color-accent) !important; color: var(--color-accent-ink) !important; }
+.class-detail-screen { display: flex; flex-direction: column; min-height: calc(100dvh - var(--nav-height) - var(--safe-top) - var(--safe-bottom)); background: var(--color-paper); color: var(--color-ink); }
+.class-detail-hero { position: relative; isolation: isolate; display: flex; align-items: flex-end; min-height: 256px; flex: 1; }
+.class-detail-hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to bottom, var(--color-photo-overlay), var(--color-paper)); pointer-events: none; }
+.class-detail-hero-image { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center 54%; outline: none; }
+.class-detail-back { position: fixed; top: max(var(--space-sm), var(--safe-top)); left: max(var(--space-md), calc((100% - 760px) / 2 + var(--space-md))); z-index: 40; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--color-muted); border-radius: var(--radius-input); background: var(--color-paper-2); color: var(--color-ink); }
+.class-detail-hero-content { width: 100%; padding: var(--space-2xl) var(--space-lg) var(--space-md); }
+.class-detail-title { font-family: var(--font-display); font-size: 2.074rem; font-weight: 400; line-height: 1.2; letter-spacing: 0; }
+.class-detail-pills { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); margin-top: var(--space-md); }
+.class-detail-pill { display: inline-flex; align-items: center; gap: var(--space-xs); max-width: 100%; padding: var(--space-xs) var(--space-sm); background: var(--color-paper-2); color: var(--color-ink); border-radius: var(--radius-input); font-size: .875rem; font-weight: 600; }
+.class-detail-pill svg, .class-detail-icon svg { flex-shrink: 0; width: 20px; height: 20px; color: var(--color-accent); }
+.class-detail-body { padding-inline: var(--space-lg); }
+.class-detail-card { background: var(--color-paper-2); color: var(--color-ink); border-radius: var(--radius-card); padding: var(--space-md); }
+.class-detail-card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: var(--space-xs); }
+.class-detail-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-sm); align-items: center; padding-block: var(--space-sm); }
+.class-detail-row + .class-detail-row { border-top: 1px solid var(--color-rule); }
+.class-detail-icon { display: inline-flex; align-items: center; justify-content: center; }
+.class-detail-label { color: var(--color-muted); font-size: .875rem; }
+.class-detail-value { color: var(--color-ink); font-size: 1rem; font-weight: 600; overflow-wrap: break-word; }
+.class-detail-progress { display: block; width: 100%; height: 8px; margin-top: var(--space-xs); border: 0; border-radius: var(--radius-input); background: var(--color-rule); accent-color: var(--color-accent); }
+.class-detail-progress::-webkit-meter-bar { background: var(--color-rule); border: 0; border-radius: var(--radius-input); }
+.class-detail-progress::-webkit-meter-optimum-value { background: var(--color-accent); border-radius: var(--radius-input); }
+.class-detail-progress::-moz-meter-bar { background: var(--color-accent); }
+.class-detail-cta { position: sticky; bottom: 0; z-index: 10; padding: var(--space-md) var(--space-lg); background: var(--color-paper); color: var(--color-ink); margin-top: var(--space-xs); }
+.class-detail-booking-button { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: 48px; padding: var(--space-sm); border-radius: var(--radius-input); font-size: 1rem; }
+.class-detail-booking-button svg { flex-shrink: 0; }
+@media (max-width: 374px) { .class-detail-body { padding-inline: var(--space-md); } .class-detail-hero-content { padding-inline: var(--space-md); } .class-detail-cta { padding-inline: var(--space-md); } }
+@media (max-height: 700px) { .class-detail-hero { min-height: 224px; } .class-detail-row { padding-block: var(--space-xs); } }
+@media (prefers-reduced-motion: reduce) { .class-detail-booking-button { transition: none; } }
+
+/* Keep chrome and feedback outside the scroll pane so neither covers class information. */
+body[data-app='member'] #main-content.has-class-details { padding-bottom: calc(var(--nav-height) + var(--safe-bottom)); }
+.class-detail-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; height: calc(100dvh - var(--nav-height) - var(--safe-top) - var(--safe-bottom)); min-height: 0; }
+.class-detail-toolbar { padding: var(--space-xs) var(--space-md); background: var(--color-paper); color: var(--color-ink); }
+.class-detail-back { position: static; }
+.class-detail-content { min-height: 0; overflow-y: auto; scroll-padding-block: var(--space-md); padding-bottom: var(--space-md); }
+.class-detail-hero { min-height: 256px; }
+.class-detail-cta { position: static; margin-top: 0; }
+.class-detail-feedback #toast { position: static; transform: none; width: auto; max-width: none; margin: 0 var(--space-lg); }
+.class-detail-feedback #toast.opacity-0 { display: none; }
+@media (max-height: 700px) { .class-detail-hero { min-height: 224px; } }

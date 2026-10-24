@@ -60,5 +60,39 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
   if(await page.$eval('#display-name',e=>e.value)!==draft)throw Error('Draft lost on reconnect');
   await page.keyboard.press('Escape');console.log('Offline banner, reconnection, draft preservation passed');
  }
+
+ if(!before && process.argv.includes('--seasonal')){
+  // Exercise each existing booking state without contacting Firebase.
+  const scenarios=['available','booked','full','waiting','hold-mine','hold-other','unpaid','unknown-capacity','long-content'];
+  for(const [width,height] of [[320,568],[390,844],[844,390],[768,1024],[1280,800]]){
+   await page.setViewport({width,height});
+   for(const scenario of scenarios){
+    await page.evaluate(scenario=>{
+     const p=__preview, cls=p.classes[0];
+     Object.assign(cls,{name:'TRX',instructor:'Por asignar',capacity:13,enrolledCount:4,waitlistHoldUserId:null,waitlistHoldExpiresAt:null});
+     Object.assign(p.state,{classes:p.classes,myBookings:[],waitlistEntries:[],subscriptionType:'monthly',subscriptionStatus:'paid',subscriptionGraceUntil:null});
+     if(scenario==='booked')p.state.myBookings=[{classId:cls.id}];
+     if(['full','waiting','hold-mine','hold-other'].includes(scenario))cls.enrolledCount=13;
+     if(scenario==='waiting')p.state.waitlistEntries=[{classId:cls.id,position:2}];
+     if(scenario==='hold-mine')p.state.waitlistEntries=[{classId:cls.id,position:1,notifiedAt:new Date(),expiresAt:new Date(Date.now()+300000)}];
+     if(scenario==='hold-mine'||scenario==='hold-other'){cls.waitlistHoldUserId=scenario==='hold-mine'?p.user.uid:'fixture-other';cls.waitlistHoldExpiresAt=new Date(Date.now()+300000);}
+     if(scenario==='unpaid')p.state.subscriptionStatus='unpaid';
+     if(scenario==='unknown-capacity')cls.capacity=0;
+     if(scenario==='long-content'){cls.name='Entrenamiento funcional de fuerza y acondicionamiento';cls.instructor='Nombre de instructor para comprobar texto largo';}
+     p.app.navigateTo('classDetails',{classId:cls.id});
+    },scenario);
+    await settle(page);
+    const result=await page.evaluate(()=>{
+     const main=document.querySelector('.class-detail-content'),cta=document.querySelector('.class-detail-cta'),button=cta.querySelector('button');
+     main.scrollTop=main.scrollHeight;
+     const b=button.getBoundingClientRect(),nav=document.querySelector('nav').getBoundingClientRect();
+     return {overflow:document.documentElement.scrollWidth>innerWidth,buttonVisible:b.top>=0&&b.bottom<=nav.top+1,hitTarget:b.height>=44,active:document.querySelector('#nav-bar [data-screen="agenda"]').getAttribute('aria-current'),unknown:document.querySelector('.class-detail-value:last-child')?.textContent};
+    });
+    if(result.overflow||!result.buttonVisible||!result.hitTarget||result.active!=='page')throw Error(`Class state ${scenario} at ${width}x${height}: ${JSON.stringify(result)}`);
+    if(width===320||scenario==='long-content')await page.screenshot({path:prefix+`-detail-${scenario}-${width}x${height}.png`,fullPage:true});
+   }
+   console.log('Class-detail states and reachable actions',width,height,scenarios.length,'PASS');
+  }
+ }
  await browser.close();
 })();
