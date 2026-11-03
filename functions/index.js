@@ -152,39 +152,23 @@ exports.cancelBooking = onCall({ region: "us-central1" }, async (request) => {
     tx.set(userRef, userUpdates, { merge: true });
   });
 
-  if (reminderTaskNames.length > 0) {
+  // Both task groups are independent once the cancellation transaction commits.
+  await Promise.all([
+    { names: reminderTaskNames, target: REMINDER_FUNCTION_FQFN, label: 'reminder' },
+    { names: totalPassTaskNames, target: TOTALPASS_FUNCTION_FQFN, label: 'TotalPass' },
+  ].map(async ({ names, target, label }) => {
+    if (!names.length) return;
     try {
-      const queue = getFunctions().taskQueue(REMINDER_FUNCTION_FQFN);
-      await Promise.all(
-        reminderTaskNames.map((taskName) =>
-          queue.delete(taskName).catch((err) => {
-            console.error("cancelBooking: failed to delete reminder task", taskName, err);
-          })
-        )
-      );
+      const queue = getFunctions().taskQueue(target);
+      await Promise.all(names.map((taskName) =>
+        queue.delete(taskName).catch((err) => {
+          console.error(`cancelBooking: failed to delete ${label} task`, taskName, err);
+        })
+      ));
     } catch (err) {
-      console.error("cancelBooking: reminder cleanup failed", err);
+      console.error(`cancelBooking: ${label} cleanup failed`, err);
     }
-  }
-
-  if (totalPassTaskNames.length > 0) {
-    try {
-      const queue = getFunctions().taskQueue(TOTALPASS_FUNCTION_FQFN);
-      await Promise.all(
-        totalPassTaskNames.map((taskName) =>
-          queue.delete(taskName).catch((err) => {
-            console.error(
-              "cancelBooking: failed to delete TotalPass reminder task",
-              taskName,
-              err
-            );
-          })
-        )
-      );
-    } catch (err) {
-      console.error("cancelBooking: TotalPass cleanup failed", err);
-    }
-  }
+  }));
 
   return {
     success: true,

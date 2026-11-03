@@ -7,6 +7,7 @@ const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
 const { getFunctions } = require('firebase-admin/functions');
 const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
+const { sendMulticast } = require('../lib/sendMulticast');
 const db = admin.firestore();
 const REMINDER_INTERVALS = [60, 30, 15];
 const MX_TIME_ZONE = 'America/Mexico_City';
@@ -108,20 +109,11 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
   const details = [className, classDate, time].filter(Boolean).join(' · ');
   const body = `${userName} reservó ${details || 'una clase'}`;
   console.log('sendAdminBookingNotification: admin tokens found.', adminTokenSummary);
-  const tokenChunks = [];
-  for (let i = 0; i < tokens.length; i += 500) tokenChunks.push(tokens.slice(i, i + 500));
-
-  const res = { responses: [], successCount: 0, failureCount: 0 };
-  for (const chunk of tokenChunks) {
-    const chunkRes = await admin.messaging().sendEachForMulticast({
-      tokens: chunk,
-      notification: { title, body },
-      data: { type: 'admin_booking', classId: booking.classId },
-    });
-    res.responses.push(...chunkRes.responses);
-    res.successCount += chunkRes.successCount;
-    res.failureCount += chunkRes.failureCount;
-  }
+  const res = await sendMulticast({
+    tokens,
+    notification: { title, body },
+    data: { type: 'admin_booking', classId: booking.classId },
+  });
 
   const invalidTokens = [];
   const failedTokens = [];
@@ -140,7 +132,6 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
       failedTokens.push({ token, errorCode: code || 'unknown' });
     }
   });
-  await pruneMultipleTokensInUsers(invalidTokens);
 
   const notificationRecord = {
     classId: booking.classId,
@@ -157,7 +148,10 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
     failedTokens,
   };
 
-  await db.collection('notifications').add(notificationRecord);
+  await Promise.all([
+    pruneMultipleTokensInUsers(invalidTokens),
+    db.collection('notifications').add(notificationRecord),
+  ]);
 }
 
 exports.onBookingCreate = onDocumentCreated(
@@ -259,20 +253,11 @@ exports.sendBookingReminder = onTaskDispatched(
     const title = classData.title || classData.name || 'Recordatorio de clase';
     const body = `Tu clase empieza en ${interval} minutos`;
 
-    const tokenChunks = [];
-    for (let i = 0; i < tokens.length; i += 500) tokenChunks.push(tokens.slice(i, i + 500));
-
-    const res = { responses: [], successCount: 0, failureCount: 0 };
-    for (const chunk of tokenChunks) {
-      const chunkRes = await admin.messaging().sendEachForMulticast({
-        tokens: chunk,
-        notification: { title, body },
-        data: { title, body, classId },
-      });
-      res.responses.push(...chunkRes.responses);
-      res.successCount += chunkRes.successCount;
-      res.failureCount += chunkRes.failureCount;
-    }
+    const res = await sendMulticast({
+      tokens,
+      notification: { title, body },
+      data: { title, body, classId },
+    });
 
     const invalidTokens = [];
     const failedTokens = [];
@@ -292,7 +277,6 @@ exports.sendBookingReminder = onTaskDispatched(
       }
     });
 
-    await pruneMultipleTokensInUsers(invalidTokens);
     const notificationRecord = {
       classId,
       userId,
@@ -304,6 +288,9 @@ exports.sendBookingReminder = onTaskDispatched(
       failedTokens,
     };
 
-    await db.collection('notifications').add(notificationRecord);
+    await Promise.all([
+      pruneMultipleTokensInUsers(invalidTokens),
+      db.collection('notifications').add(notificationRecord),
+    ]);
   }
 );

@@ -620,25 +620,27 @@
 
         // Limpieza si el usuario revoca permisos después
         if (navigator.permissions?.query){
+          // Permission observation must not delay auth setup or the first agenda render.
           try{
-            const status = await navigator.permissions.query({ name: 'notifications' });
-            status.onchange = async () => {
-              if (status.state !== 'granted'){
-                const uid = auth.currentUser?.uid;
-                const prev = localStorage.getItem(LS_KEY);
-                if (uid && prev) await removeToken(uid, prev);
-                showToast('Notificaciones desactivadas. <a href="#" class="underline" id="re-enable-notifs">Permitir de nuevo</a>', 'error', { html: true });
-                document.getElementById('re-enable-notifs')?.addEventListener('click', (e) => {
-                  e.preventDefault();
-                  const ua = navigator.userAgent.toLowerCase();
-                  let url = 'chrome://settings/content/notifications';
-                  if (ua.includes('firefox')) url = 'about:preferences#privacy';
-                  else if (ua.includes('edg')) url = 'edge://settings/content/notifications';
-                  window.open(url, '_blank');
-                });
-                try{ gtag('event', 'notification_permission_disabled'); }catch{ console.log('notification_permission_disabled'); }
-              }
-            };
+            navigator.permissions.query({ name: 'notifications' }).then(status => {
+              status.onchange = async () => {
+                if (status.state !== 'granted'){
+                  const uid = auth.currentUser?.uid;
+                  const prev = localStorage.getItem(LS_KEY);
+                  if (uid && prev) await removeToken(uid, prev);
+                  showToast('Notificaciones desactivadas. <a href="#" class="underline" id="re-enable-notifs">Permitir de nuevo</a>', 'error', { html: true });
+                  document.getElementById('re-enable-notifs')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const ua = navigator.userAgent.toLowerCase();
+                    let url = 'chrome://settings/content/notifications';
+                    if (ua.includes('firefox')) url = 'about:preferences#privacy';
+                    else if (ua.includes('edg')) url = 'edge://settings/content/notifications';
+                    window.open(url, '_blank');
+                  });
+                  try{ gtag('event', 'notification_permission_disabled'); }catch{ console.log('notification_permission_disabled'); }
+                }
+              };
+            }).catch(() => {});
           }catch{}
         }
         // ===============================
@@ -675,8 +677,10 @@
             authContainer.style.display = 'none';
             appContainer.style.display = 'flex';
 
-            // 🔔 REFRESCA TOKEN EN CADA SESIÓN
-            try { await registerSW(); await ensureFreshFcmToken(user.uid); } catch(e){ console.warn('FCM token refresh failed:', e?.message||e); }
+            // Push setup is independent of agenda loading; it registers the SW when needed.
+            void ensureFreshFcmToken(user.uid).then(() => {
+              if (state.currentUser?.uid === user.uid && state.currentScreen === 'profile') scheduleRender();
+            }).catch(e => console.warn('FCM token refresh failed:', e?.message||e));
             // También al volver a la pestaña (una vez)
             document.addEventListener('visibilitychange', async () => {
               if (document.visibilityState === 'visible' && auth.currentUser) {

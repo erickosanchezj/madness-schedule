@@ -7,6 +7,7 @@ const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
 const { getFunctions } = require('firebase-admin/functions');
 const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
+const { sendMulticast } = require('../lib/sendMulticast');
 
 const db = admin.firestore();
 
@@ -171,29 +172,18 @@ exports.sendTotalPassReminder = onTaskDispatched(
     const title = 'TotalPass';
     const body = 'Ve a la app para enviar tu token';
 
-    const tokenChunks = [];
-    for (let i = 0; i < tokens.length; i += 500) {
-      tokenChunks.push(tokens.slice(i, i + 500));
-    }
-
-    const responseAggregate = { responses: [], successCount: 0, failureCount: 0 };
-    for (const chunk of tokenChunks) {
-      const chunkResponse = await admin.messaging().sendEachForMulticast({
-        tokens: chunk,
-        notification: { title, body },
-        data: {
-          title,
-          body,
-          classId,
-          className: className || '',
-          type: 'totalpass',
-          url: '/',
-        },
-      });
-      responseAggregate.responses.push(...chunkResponse.responses);
-      responseAggregate.successCount += chunkResponse.successCount;
-      responseAggregate.failureCount += chunkResponse.failureCount;
-    }
+    const responseAggregate = await sendMulticast({
+      tokens,
+      notification: { title, body },
+      data: {
+        title,
+        body,
+        classId,
+        className: className || '',
+        type: 'totalpass',
+        url: '/',
+      },
+    });
 
     const invalidTokens = [];
     const failedTokens = [];
@@ -213,7 +203,6 @@ exports.sendTotalPassReminder = onTaskDispatched(
       }
     });
 
-    await pruneMultipleTokensInUsers(invalidTokens);
     console.log('TotalPass reminder send summary', {
       classId,
       userId,
@@ -237,6 +226,9 @@ exports.sendTotalPassReminder = onTaskDispatched(
     if (Number.isFinite(parsedDelay)) {
       notificationRecord.delayMinutes = parsedDelay;
     }
-    await db.collection('notifications').add(notificationRecord);
+    await Promise.all([
+      pruneMultipleTokensInUsers(invalidTokens),
+      db.collection('notifications').add(notificationRecord),
+    ]);
   }
 );

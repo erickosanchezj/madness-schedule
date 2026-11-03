@@ -8,6 +8,7 @@ const { onTaskDispatched } = require('firebase-functions/v2/tasks');
 const admin = require('firebase-admin');
 const { getFunctions } = require('firebase-admin/functions');
 const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
+const { sendMulticast } = require('../lib/sendMulticast');
 
 const db = admin.firestore();
 const WAITLIST_EXPIRATION_FQFN =
@@ -126,22 +127,11 @@ async function processWaitlistNotification(entry) {
   const title = 'Cupo disponible';
   const body = `Hay un cupo disponible en ${className}`;
 
-  const tokenChunks = [];
-  for (let i = 0; i < tokens.length; i += 500) {
-    tokenChunks.push(tokens.slice(i, i + 500));
-  }
-
-  const res = { responses: [], successCount: 0, failureCount: 0 };
-  for (const chunk of tokenChunks) {
-    const chunkRes = await admin.messaging().sendEachForMulticast({
-      tokens: chunk,
-      notification: { title, body },
-      data: { type: 'waitlist_opportunity', classId, waitlistId: id },
-    });
-    res.responses.push(...chunkRes.responses);
-    res.successCount += chunkRes.successCount;
-    res.failureCount += chunkRes.failureCount;
-  }
+  const res = await sendMulticast({
+    tokens,
+    notification: { title, body },
+    data: { type: 'waitlist_opportunity', classId, waitlistId: id },
+  });
 
   const invalidTokens = [];
   const failedTokens = [];
@@ -160,7 +150,6 @@ async function processWaitlistNotification(entry) {
       failedTokens.push({ token, errorCode: code || 'unknown' });
     }
   });
-  await pruneMultipleTokensInUsers(invalidTokens);
 
   const notificationRecord = {
     classId,
@@ -174,9 +163,10 @@ async function processWaitlistNotification(entry) {
     failedTokens,
   };
 
-  await db.collection('notifications').add(notificationRecord);
-
+  // Logging and token cleanup do not gate the independent hold writes.
   await Promise.all([
+    pruneMultipleTokensInUsers(invalidTokens),
+    db.collection('notifications').add(notificationRecord),
     db.collection('waitlists').doc(id).set(
       {
         notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -235,8 +225,10 @@ exports.onWaitlistExpiration = onTaskDispatched(
     if (expires?.toDate && expires.toDate().getTime() > Date.now()) return;
 
     const position = snap.get('position') || 1;
-    await clearClassHoldIfMatches(classId, waitlistId);
-    await ref.delete();
+    await Promise.all([
+      clearClassHoldIfMatches(classId, waitlistId),
+      ref.delete(),
+    ]);
 
     await rebalanceWaitlistPositions(classId, position);
 

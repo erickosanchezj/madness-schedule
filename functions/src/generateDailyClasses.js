@@ -5,6 +5,7 @@
 
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
+const { mapConcurrent } = require("../lib/mapConcurrent");
 
 const db = admin.firestore();
 const TIME_ZONE = "America/Mexico_City";
@@ -71,7 +72,7 @@ exports.generateDailyClasses = onSchedule(
 
     const batch = db.batch();
     const created = [];
-    const existingTimesByDate = new Map();
+    const planned = [];
 
     for (const target of targets) {
       const templateForDay = weeklySchedule[String(target.dow)] || [];
@@ -88,60 +89,61 @@ exports.generateDailyClasses = onSchedule(
           duration
         );
 
-        // classDate is stored in UTC, which can be the next local calendar day.
-        if (!existingTimesByDate.has(classDate)) {
-          const existingSnap = await db
-            .collection("classes")
-            .where("classDate", "==", classDate)
-            .get();
-          existingTimesByDate.set(
-            classDate,
-            new Set(existingSnap.docs.map((doc) => doc.get("time")))
-          );
-        }
-        const existingTimes = existingTimesByDate.get(classDate);
-        if (existingTimes.has(timeUTC)) {
-          continue;
-        }
-
-        const isTRX = /trx/i.test(entry?.name || "");
-        const capacity =
-          typeof entry?.capacity === "number"
-            ? entry.capacity
-            : isTRX
-            ? 13
-            : 15;
-
-        // Stable IDs make scheduler retries and overlapping runs idempotent.
-        const classKey = `${classDate}_${timeUTC.replace(":", "")}`;
-        const docRef = db.collection("classes").doc(`generated_${classKey}`);
-        batch.set(docRef, {
-          name: entry?.name,
-          time: timeUTC,
-          instructor: entry?.instructor || "Por Asignar",
-          duration,
-          classDate,
-          capacity,
-          // Incrementing by zero initializes new classes without resetting live counts.
-          enrolledCount: admin.firestore.FieldValue.increment(0),
-          startAt,
-          endAt,
-          description: `Clase de ${entry?.name}`,
-          image:
-            entry?.image ||
-            `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(
-              entry?.name || "Clase"
-            )}`,
-        }, { merge: true });
-
-        existingTimes.add(timeUTC);
-        created.push({
-          id: docRef.id,
-          date: classDate,
-          time: timeFormatter.format(startAt.toDate()),
-          name: entry?.name,
-        });
+        planned.push({ entry, duration, startAt, endAt, classDate, timeUTC });
       }
+    }
+
+    // Read each UTC date once, concurrently, including late classes that roll into Sunday.
+    const dates = [...new Set(planned.map((item) => item.classDate))];
+    const existingTimesByDate = new Map(await mapConcurrent(dates, async (classDate) => {
+      const snap = await db.collection("classes").where("classDate", "==", classDate).get();
+      return [classDate, new Set(snap.docs.map((doc) => doc.get("time")))];
+    }));
+
+    // Build the batch in template order so duplicate time slots are still skipped.
+    for (const { entry, duration, startAt, endAt, classDate, timeUTC } of planned) {
+      const existingTimes = existingTimesByDate.get(classDate);
+      if (existingTimes.has(timeUTC)) {
+        continue;
+      }
+
+      const isTRX = /trx/i.test(entry?.name || "");
+      const capacity =
+        typeof entry?.capacity === "number"
+          ? entry.capacity
+          : isTRX
+          ? 13
+          : 15;
+
+      // Stable IDs make scheduler retries and overlapping runs idempotent.
+      const classKey = `${classDate}_${timeUTC.replace(":", "")}`;
+      const docRef = db.collection("classes").doc(`generated_${classKey}`);
+      batch.set(docRef, {
+        name: entry?.name,
+        time: timeUTC,
+        instructor: entry?.instructor || "Por Asignar",
+        duration,
+        classDate,
+        capacity,
+        // Incrementing by zero initializes new classes without resetting live counts.
+        enrolledCount: admin.firestore.FieldValue.increment(0),
+        startAt,
+        endAt,
+        description: `Clase de ${entry?.name}`,
+        image:
+          entry?.image ||
+          `https://placehold.co/400x250/1f2937/ffffff?text=${encodeURIComponent(
+            entry?.name || "Clase"
+          )}`,
+      }, { merge: true });
+
+      existingTimes.add(timeUTC);
+      created.push({
+        id: docRef.id,
+        date: classDate,
+        time: timeFormatter.format(startAt.toDate()),
+        name: entry?.name,
+      });
     }
 
     if (!created.length) {

@@ -9,7 +9,7 @@
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions && npm run build && firebase deploy",
     "logs": "firebase functions:log",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "node scripts/async-hot-paths.test.cjs"
   },
   "engines": {
     "node": "22"

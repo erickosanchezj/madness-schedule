@@ -6,6 +6,7 @@
 const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
 const { pruneMultipleTokensInUsers } = require('../lib/pruneTokenInUsers');
+const { sendMulticast } = require('../lib/sendMulticast');
 
 const db = admin.firestore();
 const TITLE = 'Cuenta desbloqueada';
@@ -25,46 +26,34 @@ exports.onUserUnlockNotification = onDocumentUpdated(
     const tokens = Object.keys(after.fcmTokens || {});
     if (tokens.length === 0) return;
 
-    let successCount = 0;
-    let failureCount = 0;
-    const invalidTokens = [];
-
-    for (let i = 0; i < tokens.length; i += 500) {
-      const chunk = tokens.slice(i, i + 500);
-      const chunkResult = await admin.messaging().sendEachForMulticast({
-        tokens: chunk,
-        notification: { title: TITLE, body: BODY },
-        data: { type: 'account_unlocked' },
-      });
-
-      successCount += chunkResult.successCount;
-      failureCount += chunkResult.failureCount;
-
-      chunkResult.responses.forEach((response, idx) => {
-        if (!response.success) {
-          const token = chunk[idx];
-          const code = response.error?.errorInfo?.code || response.error?.code || '';
-          const invalid =
-            code === 'messaging/invalid-registration-token' ||
-            code === 'messaging/registration-token-not-registered';
-          if (invalid) {
-            invalidTokens.push(token);
-          } else {
-            console.error('Unlock notification failure', token, code);
-          }
-        }
-      });
-    }
-
-    await pruneMultipleTokensInUsers(invalidTokens);
-
-    await db.collection('notifications').add({
-      type: 'account_unlocked',
-      userId: event.params?.userId,
-      sentAt: admin.firestore.FieldValue.serverTimestamp(),
-      tokensUsed: [...tokens],
-      successCount,
-      failureCount,
+    const { successCount, failureCount, responses } = await sendMulticast({
+      tokens,
+      notification: { title: TITLE, body: BODY },
+      data: { type: 'account_unlocked' },
     });
+    const invalidTokens = [];
+    responses.forEach((response, idx) => {
+      if (!response.success) {
+        const token = tokens[idx];
+        const code = response.error?.errorInfo?.code || response.error?.code || '';
+        const invalid =
+          code === 'messaging/invalid-registration-token' ||
+          code === 'messaging/registration-token-not-registered';
+        if (invalid) invalidTokens.push(token);
+        else console.error('Unlock notification failure', token, code);
+      }
+    });
+
+    await Promise.all([
+      pruneMultipleTokensInUsers(invalidTokens),
+      db.collection('notifications').add({
+        type: 'account_unlocked',
+        userId: event.params?.userId,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        tokensUsed: [...tokens],
+        successCount,
+        failureCount,
+      }),
+    ]);
   }
 );
