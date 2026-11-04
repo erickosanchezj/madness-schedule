@@ -183,7 +183,7 @@ test('member auth starts agenda listeners while push setup is still pending', as
     ensureFreshFcmToken: () => push.promise,
     document: { addEventListener() {} }, window: { addEventListener() {} },
     resumeRefreshHandlersAttached: false, AGENDA_SCREENS: ['agenda'],
-    refreshAgendaListenersOnResume() {}, attachAgendaListeners() { listened = true; },
+    refreshAgendaListenersOnResume() {}, attachAgendaListeners() { listened = true; }, applyUserData() {},
     scheduleRender() { rendered = true; },
   };
   const handler = vm.runInNewContext(callback, context);

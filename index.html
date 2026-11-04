@@ -409,6 +409,28 @@
           if (listenersAttached) detachListeners();
           attachAgendaListeners();
         }
+        // Copies subscription, TotalPass and strike fields from the user doc into state.
+        // Used at sign-in too, so Perfil is correct even before the agenda listeners start.
+        function applyUserData(data){
+          state.isTotalPass = !!data.totalPass;
+          state.subscriptionType = typeof data.subscriptionType === 'string' ? data.subscriptionType : 'monthly';
+          state.subscriptionStatus = typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : 'unpaid';
+          const graceRaw = data.subscriptionGraceUntil;
+          let graceUntil = null;
+          if (graceRaw?.toDate) {
+            graceUntil = graceRaw.toDate();
+          } else if (graceRaw instanceof Date && !Number.isNaN(graceRaw.getTime())) {
+            graceUntil = graceRaw;
+          } else if (graceRaw) {
+            const parsedGrace = new Date(graceRaw);
+            if (!Number.isNaN(parsedGrace.getTime())) {
+              graceUntil = parsedGrace;
+            }
+          }
+          state.subscriptionGraceUntil = graceUntil;
+          const strikesRaw = Number(data.lateCancellations);
+          state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+        }
         function attachAgendaListeners(){
           if (listenersAttached || !state.currentUser) return;
           state.loading.classes = true;
@@ -462,25 +484,7 @@
             });
           unsubUser = db.collection('users').doc(state.currentUser.uid)
             .onSnapshot(doc => {
-              const data = doc.data() || {};
-              state.isTotalPass = !!data.totalPass;
-              state.subscriptionType = typeof data.subscriptionType === 'string' ? data.subscriptionType : 'monthly';
-              state.subscriptionStatus = typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : 'unpaid';
-              const graceRaw = data.subscriptionGraceUntil;
-              let graceUntil = null;
-              if (graceRaw?.toDate) {
-                graceUntil = graceRaw.toDate();
-              } else if (graceRaw instanceof Date && !Number.isNaN(graceRaw.getTime())) {
-                graceUntil = graceRaw;
-              } else if (graceRaw) {
-                const parsedGrace = new Date(graceRaw);
-                if (!Number.isNaN(parsedGrace.getTime())) {
-                  graceUntil = parsedGrace;
-                }
-              }
-              state.subscriptionGraceUntil = graceUntil;
-              const strikesRaw = Number(data.lateCancellations);
-              state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+              applyUserData(doc.data() || {});
               scheduleRender();
             });
           unsubDailyMessage = db.collection('dailyMessages')
@@ -653,9 +657,7 @@
             const userRef = db.collection('users').doc(user.uid);
             const docSnap = await userRef.get();
             const existingData = docSnap.exists ? docSnap.data() : {};
-            state.isTotalPass = !!existingData.totalPass;
-            const strikesRaw = Number(existingData.lateCancellations);
-            state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+            applyUserData(existingData);
 
             if (!docSnap.exists){
               try{
