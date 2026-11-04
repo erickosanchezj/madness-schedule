@@ -141,7 +141,7 @@ member screens, class/full states, stubbed create/cancel/join/leave callables,
 profile updates, modal Escape, admin dialog Escape, no page overflow,
 offline/reconnection banner and preservation of a name draft. No production writes.
 
-`npm test` prints `No tests specified`; it is not a test suite.
+`npm test` printed `No tests specified` at the time; it now runs `scripts/*.test.cjs`.
 `npm run build` fails because the six required environment variables are absent.
 It exits before writing files. Static serving works with existing inline config.
 JavaScript syntax and `git diff --check` pass.

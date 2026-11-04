@@ -28,12 +28,12 @@
 - Backend: Firebase (Firestore, Auth, Cloud Functions, FCM)    
 - PWA: Service Worker, Push Notifications    
 - Security: Cloudflare Turnstile, DOMPurify    
-- Build: Node.js build scripts for configuration  
+- Build: no app build step; `npm run build:css` regenerates the committed `styles/tailwind.css`  
 - Analytics: Chart.js for admin dashboard visualizations  
 - Scheduling: Cloud Scheduler for automated weekly class generation 
   
 # DEPLOYED ENVIRONMENTS  
-- Production: Firebase Hosting  
+- Production: GitHub Pages (custom domain in `CNAME`), serving the repo root  
 - Database: Firestore (production)  
 
 # AUTOMATED WORKFLOWS    
@@ -63,9 +63,10 @@
 - standard git workflow with main branch deployment  
   
 # ESSENTIAL COMMANDS  
-- Build config: `node build-config.js` (generates Firebase config files)  
-- Local development: serve files from root directory  
-- Firebase deploy: `firebase deploy`  
+- Tests: `npm test` (runs `scripts/*.test.cjs` with in-memory Firebase fakes)  
+- Tailwind: `npm run build:css` after adding new utility classes  
+- Local development: serve files from root directory (e.g. `python3 -m http.server 8080`)  
+- Backend deploy: `firebase deploy --only functions,firestore` (no Hosting target)  
   
 # COMMENTS  
 - every file should have clear Header Comments at the top, explaining where the file is, and what it does  

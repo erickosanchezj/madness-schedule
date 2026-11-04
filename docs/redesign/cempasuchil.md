@@ -66,7 +66,7 @@ Hallmark source comparison retains 118/118 existing script hooks and reports zer
 failures. Render checks report zero failures and zero warnings, with the two
 existing documented calendar waivers. Fresh Hallmark finish review: ship; both
 original overlap findings resolved. Syntax and whitespace checks pass.
-`npm test` is still a placeholder. `npm run build` still requires the missing
+`npm test` was still a placeholder then (it now runs `scripts/*.test.cjs`). `npm run build` still requires the missing
 Firebase environment variables and exits before writing files.
 
 Physical-device installation, keyboard/notch behavior, push delivery and real
