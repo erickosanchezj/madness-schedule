@@ -610,10 +610,7 @@
           userHasPreviousPage: false,
           blacklistedUsers: [],
           analyticsTracker: {
-            bookingTimeline: {},
-            userBehavior: {},
-            cancellationTimeline: [],
-            switches: []
+            bookingTimeline: {}
           },
           dashboardContainers: {},
           selectedMetrics: new Set(['attended','absent','booked','utilization','revenue']),
@@ -631,16 +628,13 @@
         // --- Helpers ---
         timeFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', hour:'2-digit',minute:'2-digit',hour12:false }),
         timePartsFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', hour:'2-digit',minute:'2-digit',hour12:false }),
-        dayFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long',day:'2-digit',month:'short' }),
         dayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', day:'2-digit',month:'short' }),
         weekdayNameFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'long' }),
         weekdayShortFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', weekday:'short' }),
         fullDateFmt: new Intl.DateTimeFormat('es-MX',{ timeZone: 'America/Mexico_City', dateStyle:'medium', timeStyle:'short' }),
         dateHelper: {
           ymd(date){ return new Intl.DateTimeFormat('en-CA',{ timeZone: 'America/Mexico_City', year:'numeric', month:'2-digit', day:'2-digit' }).format(date); },
-          today(){ return this.ymd(new Date()); },
-          tomorrow(){ return this.ymd(new Date(Date.now()+86400000)); },
-          yesterday(){ return this.ymd(new Date(Date.now()-86400000)); }
+          today(){ return this.ymd(new Date()); }
         },
         normalizeStr(s=''){
           return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
@@ -1028,10 +1022,6 @@
                   }
                 });
 
-                if (tracker && !tracker.userBehavior){
-                  tracker.userBehavior = {};
-                }
-
                 bookingsWithNames.forEach(record=>{
                   const b = record;
                   const arr = this.state.bookingsMap.get(b.classId) || [];
@@ -1045,23 +1035,6 @@
                   if (createdAt && !Number.isNaN(createdAt.getTime())){
                     tracker.bookingTimeline[b.classId].push(createdAt.getTime());
                   }
-                  const userKey = b.userId || b.userEmail || b.userName || record.id;
-                  if (!tracker.userBehavior[userKey]){
-                    tracker.userBehavior[userKey] = { bookingsSet:new Set(), cancellationIds:new Set(), switchIds:new Set(), bookings:0, cancellations:0, switches:0, lastClassId:null };
-                  }
-                  tracker.userBehavior[userKey].bookingsSet.add(record.id);
-                  tracker.userBehavior[userKey].bookings = tracker.userBehavior[userKey].bookingsSet.size;
-                  if ((b.status && b.status==='cancelled') || b.cancelledAt){
-                    tracker.userBehavior[userKey].cancellationIds.add(record.id);
-                    tracker.userBehavior[userKey].cancellations = tracker.userBehavior[userKey].cancellationIds.size;
-                    this.recordCancellationTiming(b);
-                  }
-                  if (b.previousClassId && b.previousClassId !== b.classId){
-                    tracker.userBehavior[userKey].switchIds.add(`${record.id}:${b.previousClassId}->${b.classId}`);
-                    tracker.userBehavior[userKey].switches = tracker.userBehavior[userKey].switchIds.size;
-                    this.recordClassSwitch(b);
-                  }
-                  tracker.userBehavior[userKey].lastClassId = b.classId;
                 });
 
                 this.renderAll();
@@ -1100,44 +1073,6 @@
               });
             this.state.unsubWaitlists.push(unsub);
           }
-        },
-
-        recordCancellationTiming(booking){
-          const tracker = this.state.analyticsTracker;
-          if (!tracker) return;
-          const cancelledAtRaw = booking.cancelledAt?.toDate ? booking.cancelledAt.toDate() : (booking.cancelledAt ? new Date(booking.cancelledAt) : null);
-          const createdAtRaw = booking.createdAt?.toDate ? booking.createdAt.toDate() : (booking.createdAt ? new Date(booking.createdAt) : null);
-          const classDate = booking.classDate || '';
-          const classTime = booking.classTime || booking.time || '';
-          let classStart = null;
-          if (classDate && classTime){
-            classStart = new Date(`${classDate}T${(classTime.length===5?classTime:classTime.slice(0,5))}:00Z`);
-          }
-          let hoursBefore = null;
-          if (cancelledAtRaw && classStart && !Number.isNaN(cancelledAtRaw.getTime()) && !Number.isNaN(classStart.getTime())){
-            const diff = (classStart.getTime() - cancelledAtRaw.getTime()) / 3600000;
-            hoursBefore = Math.round(diff*10)/10;
-          }
-          tracker.cancellationTimeline.push({
-            classId: booking.classId,
-            classDate,
-            cancelledAt: cancelledAtRaw ? cancelledAtRaw.toISOString() : null,
-            createdAt: createdAtRaw ? createdAtRaw.toISOString() : null,
-            hoursBefore
-          });
-          if (tracker.cancellationTimeline.length>200) tracker.cancellationTimeline.shift();
-        },
-
-        recordClassSwitch(booking){
-          const tracker = this.state.analyticsTracker;
-          if (!tracker) return;
-          const createdAtRaw = booking.createdAt?.toDate ? booking.createdAt.toDate() : (booking.createdAt ? new Date(booking.createdAt) : null);
-          tracker.switches.push({
-            from: booking.previousClassId,
-            to: booking.classId,
-            when: createdAtRaw ? createdAtRaw.toISOString() : null
-          });
-          if (tracker.switches.length>200) tracker.switches.shift();
         },
 
         // --- NOTIFICATIONS ---
@@ -2199,13 +2134,7 @@
             revenue: report[l.date]?.revenue || 0,
             target: report[l.date]?.revenueTarget || 0
           }));
-          const behavior = {
-            cancellationTimeline: [...(this.state.analyticsTracker?.cancellationTimeline || [])],
-            switches: [...(this.state.analyticsTracker?.switches || [])]
-          };
           const bi = {
-            lifetimeValue: this.calculateMemberLifetimeValue({ userStats }),
-            classProfitability: this.analyzeClassProfitability(popularity, report),
             optimalScheduling: this.recommendOptimalScheduling(report),
             capacityVsDemand: this.calculateCapacityVsDemand(report),
             instructorUtilization: this.calculateInstructorUtilization(instructorMetrics)
@@ -2217,7 +2146,6 @@
             heatmap: aggregateContext.heatmap,
             retention: { newMembers: totals.newMembers, repeatMembers: totals.repeat, retentionRate },
             revenueSeries,
-            behavior,
             bi
           };
         },
@@ -2626,7 +2554,6 @@
             };
             this.state.attendanceLastAt = now;
             this.updateAttendanceLegend();
-            console.log('BI resumen:', aggregates.bi);
           } catch(e){
             console.error('Error leyendo asistencia:', e);
           } finally {
@@ -2725,37 +2652,14 @@
           const last = utilizations[utilizations.length-1] || 0;
           const growthRate = utilizations.length>1 ? ((last-first)/Math.max(first||1,1)) : 0;
           const dayPattern = this.calculateDayOfWeekPatterns(data.report);
-          const seasonal = this.calculateSeasonalTrend(entries);
           const projectedUtilization = Math.round(avg * (1 + (growthRate/2)));
-          const revenueForecast = this.forecastRevenue(data.aggregates?.revenueSeries || []);
           const recommendation = this.buildCapacityRecommendations({ avgUtil:avg, growthRate, dayPattern });
           return {
             averageUtilization: Math.round(avg),
             growthRate,
             projectedUtilization,
-            topDays: dayPattern.topDays,
-            seasonal,
-            revenueForecast,
             recommendation
           };
-        },
-
-        calculateMemberLifetimeValue({ userStats }){
-          const stats = userStats instanceof Map ? userStats : new Map();
-          let members = 0;
-          let revenue = 0;
-          stats.forEach(stat=>{
-            members++;
-            revenue += stat.revenue || (stat.count * this.DEFAULT_TICKET_PRICE);
-          });
-          const estimatedLTV = members ? Math.round(revenue/members) : 0;
-          return { estimatedLTV, members };
-        },
-
-        analyzeClassProfitability(popularity, report){
-          const topClasses = (popularity || []).slice(0,5).map(item=>({ class:item.label, score:item.score }));
-          const totalRevenue = Object.values(report || {}).reduce((sum,d)=>sum+(d.revenue||0),0);
-          return { topClasses, totalRevenue };
         },
 
         recommendOptimalScheduling(report){
@@ -2808,24 +2712,6 @@
             return { day:names[dow], value: Math.round(avg) };
           }).sort((a,b)=>b.value-a.value);
           return { averages, topDays: averages.slice(0,2).map(item=>item.day) };
-        },
-
-        calculateSeasonalTrend(entries){
-          if (!entries.length) return { trend:'Sin datos', change:0 };
-          const half = Math.max(1, Math.floor(entries.length/2));
-          const firstAvg = entries.slice(0,half).reduce((sum,item)=>sum+(item.metrics.utilizationRate||0),0)/half;
-          const secondAvg = entries.slice(-half).reduce((sum,item)=>sum+(item.metrics.utilizationRate||0),0)/half;
-          const diff = secondAvg - firstAvg;
-          const trend = diff>3 ? 'Alza' : diff<-3 ? 'Baja' : 'Estable';
-          return { trend, change: Math.round(diff) };
-        },
-
-        forecastRevenue(series){
-          if (!Array.isArray(series) || !series.length) return 0;
-          const revenues = series.map(item=>item.revenue || 0);
-          const diffs = revenues.slice(1).map((value,idx)=> value - revenues[idx]);
-          const avgDiff = diffs.length ? diffs.reduce((sum,val)=>sum+val,0)/diffs.length : 0;
-          return Math.round((revenues[revenues.length-1] || 0) + avgDiff);
         },
 
         buildCapacityRecommendations({ avgUtil, growthRate, dayPattern }){
@@ -3647,27 +3533,6 @@
             });
             return;
           }
-
-          const newType = prompt(
-            `Cambiar tipo de suscripción para ${user.displayName || user.email}\n\n` +
-            `Tipo actual: ${user.subscriptionType || 'dropin'}\n\n` +
-            'Ingresa el nuevo tipo:\n' +
-            '- monthly (Mensual)\n' +
-            '- totalpass (TotalPass)\n' +
-            '- dropin (Por Clase)',
-            user.subscriptionType || 'dropin'
-          );
-
-          if (!newType || !['monthly','totalpass','dropin'].includes(newType)) {
-            this.showToast({ title:'Tipo inválido', message:'Debe ser: monthly, totalpass, o dropin', variant:'error' });
-            return;
-          }
-
-          this.db.collection('users').doc(userId).update({ subscriptionType:newType }).then(() => {
-            this.showToast({ title:'Tipo actualizado', message:`Tipo de suscripción cambiado a: ${newType}` });
-          }).catch(err => {
-            this.showToast({ title:'Error', message:err.message, variant:'error' });
-          });
         },
 
         // ---- USERS: Listar primera página ----
