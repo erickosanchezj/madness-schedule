@@ -3195,28 +3195,15 @@
                 snap2.forEach(d=>results.push(d));
               }
             } else {
-              // nombre (prefijo, si existe índice) o fallback local
-              let triedPrefix=false;
-              try{
-                const start=q, end=q+'\uf8ff';
-                const byName = await this.db.collection('users').orderBy('displayNameLower').startAt(start).endAt(end).limit(20).get();
-                byName.forEach(d=>results.push(d));
-                triedPrefix=true;
-              }catch(_){ /* falta índice */ }
-
-              if (!results.length){
-                const page = await this.db.collection('users').limit(300).get();
-                page.forEach(d=>{
-                  const data=d.data()||{};
-                  const emailL=this.normalizeStr(data.email||'');
-                  const nameL=this.normalizeStr(data.displayName||'');
-                  if (emailL.includes(q) || nameL.includes(q)) results.push(d);
-                });
-                if (!triedPrefix && results.length){
-                  hint.textContent='Resultado por búsqueda local (sin índice). Considera guardar displayNameLower y crear índice.';
-                  hint.classList.remove('hidden');
-                }
-              }
+              // Name search scans every user. displayNameLower is never stored, so a prefix
+              // query always came back empty, and the old fallback stopped at 300 users.
+              const all = await this.db.collection('users').get();
+              all.forEach(d=>{
+                const data=d.data()||{};
+                const emailL=this.normalizeStr(data.email||'');
+                const nameL=this.normalizeStr(data.displayName||'');
+                if (emailL.includes(q) || nameL.includes(q)) results.push(d);
+              });
             }
 
             if (!results.length){
