@@ -4,6 +4,7 @@
 <!-- RELEVANT FILES: index.html, admin.html, service-worker.js, firebase.json -->
 # Madness mobile PWA redesign
 
+Tailwind build and current checks: [Static CSS optimization](../static-tailwind/README.md).
 Latest fix: [Installed PWA shell correction](pwa-shell-fix.md).
 Seasonal integration: [Cempasúchil details](cempasuchil.md).
 The redesign branch has since been used for a successful Pages deployment;
@@ -175,14 +176,12 @@ notification deep links, update activation with multiple open tabs and active fo
 To reproduce locally, install temporary tools outside the repository:
 
 ```sh
-npm install --prefix /tmp/hallmark --no-save puppeteer-core tailwindcss@3.4.17 lucide@0.468.0 dompurify@3.0.5 chart.js @fontsource/inter @fontsource/archivo-black
-printf '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n' > /tmp/madness-tailwind-input.css
-/tmp/hallmark/node_modules/.bin/tailwindcss -i /tmp/madness-tailwind-input.css -o /tmp/madness-tailwind.css --content './index.html,./admin.html' --minify
+npm ci --ignore-scripts
+npm run build:css
+npm install --prefix /tmp/hallmark --no-save puppeteer-core lucide@0.468.0 dompurify@3.0.5 chart.js @fontsource/inter @fontsource/archivo-black
 python3 -m http.server 8085
 # In another terminal, from this repository:
-node scripts/verify-member.cjs --before
 node scripts/verify-member.cjs
-node scripts/verify-admin.cjs --before
 node scripts/verify-admin.cjs
 ```
 
