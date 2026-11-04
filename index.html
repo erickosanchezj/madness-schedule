@@ -181,21 +181,6 @@
         </div>
       </div>
     `;
-          },
-          userCard(){
-            return `
-      <div class="p-4 bg-zinc-700/50 rounded-lg border border-zinc-600/50 animate-pulse">
-        <div class="h-5 bg-zinc-600/50 rounded w-3/4 mb-2"></div>
-        <div class="h-4 bg-zinc-600/50 rounded w-1/2"></div>
-      </div>
-    `;
-          },
-          dashboardMetric(){
-            return `
-      <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 animate-pulse">
-        <div class="h-32 bg-zinc-700/50 rounded"></div>
-      </div>
-    `;
           }
         };
         const asDate = (x) => x?.toDate ? x.toDate() : new Date(x);
@@ -236,7 +221,7 @@
             if (n.includes('funcional')||n.includes('functional')) return 'images/functional.png';
             return null;
           },
-          forClassName(name, fallbackText){
+          forClassName(name){
             return this.byName(name)||'images/icon-192x192.png';
           },
           forClass(cls){
@@ -258,7 +243,6 @@
           isTotalPass: false,
           cancellationStrikes: 0,
           dailyMessage: null,
-          dailyMessageList: [],
           errors: { classes: false, bookings: false },
           loading: {
             classes: true,
@@ -379,7 +363,6 @@
           if (unsubAttendance){ try{unsubAttendance();}catch{}; unsubAttendance=null; }
           stopDailyMessageRotation();
           state.dailyMessage = null;
-          state.dailyMessageList = [];
           state.classes = [];
           state.myBookings = [];
           state.waitlistEntries = [];
@@ -496,7 +479,6 @@
                 const rawText = typeof data.message === 'string' ? data.message.trim() : '';
                 return { id: doc.id, ...data, message: rawText };
               }).filter(msg => msg.isActive && msg.message);
-              state.dailyMessageList = activeMessages;
               if (!activeMessages.length){
                 stopDailyMessageRotation();
                 state.dailyMessage = null;
@@ -513,7 +495,6 @@
             }, err => {
               console.error('Error mensaje diario:', err);
               stopDailyMessageRotation();
-              state.dailyMessageList = [];
               state.dailyMessage = null;
               scheduleAgendaDataRender();
             });
@@ -865,7 +846,7 @@
               const hhmm = timeFmt.format(startObj);
               const ymdLocal = dateHelper.getYYYYMMDD(startObj);
               const dayText = ymdLocal===dateHelper.today ? 'Hoy' : ymdLocal===dateHelper.tomorrow ? 'Mañana' : dateHelper.human(ymdLocal);
-              const cover = coverHelper.forClassName(b.className, b.className);
+              const cover = coverHelper.forClassName(b.className);
               const timeStatus = timeUntilLabel(ymdUTC, hhmmUTC);
               const countdownClass = getCountdownClass(ymdUTC, hhmmUTC, 'text-orange-400');
               const showCancelButton = timeStatus !== 'en curso';
@@ -1041,7 +1022,7 @@
 
           const renderCard = ({ booking, relatedClass, startObj, ymdLocal }) => {
             const className = booking.className || relatedClass?.name || '';
-            const cover = relatedClass ? coverHelper.forClass(relatedClass) : coverHelper.forClassName(className, className || 'Clase');
+            const cover = relatedClass ? coverHelper.forClass(relatedClass) : coverHelper.forClassName(className);
             const safeClassName = DOMPurify.sanitize(className);
             const hhmm = timeFmt.format(startObj);
             const dayLabel = dateHelper.human(ymdLocal);
@@ -1510,7 +1491,6 @@
               break;
             case 'dismiss-message':
               stopDailyMessageRotation();
-              state.dailyMessageList = [];
               state.dailyMessage = null;
               scheduleRender();
               break;
