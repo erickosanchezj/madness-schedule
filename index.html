@@ -576,6 +576,18 @@
           if (localStorage.getItem(LS_KEY) === token) localStorage.removeItem(LS_KEY);
         }
 
+        // Shows pushes that arrive while the app is open, as a toast. Registered once per page.
+        let foregroundListenerAttached = false;
+        function listenForegroundMessages(){
+          if (foregroundListenerAttached) return;
+          foregroundListenerAttached = true;
+          messaging.onMessage((payload) => {
+            const title = payload.notification?.title || payload.data?.title || 'Notificación';
+            const body  = payload.notification?.body  || payload.data?.body  || '';
+            showToast(`${title}${body ? ': ' + body : ''}`);
+          });
+        }
+
         async function ensureFreshFcmToken(uid){
           if (!isPushSupported()) return; // navegador no soporta
           // Permiso
@@ -594,6 +606,7 @@
           const prev = localStorage.getItem(LS_KEY);
           const prevToken = prev && prev !== token ? prev : undefined;
           await saveToken(uid, token, prevToken);
+          listenForegroundMessages();
         }
 
         // Botón manual (expuesto en perfil)
@@ -607,12 +620,7 @@
           if (!token) throw new Error('No se obtuvo token FCM');
           const prev = localStorage.getItem(LS_KEY);
           await saveToken(user.uid, token, prev);
-          // Foreground handler opcional
-          messaging.onMessage((payload) => {
-            const title = payload.notification?.title || payload.data?.title || 'Notificación';
-            const body  = payload.notification?.body  || payload.data?.body  || '';
-            showToast(`${title}${body ? ': ' + body : ''}`);
-          });
+          listenForegroundMessages();
           return token;
         }
         window.ensurePushPermissionAndToken = ensurePushPermissionAndToken; // útil para consola
@@ -627,15 +635,7 @@
                   const uid = auth.currentUser?.uid;
                   const prev = localStorage.getItem(LS_KEY);
                   if (uid && prev) await removeToken(uid, prev);
-                  showToast('Notificaciones desactivadas. <a href="#" class="underline" id="re-enable-notifs">Permitir de nuevo</a>', 'error', { html: true });
-                  document.getElementById('re-enable-notifs')?.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const ua = navigator.userAgent.toLowerCase();
-                    let url = 'chrome://settings/content/notifications';
-                    if (ua.includes('firefox')) url = 'about:preferences#privacy';
-                    else if (ua.includes('edg')) url = 'edge://settings/content/notifications';
-                    window.open(url, '_blank');
-                  });
+                  showToast('Notificaciones desactivadas. Puedes activarlas de nuevo en la configuración del navegador.', 'error', { duration: 6000 });
                   try{ gtag('event', 'notification_permission_disabled'); }catch{ console.log('notification_permission_disabled'); }
                 }
               };
