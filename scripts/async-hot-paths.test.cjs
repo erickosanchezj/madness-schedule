@@ -1,7 +1,7 @@
 // scripts/async-hot-paths.test.cjs
 // Checks concurrency, ordering, and failure handling in Firebase hot paths using local fakes.
 // Prevents async optimizations from changing notification targeting or scheduling behavior.
-// RELEVANT FILES: functions/lib/mapConcurrent.js, functions/lib/sendMulticast.js, functions/src/generateDailyClasses.js, index.html
+// RELEVANT FILES: functions/lib/mapConcurrent.js, functions/lib/sendMulticast.js, functions/src/generateDailyClasses.js, scripts/member/auth.js
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -171,8 +171,8 @@ test('cancellation cleans both task groups concurrently only after transaction c
 });
 
 test('member auth starts agenda listeners while push setup is still pending', async () => {
-  const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf8');
-  const callback = '(' + html.match(/auth\.onAuthStateChanged\((async user => \{[\s\S]*?)\n        \}\);/)[1] + '\n})';
+  const source = fs.readFileSync(path.resolve(__dirname, '../scripts/member/auth.js'), 'utf8');
+  const callback = '(' + source.match(/auth\.onAuthStateChanged\((async user => \{[\s\S]*?)\n  \}\);/)[1] + '\n})';
   const push = deferred();
   let listened = false, rendered = false, hidden = false;
   const context = {
@@ -183,7 +183,7 @@ test('member auth starts agenda listeners while push setup is still pending', as
     ensureFreshFcmToken: () => push.promise,
     document: { addEventListener() {} }, window: { addEventListener() {} },
     resumeRefreshHandlersAttached: false, AGENDA_SCREENS: ['agenda'],
-    refreshAgendaListenersOnResume() {}, attachAgendaListeners() { listened = true; },
+    refreshAgendaListenersOnResume() {}, attachAgendaListeners() { listened = true; }, applyUserData() {},
     scheduleRender() { rendered = true; },
   };
   const handler = vm.runInNewContext(callback, context);

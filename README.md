@@ -1,61 +1,83 @@
-# Madness Schedule 💪  
-  
-A modern fitness class booking and management system built as a Progressive Web App (PWA).  
-  
-## What is Madness Schedule?  
-  
-Madness Schedule is a complete solution for fitness studios and gyms to manage class schedules and bookings. It provides both a user-friendly booking interface for gym members and a powerful admin panel for staff management.  
-  
-## Key Features  
-  
-### For Gym Members  
-- **Easy Class Booking** - Browse and book fitness classes with just a few taps  
-- **Real-time Updates** - See live availability and get instant booking confirmations  
-- **Push Notifications** - Receive reminders about upcoming classes  
-- **Mobile-First Design** - Works perfectly on phones, tablets, and desktop  
-- **Offline Support** - Access your bookings even without internet  
-  
-### For Gym Staff  
-- **Admin Dashboard** - Manage classes, view bookings, and track attendance  
-- **Automated Class Generation** - Create recurring classes based on weekly templates  
-- **Attendance Tracking** - Mark attendance and generate reports  
-- **User Management** - Handle member accounts and send notifications  
-- **Real-time Analytics** - Monitor booking trends and class popularity  
-  
-## How It Works  
-  
-1. **Members** use the main app to browse classes and make bookings  
-2. **Staff** use the admin panel to manage schedules and track attendance  
-3. **Automated reminders** keep everyone informed about upcoming classes  
-4. **Real-time sync** ensures everyone sees the latest information instantly  
-  
-## Technology  
-  
-Built with modern web technologies for reliability and performance:  
-- Progressive Web App (PWA) for native app-like experience  
-- Real-time database synchronization  
-- Push notifications for timely reminders  
-- Mobile-responsive design  
-- Secure user authentication  
-  
-## Getting Started  
-  
-### For Gym Members  
-1. Visit the app URL on your phone or computer  
-2. Create an account or sign in  
-3. Browse available classes and book your spots  
-4. Enable notifications to get class reminders  
-  
-### For Gym Staff  
-1. Access the admin panel with your staff credentials  
-2. Generate daily classes from your weekly template  
-3. Monitor bookings and manage attendance  
-4. Send notifications to members as needed  
-  
-## Support  
-  
-For technical support or questions about using the system, contact your gym's staff or the system administrator.  
-  
----  
+<!-- README.md -->
+<!-- What Madness Schedule is, how to run, test and deploy it, and where the code lives. -->
+<!-- First stop for anyone (human or AI) working on the repo. -->
+<!-- RELEVANT FILES: AGENTS.md, index.html, admin.html, functions/index.js -->
+# Madness Schedule 💪
 
-*Madness Schedule - Making fitness class management simple and efficient.*
+Class booking app (PWA) for the Madness gym, plus a staff admin panel.
+Vanilla JavaScript, Tailwind, and Firebase (Firestore, Auth, Cloud Functions, FCM).
+
+## What it does
+
+**Members** (`index.html`) can:
+- See today's and tomorrow's classes and book a spot.
+- Join a waitlist when a class is full, and get a 5-minute turn when a spot frees up.
+- Cancel bookings. Cancelling less than 2 hours before class adds a strike. 3 strikes block the account until staff unlock it.
+- Get push reminders 60, 30 and 15 minutes before class.
+- See their history and attendance, and send the TotalPass token.
+
+**Staff** (`admin.html`) can:
+- See the week calendar, bookings and waitlists.
+- Create, edit and delete classes, add WhatsApp bookings and mark attendance.
+- Manage subscriptions, TotalPass, strikes, the blacklist and daily announcements.
+- Read reports. Revenue figures are **estimates**: class price × bookings, or $120 per booking.
+
+**Automated jobs** (Cloud Functions):
+- Generate next week's classes every Saturday at 4 PM (Mexico City).
+- Send booking reminders and the TotalPass reminder.
+- Move the waitlist along when a spot opens.
+- Reset strikes on the 1st of each month (blacklisted members stay blocked).
+- Mark monthly plans unpaid on the 1st, with a 10-day grace period.
+
+There is no offline mode. The service worker only handles push notifications; booking always needs a connection.
+
+## Run it locally
+
+It's a static site with no build step. Serve the repo root:
+
+```bash
+python3 -m http.server 8080
+```
+
+Then open http://localhost:8080/index.html or `/admin.html`.
+
+It talks to the **production** Firebase project. Use a test account, and avoid real bookings.
+
+## Tests
+
+```bash
+npm test
+```
+
+This runs every `scripts/*.test.cjs` with Node's test runner and in-memory Firebase fakes. It needs no network or credentials.
+
+## Styles
+
+Tailwind is prebuilt into `styles/tailwind.css` (committed). After adding new Tailwind classes, rebuild it and commit the result:
+
+```bash
+npm run build:css
+```
+
+App styles live in `styles/tokens.css`, `app.css`, `cempasuchil.css` and `admin.css`. When you change one, bump its `?v=` query in the HTML so phones fetch the new file.
+
+## Deploy
+
+- **Website:** GitHub Pages serves the repo root at the custom domain in `CNAME` (`madness.chinito.cc`). Pushing to the branch selected in Settings → Pages publishes it. That branch should be `main`.
+- **Backend:** Cloud Functions, Firestore rules and indexes deploy with the Firebase CLI. `firebase.json` has no Hosting target.
+
+```bash
+firebase deploy --only functions,firestore
+```
+
+## Where the code lives
+
+| Path | What |
+| --- | --- |
+| `index.html`, `scripts/member/` | Member app. Plain scripts loaded in order; `main.js` starts it. Screens are in `scripts/member/screens/`. |
+| `admin.html`, `scripts/admin/` | Admin panel. `core.js` defines `AdminPanel`, each file adds methods, `views/` holds large markup, and `main.js` starts it. |
+| `scripts/app-accessibility.js` | Connection banner, the name dialog and admin modal focus handling. |
+| `service-worker.js` | Push notifications (background messages and click). |
+| `functions/` | Cloud Functions: bookings, waitlist, reminders, scheduled jobs. |
+| `firestore.rules`, `firestore.indexes.json` | Database security rules and indexes. |
+| `docs/` | Redesign and static-Tailwind notes with screenshots. |

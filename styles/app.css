@@ -62,7 +62,6 @@ body[data-app='member'] nav { padding-bottom: var(--safe-bottom); padding-inline
 .nav-button.active-nav { color: var(--color-accent) !important; }
 .nav-button.active-nav::before { content: ''; position: absolute; top: 0; width: 32px; height: 3px; background: var(--color-accent); border-radius: 2px; }
 .nav-button span { font-size: .75rem; }
-.booking-action { max-width: 760px !important; bottom: calc(var(--nav-height) + var(--safe-bottom)) !important; padding: var(--space-md) !important; border-top: 1px solid var(--color-rule); background: var(--color-paper) !important; }
 #auth-container { min-height: 100vh; min-height: 100dvh; height: auto; padding: max(var(--space-lg), var(--safe-top)) var(--space-lg) max(var(--space-lg), var(--safe-bottom)); background: var(--color-paper); }
 .auth-panel { max-width: 400px; padding-block: var(--space-xl); }
 .auth-mark { width: 64px; height: 64px; border-radius: var(--radius-card); margin-bottom: var(--space-lg); }
@@ -114,7 +113,6 @@ body[data-app='member'] .screen-layout > header.text-center p { overflow-wrap: a
 body[data-app='member'] a[href*='instagram.com'], body[data-app='member'] a[href*='wa.me'] { background: var(--color-paper-3) !important; background-image: none !important; color: var(--color-ink) !important; box-shadow: none; }
 body[data-app='member'] [aria-labelledby='profile-strikes'] { text-align: left; background: none; border-radius: 0; padding-inline: 0; border-bottom: 1px solid var(--color-rule); padding-bottom: var(--space-lg); }
 body .btn-primary.text-zinc-900 { color: var(--color-accent-ink) !important; }
-body[data-app='member'] .screen-layout .card-panel .card-panel { background: none; border-radius: 0; }
 
 [data-action] { min-height: 44px; }
 

@@ -17,13 +17,13 @@
     {
       "name": "Calendario de Clases",
       "short_name": "Calendario",
-      "url": "./admin.html#calendar",
+      "url": "./admin.html#week-title",
       "icons": [{ "src": "./images/admin-192x192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Panel de Waitlist",
       "short_name": "Waitlist",
-      "url": "./admin.html#waitlist",
+      "url": "./admin.html#reservas-title",
       "icons": [{ "src": "./images/admin-192x192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

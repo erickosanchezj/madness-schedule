@@ -1,0 +1,7 @@
+/*! styles/tailwind.input.css */
+/*! Defines Tailwind base, components and utilities in cascade order. */
+/*! Generates the committed stylesheet served directly by Pages. */
+/*! RELEVANT FILES: tailwind.config.cjs, styles/tailwind.css, index.html, admin.html */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

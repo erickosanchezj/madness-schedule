@@ -286,7 +286,9 @@ const userUnlockNotifications = require("./src/userUnlockNotifications");
 exports.onUserUnlockNotification =
   userUnlockNotifications.onUserUnlockNotification;
 
-const buildStrikeResetUpdates = async () => {
+// keepBlacklisted: the monthly job leaves blacklisted members blocked until an admin unlocks them.
+// The admin "reset all" button passes nothing, so it still clears everyone (a manual unlock).
+const buildStrikeResetUpdates = async ({ keepBlacklisted = false } = {}) => {
   const snap = await db.collection("users").get();
 
   const updates = [];
@@ -296,6 +298,7 @@ const buildStrikeResetUpdates = async () => {
   snap.forEach((doc) => {
     const data = doc.data() || {};
     const fields = {};
+    if (keepBlacklisted && data.blacklisted === true) return;
 
     const rawStrikes = data.lateCancellations;
     const numericStrikes = typeof rawStrikes === "number" ? rawStrikes : Number(rawStrikes);
@@ -374,7 +377,7 @@ exports.automaticWhitelisting = onSchedule(
     timeZone: "America/Mexico_City",
   },
   async () => {
-    const { updates, totals } = await buildStrikeResetUpdates();
+    const { updates, totals } = await buildStrikeResetUpdates({ keepBlacklisted: true });
 
     if (!updates.length) {
       console.log("automaticWhitelisting: no users required strike reset.");

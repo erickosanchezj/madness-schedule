@@ -1,3 +1,7 @@
+// build-config.js
+// Writes firebase-config.js and sw-firebase-config.js from FIREBASE_* environment variables.
+// Note: the pages and service worker currently use their own inline public config, not these files.
+// RELEVANT FILES: package.json, .gitignore, scripts/member/firebase.js, service-worker.js
 const fs = require('fs');  
 require('dotenv').config();  
   

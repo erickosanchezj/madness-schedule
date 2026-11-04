@@ -11,7 +11,7 @@
 
 # KEY FEATURES    
 - **Waitlist Management**: Position-based queue system with automatic notifications when spots open  
-- **Strike System**: Late cancellation tracking (3 strikes = automatic blacklist for 30 days)  
+- **Strike System**: Late cancellation tracking (3 strikes = automatic blacklist until an admin unlocks the member)  
 - **Automated Scheduling**: Weekly class generation every Saturday at 4 PM from schedule templates  
 - **Multi-stage Reminders**: 60min, 30min, 15min notifications before class start  
 - **Analytics Dashboard**: Booking velocity, revenue tracking, instructor metrics, popularity scoring  
@@ -28,12 +28,12 @@
 - Backend: Firebase (Firestore, Auth, Cloud Functions, FCM)    
 - PWA: Service Worker, Push Notifications    
 - Security: Cloudflare Turnstile, DOMPurify    
-- Build: Node.js build scripts for configuration  
+- Build: no app build step; `npm run build:css` regenerates the committed `styles/tailwind.css`  
 - Analytics: Chart.js for admin dashboard visualizations  
 - Scheduling: Cloud Scheduler for automated weekly class generation 
   
 # DEPLOYED ENVIRONMENTS  
-- Production: Firebase Hosting  
+- Production: GitHub Pages (custom domain in `CNAME`), serving the repo root  
 - Database: Firestore (production)  
 
 # AUTOMATED WORKFLOWS    
@@ -41,7 +41,7 @@
 - **Booking Reminders**: 3-stage notification system (60min, 30min, 15min before class)
 - **TotalPass Reminders**: Randomized 5-10 minute delay after class ends for TotalPass users
 - **Waitlist Cascading**: Automatic notification to next person in queue when spot opens
-- **Monthly Whitelist Reset**: Resets strike counts on 1st of each month
+- **Monthly Strike Reset**: Resets strike counts on the 1st of each month; blacklisted members stay blocked until an admin unlocks them
 - **FCM Token Pruning**: Removes invalid tokens on delivery failures
 
 # DATABASE    
@@ -63,9 +63,10 @@
 - standard git workflow with main branch deployment  
   
 # ESSENTIAL COMMANDS  
-- Build config: `node build-config.js` (generates Firebase config files)  
-- Local development: serve files from root directory  
-- Firebase deploy: `firebase deploy`  
+- Tests: `npm test` (runs `scripts/*.test.cjs` with in-memory Firebase fakes)  
+- Tailwind: `npm run build:css` after adding new utility classes  
+- Local development: serve files from root directory (e.g. `python3 -m http.server 8080`)  
+- Backend deploy: `firebase deploy --only functions,firestore` (no Hosting target)  
   
 # COMMENTS  
 - every file should have clear Header Comments at the top, explaining where the file is, and what it does  
