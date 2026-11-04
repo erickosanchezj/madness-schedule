@@ -296,7 +296,7 @@
                 <option value="capacity">Capacidad</option>
                 <option value="demographics">Demográficos</option>
                 <option value="instructors">Instructores</option>
-                <option value="revenue">Ingresos</option>
+                <option value="revenue">Ingresos estimados</option>
                 <option value="optimization">Optimización</option>
                 <option value="custom-range">Rango personalizado</option>
               </select>
@@ -317,7 +317,7 @@
                 <input type="checkbox" id="metric-utilization" class="bg-zinc-700" checked /> Utilización
               </label>
               <label class="inline-flex items-center gap-1">
-                <input type="checkbox" id="metric-revenue" class="bg-zinc-700" checked /> Ingresos
+                <input type="checkbox" id="metric-revenue" class="bg-zinc-700" checked /> Ingresos estimados
               </label>
             </div>
           </div>
@@ -2334,7 +2334,7 @@
             datasets.push({ label:'Utilización %', data: metrics.map(m=>m.utilizationRate||0), type:'line', yAxisID:'y1', borderColor:'#a855f7', tension:0.2, fill:false, pointBackgroundColor:'#a855f7' });
           }
           if (selected.has('revenue')){
-            datasets.push({ label:'Ingresos', data: metrics.map(m=>m.revenue||0), type:'line', yAxisID:'y2', borderColor:'#fbbf24', tension:0.2, fill:false, pointBackgroundColor:'#fbbf24' });
+            datasets.push({ label:'Ingresos estimados', data: metrics.map(m=>m.revenue||0), type:'line', yAxisID:'y2', borderColor:'#fbbf24', tension:0.2, fill:false, pointBackgroundColor:'#fbbf24' });
           }
           this.destroyAttendanceCharts();
           this.state.attendanceCharts.trend = new Chart(trendCtx, {
@@ -2363,7 +2363,7 @@
               data:{
                 labels: revenueLabels,
                 datasets:[
-                  { label:'Ingresos', data: revenueSeries.map(r=>r.revenue), backgroundColor:'rgba(34,197,94,0.7)' },
+                  { label:'Ingresos estimados', data: revenueSeries.map(r=>r.revenue), backgroundColor:'rgba(34,197,94,0.7)' },
                   { label:'Meta', data: revenueSeries.map(r=>r.target), backgroundColor:'rgba(244,114,182,0.4)' }
                 ]
               },
@@ -2444,7 +2444,7 @@
                 <div class="font-semibold text-blue-400">Reservaron (${d.booked||0})</div>
                 ${renderList(d.details.booked)}
                 <div class="text-sm mt-2">Capacidad total: ${d.totalCapacity||0}</div>
-                <div class="text-sm">Ingresos: $${d.revenue||0} / Meta $${d.revenueTarget||0}</div>
+                <div class="text-sm">Ingresos estimados: $${d.revenue||0} / Meta $${d.revenueTarget||0}</div>
                 <div class="text-sm">Retención: ${d.memberRetention||0}%</div>
                 <div class="${warnColor} text-sm">${DOMPurify.sanitize(d.warning||'')}</div>
                 <div class="text-sm mt-1">Hora pico: ${DOMPurify.sanitize(peakLabel)}</div>
@@ -2875,7 +2875,7 @@
           const end = document.getElementById('att-end-date')?.value || 'fin';
           let rows = [];
           if (format === 'capacity'){
-            rows = [['Fecha','Asistieron','Faltaron','Reservaron','Capacidad','Utilización %','Ingresos','Meta','Retención %']];
+            rows = [['Fecha','Asistieron','Faltaron','Reservaron','Capacidad','Utilización %','Ingresos estimados','Meta','Retención %']];
             Object.entries(report).forEach(([date,d])=>{
               rows.push([date,d.attended,d.absent,d.booked,d.totalCapacity,d.utilizationRate,d.revenue,d.revenueTarget,d.memberRetention]);
             });
@@ -2893,7 +2893,7 @@
             });
           } else if (format === 'revenue'){
             const projection = this.calculateCapacityProjections();
-            rows = [['Fecha','Ingresos','Meta','Pronóstico %']];
+            rows = [['Fecha','Ingresos estimados','Meta','Pronóstico %']];
             (aggregates?.revenueSeries || []).forEach(item=>{
               rows.push([item.date,item.revenue,item.target,projection?.projectedUtilization||0]);
             });
@@ -2903,7 +2903,7 @@
           } else if (format === 'custom-range'){
             const totals = aggregates?.totals || {};
             rows = [['Indicador','Valor'],
-              ['Ingresos totales', totals.revenue||0],
+              ['Ingresos estimados totales', totals.revenue||0],
               ['Meta de ingresos', totals.target||0],
               ['Retención promedio %', aggregates?.retention?.retentionRate||0],
               ['Cancelaciones', totals.cancellations||0],
