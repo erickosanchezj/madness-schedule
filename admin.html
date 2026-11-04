@@ -60,7 +60,8 @@
       <nav class="admin-nav" aria-label="Secciones de administración">
         <a href="#week-title">Clases</a><a href="#reservas-title">Reservas</a>
         <a href="#subscription-title">Suscripciones</a><a href="#asistencia-title">Reportes</a>
-        <a href="#daily-message-title">Mensajes</a><a href="#usuarios-title">Usuarios</a>
+        <a href="#notifs-title">Notificaciones</a><a href="#daily-message-title">Mensajes</a>
+        <a href="#usuarios-title">Usuarios</a><a href="#blacklist-title">Lista negra</a>
       </nav>
       <div class="mb-6 flex flex-wrap gap-3">
         <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
@@ -279,8 +280,6 @@
                 <option value="weekly">Semanal</option>
                 <option value="monthly">Mensual</option>
               </select>
-              <label for="facility-capacity">Capacidad:</label>
-              <input type="number" id="facility-capacity" class="bg-zinc-700 text-white p-1 rounded-md w-20" min="1" />
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <label for="class-filter">Tipo de clase:</label>
@@ -576,7 +575,6 @@
         db: null,
         auth: null,
         functions: null,
-        FACILITY_MAX_CAPACITY: 75,
         DEFAULT_TICKET_PRICE: 120,
         calendarStartHour: 6,
         calendarEndHour: 22,
@@ -769,7 +767,6 @@
           const range = this.getDefaultAttendanceRange();
           const sEl = document.getElementById('att-start-date');
           const eEl = document.getElementById('att-end-date');
-          const capEl = document.getElementById('facility-capacity');
           const exportBtn = document.getElementById('att-export');
           const periodEl = document.getElementById('att-period');
           const classFilter = document.getElementById('class-filter');
@@ -790,13 +787,6 @@
             eEl.value = range.end;
             sEl.addEventListener('change',()=>this.fetchAttendanceData(true));
             eEl.addEventListener('change',()=>this.fetchAttendanceData(true));
-          }
-          if (capEl){
-            capEl.value = this.FACILITY_MAX_CAPACITY;
-            capEl.addEventListener('change',()=>{
-              this.FACILITY_MAX_CAPACITY = Number(capEl.value)||0;
-              this.fetchAttendanceData(true);
-            });
           }
           if (periodEl){
             periodEl.addEventListener('change',()=>{
@@ -1905,8 +1895,7 @@
           const classTypes = new Set(['all']);
           const instructors = new Set(['all']);
           this.state.classes.forEach(cls=>{
-            if (cls.type) classTypes.add(cls.type);
-            else if (cls.category) classTypes.add(cls.category);
+            if (cls.name) classTypes.add(cls.name);
             if (cls.instructor) instructors.add(cls.instructor);
           });
           const classValue = classFilter.value || this.state.selectedClassType;
@@ -1971,9 +1960,7 @@
           const weekdayShort = this.formatWeekdayShortLabel(day);
           classList.forEach(cls=>{
             if (!cls) return;
-            const matchesType = filterType === 'all'
-              || cls.type === filterType
-              || cls.category === filterType;
+            const matchesType = filterType === 'all' || cls.name === filterType;
             const matchesInstructor = filterInstructor === 'all'
               || (cls.instructor === filterInstructor);
             if (!matchesType || !matchesInstructor) return;
