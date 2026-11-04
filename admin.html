@@ -4324,11 +4324,18 @@
         async deleteClass(){
           const id = document.getElementById('class-id').value; if(!id) return;
           try{
-            const snap = await this.db.collection('bookings').where('classId','==',id).get();
+            // One atomic batch: class, bookings and waitlist entries go together.
+            // If bookings went first, each booking-delete trigger could notify the waitlist
+            // and write a hold onto a class that is about to disappear.
+            const [snap, waitSnap] = await Promise.all([
+              this.db.collection('bookings').where('classId','==',id).get(),
+              this.db.collection('waitlists').where('classId','==',id).get()
+            ]);
             const batch = this.db.batch();
+            batch.delete(this.db.collection('classes').doc(id));
             snap.forEach(doc=>batch.delete(doc.ref));
+            waitSnap.forEach(doc=>batch.delete(doc.ref));
             await batch.commit();
-            await this.db.collection('classes').doc(id).delete();
             this.showToast({ title:'Clase eliminada', message:`Se borraron ${snap.size} reservas` });
             this.hideClassModal();
           }catch(e){
