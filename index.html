@@ -256,8 +256,20 @@
         let dailyMessageRotation = {
           intervalId: null,
           messages: [],
-          index: 0
+          index: 0,
+          paused: false
         };
+
+        // Announcements the member closed on this device (by message id). New messages still show.
+        const DISMISSED_MESSAGES_KEY = 'madness:dismissedMessages';
+        function readDismissedMessages(){
+          try { return JSON.parse(localStorage.getItem(DISMISSED_MESSAGES_KEY)) || []; } catch { return []; }
+        }
+        function rememberDismissedMessages(ids){
+          // Keep the list short; old ids belong to messages that are long gone.
+          const merged = [...new Set([...readDismissedMessages(), ...ids.filter(Boolean)])].slice(-50);
+          try { localStorage.setItem(DISMISSED_MESSAGES_KEY, JSON.stringify(merged)); } catch {}
+        }
 
         function stopDailyMessageRotation(){
           if (dailyMessageRotation.intervalId){
@@ -266,6 +278,7 @@
           dailyMessageRotation.intervalId = null;
           dailyMessageRotation.messages = [];
           dailyMessageRotation.index = 0;
+          dailyMessageRotation.paused = false;
         }
 
         function startDailyMessageRotation(messages){
@@ -280,7 +293,7 @@
           state.dailyMessage = dailyMessageRotation.messages[0];
           scheduleAgendaDataRender();
           dailyMessageRotation.intervalId = setInterval(()=>{
-            if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.querySelector('[data-message-id]:hover, [data-message-id]:focus-within')) return;
+            if (dailyMessageRotation.paused || matchMedia('(prefers-reduced-motion: reduce)').matches || document.querySelector('[data-message-id]:hover, [data-message-id]:focus-within')) return;
             if (!dailyMessageRotation.messages.length){
               stopDailyMessageRotation();
               return;
@@ -474,11 +487,12 @@
             .orderBy('createdAt', 'desc')
             .limit(10)
             .onSnapshot(snap => {
+              const dismissed = readDismissedMessages();
               const activeMessages = snap.docs.map(doc => {
                 const data = doc.data() || {};
                 const rawText = typeof data.message === 'string' ? data.message.trim() : '';
                 return { id: doc.id, ...data, message: rawText };
-              }).filter(msg => msg.isActive && msg.message);
+              }).filter(msg => msg.isActive && msg.message && !dismissed.includes(msg.id));
               if (!activeMessages.length){
                 stopDailyMessageRotation();
                 state.dailyMessage = null;
@@ -962,7 +976,7 @@
             const formatted = sanitized.replace(/\n/g,'<br>');
             return `
               <section aria-live="polite" class="announcement card-panel p-4 flex items-start gap-3" data-message-id="${safeId}">
-                <div class="flex-1 text-sm leading-relaxed text-zinc-100">${formatted}</div><button type="button" data-action="pause-messages" aria-pressed="false" class="text-sm">Pausar</button>
+                <div class="flex-1 text-sm leading-relaxed text-zinc-100">${formatted}</div>${dailyMessageRotation.messages.length > 1 ? `<button type="button" data-action="pause-messages" aria-pressed="${dailyMessageRotation.paused}" class="text-sm">${dailyMessageRotation.paused ? 'Reanudar' : 'Pausar'}</button>` : ''}
                 <button type="button" aria-label="Cerrar anuncio" data-action="dismiss-message" class="text-zinc-400 hover:text-zinc-200">
                   <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
@@ -1485,11 +1499,12 @@
             case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
             case 'pause-messages':
-              stopDailyMessageRotation();
-              target.textContent = 'Pausado';
-              target.setAttribute('aria-pressed','true');
+              dailyMessageRotation.paused = !dailyMessageRotation.paused;
+              scheduleRender();
               break;
             case 'dismiss-message':
+              // Remember every message currently in the queue, not just the visible one.
+              rememberDismissedMessages(dailyMessageRotation.messages.length ? dailyMessageRotation.messages.map(m => m.id) : [state.dailyMessage?.id]);
               stopDailyMessageRotation();
               state.dailyMessage = null;
               scheduleRender();
