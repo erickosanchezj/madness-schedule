@@ -964,6 +964,19 @@
             });
         },
 
+        // Attendee names for bookings and waitlists, read once per user per page load.
+        // The cache holds promises, so lookups that run at the same time share one read.
+        attendeeNames: new Map(),
+        attendeeName(uid, fallback=''){
+          if (!this.attendeeNames.has(uid)){
+            const lookup = this.db.collection('users').doc(uid).get()
+              .then(snap => { const d = snap.data() || {}; return d.displayName || d.email || uid; })
+              .catch(() => { this.attendeeNames.delete(uid); return null; }); // retry next time
+            this.attendeeNames.set(uid, lookup);
+          }
+          return this.attendeeNames.get(uid).then(name => name ?? fallback);
+        },
+
         teardownBookingsListeners(){
           this.state.unsubBookings.forEach(fn=>{ try{ fn&&fn(); }catch{} });
           this.state.unsubBookings = [];
@@ -991,13 +1004,7 @@
                 const bookingsWithNames = await Promise.all(snap.docs.map(async doc=>{
                   const b = doc.data();
                   let userName = b.userName || '';
-                  if (b.userId){
-                    try{
-                      const uSnap = await this.db.collection('users').doc(b.userId).get();
-                      const uData = uSnap.data() || {};
-                      userName = uData.displayName || uData.email || b.userId;
-                    }catch{}
-                  }
+                  if (b.userId) userName = await this.attendeeName(b.userId, userName);
                   return { id:doc.id, ...b, userName };
                 }));
 
@@ -1046,12 +1053,7 @@
                 const items = await Promise.all(snap.docs.map(async doc=>{
                   const w = doc.data();
                   let userName = '';
-                  if (w.userId){
-                    try{
-                      const uSnap = await this.db.collection('users').doc(w.userId).get();
-                      userName = uSnap.data()?.displayName || uSnap.data()?.email || w.userId;
-                    }catch{}
-                  }
+                  if (w.userId) userName = await this.attendeeName(w.userId, userName);
                   return { id:doc.id, ...w, userName };
                 }));
                 items.forEach(w=>{
