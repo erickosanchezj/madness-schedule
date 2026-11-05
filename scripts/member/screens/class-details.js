@@ -73,6 +73,9 @@ function getClassDetailsScreenHTML(classId){
     if (waitEntry) {
       const pos = DOMPurify.sanitize(String(waitEntry.position||1));
       buttonHTML = `<div class="space-y-2"><p class="text-center text-sm">Posición en lista de espera: ${pos}</p><button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full class-detail-booking-button bg-rose-800 text-rose-100 font-bold">Salir de la lista de espera</button></div>`;
+    } else if (holdActive && !holdForMe) {
+      // Spot held for the next waitlisted member (5 min); joining is rejected meanwhile. Tap explains why.
+      buttonHTML = `<button type="button" data-action="held-spot" class="w-full class-detail-booking-button border border-amber-400/60 text-amber-300 font-bold bg-transparent">Apartado</button>`;
     } else {
       buttonHTML = bookingButton('join-waitlist', 'Unirse a lista de espera');
     }

@@ -118,6 +118,10 @@ function getAgendaScreenHTML(){
           if (waitEntry) {
             const pos = DOMPurify.sanitize(String(waitEntry.position||1));
             badge = `<div><p class=\"text-xs text-amber-400\">Posición ${pos}</p><button data-action=\"leave-waitlist\" data-class-id=\"${safeId}\" class=\"mt-1 text-xs text-rose-400 hover:text-rose-300\">Salir</button></div>`;
+          } else if (holdActive && !holdForMe) {
+            // A freed spot is held for the next waitlisted member for 5 minutes. The server rejects
+            // joining the waitlist meanwhile, so show "Apartado"; tapping it explains (held-spot).
+            badge = `<button type="button" data-action="held-spot" class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-amber-300 border border-amber-400/60 rounded-md bg-transparent">Apartado</button>`;
           } else {
             badge = `<button data-action=\"join-waitlist\" data-class-id=\"${safeId}\" class=\"inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold btn-primary text-zinc-900 rounded-md\">Unirse a lista de espera</button>`;
           }
@@ -126,8 +130,6 @@ function getAgendaScreenHTML(){
           badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
         } else if (holdActive && holdForMe) {
           badge = `<span class="text-xs bg-amber-500/50 text-amber-300 px-2 py-1 rounded-md">Tu turno</span>`;
-        } else if (holdActive && !holdForMe) {
-          badge = `<span class="inline-flex items-center justify-center px-3 py-1.5 text-sm font-semibold text-amber-300 border border-amber-400/60 rounded-md bg-transparent">Reservado para lista de espera</span>`;
         }
         const ymdUTC = cls.classDate || targetYMD;
         const hhmmUTC = cls.time || cls.startAt.toDate().toISOString().slice(11,16);
