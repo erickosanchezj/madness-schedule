@@ -23,6 +23,7 @@ function handleInteraction(e){
     case 'cancel-booking': target.disabled=true; app.cancelBooking(classId).finally(()=>target.disabled=false); break;
     case 'join-waitlist': target.disabled=true; app.joinWaitlist(classId).finally(()=>target.disabled=false); break;
     case 'leave-waitlist': target.disabled=true; app.leaveWaitlist(classId).finally(()=>target.disabled=false); break;
+    case 'held-spot': showToast('Reservado para lista de espera. Intenta en unos minutos.', 'info', { duration: 5000 }); break;
     case 'pause-messages':
       dailyMessageRotation.paused = !dailyMessageRotation.paused;
       scheduleRender();
