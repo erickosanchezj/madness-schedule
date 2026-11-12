@@ -134,7 +134,8 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
    await page.screenshot({path:prefix+`-shell-${width}x${height}.png`,fullPage:true});
    console.log('PWA shell, safe area, scroll/resume and brand order',width,height,'PASS');
   }
-  for(const screen of ['history','profile','classDetails'])await page.evaluate(screen=>{__preview.app.navigateTo(screen,{classId:'fixture-trx'});const dock=document.getElementById('agenda-background');if(!dock.hidden||getComputedStyle(dock).display!=='none')throw Error('Brand artwork leaked into '+screen);},screen);
+  for(const screen of ['history','profile'])await page.evaluate(screen=>{__preview.app.navigateTo(screen);const dock=document.getElementById('agenda-background');if(dock.hidden||getComputedStyle(dock).display==='none')throw Error('Brand artwork missing from '+screen);},screen);
+  await page.evaluate(()=>{__preview.app.navigateTo('classDetails',{classId:'fixture-trx'});const dock=document.getElementById('agenda-background');if(!dock.hidden||getComputedStyle(dock).display!=='none')throw Error('Brand artwork leaked into class details');});
  }
  if(!before){
  await require('./verify-tailwind-states.cjs').member(page,prefix);

@@ -6,7 +6,8 @@
 // Render principal
 function render(){
   const screen = state.currentScreen;
-  document.getElementById('agenda-background').hidden = screen !== 'agenda';
+  const showBrandDock = ['agenda', 'history', 'profile'].includes(screen);
+  document.getElementById('agenda-background').hidden = !showBrandDock;
   let content = '';
   if (screen === 'agenda') content = getAgendaScreenHTML();
   else if (screen === 'history') content = getHistoryScreenHTML();

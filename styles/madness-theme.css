@@ -1,6 +1,6 @@
 /* /styles/madness-theme.css */
 /* Adds the pink and neon-green Madness brand to the member app. */
-/* It gives the agenda a textured training-inspired background without images. */
+/* It gives member screens a textured training-inspired background. */
 /* RELEVANT FILES: index.html, styles/member-shell.css, styles/app.css, images/madness-cross-training-logo.png */
 
 body[data-app='member'] {
@@ -63,7 +63,7 @@ body[data-app='member'] #main-content {
   background: transparent !important;
 }
 
-body[data-app='member'] .agenda-brand-dock {
+body[data-app='member'] .member-brand-dock {
   position: absolute;
   isolation: isolate;
   inset-inline: 0;
@@ -80,12 +80,12 @@ body[data-app='member'] .agenda-brand-dock {
   line-height: 0;
 }
 
-/* Hidden artwork stays out of every screen except Agenda. */
-body[data-app='member'] .agenda-brand-dock:not([hidden]) {
+/* Keep the logo on the three main member screens, behind their content. */
+body[data-app='member'] .member-brand-dock:not([hidden]) {
   display: flex;
 }
 
-body[data-app='member'] .agenda-brand-dock::before {
+body[data-app='member'] .member-brand-dock::before {
   position: absolute;
   inset: 12% 8%;
   z-index: -1;
@@ -94,15 +94,14 @@ body[data-app='member'] .agenda-brand-dock::before {
   content: '';
 }
 
-body[data-app='member'] .agenda-brand-logo {
+body[data-app='member'] .member-brand-logo {
   display: block;
   width: min(88%, 430px);
   max-height: 142px;
   margin-inline: auto;
   object-fit: contain;
-  opacity: .92;
-  mix-blend-mode: screen;
-  filter: drop-shadow(0 0 12px rgb(219 62 177 / 18%));
+  opacity: 1;
+  filter: drop-shadow(0 0 12px rgb(219 62 177 / 28%));
   user-select: none;
 }
 
@@ -161,17 +160,17 @@ body[data-app='member'] #auth-container {
 }
 
 @media (max-height: 700px) {
-  body[data-app='member'] .agenda-brand-dock {
+  body[data-app='member'] .member-brand-dock {
     height: min(20vh, 140px);
   }
 
-  body[data-app='member'] .agenda-brand-logo {
+  body[data-app='member'] .member-brand-logo {
     max-height: 112px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body[data-app='member'] .agenda-brand-logo {
+  body[data-app='member'] .member-brand-logo {
     filter: none;
   }
 }
