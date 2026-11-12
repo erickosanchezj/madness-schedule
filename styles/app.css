@@ -111,7 +111,7 @@ body[data-app='member'] .screen-layout > header.text-center img { width: 64px; h
 body[data-app='member'] .screen-layout > header.text-center h1 { font: 700 1.2rem/1.4 var(--font-body); }
 body[data-app='member'] .screen-layout > header.text-center p { overflow-wrap: anywhere; }
 body[data-app='member'] a[href*='instagram.com'], body[data-app='member'] a[href*='wa.me'] { background: var(--color-paper-3) !important; background-image: none !important; color: var(--color-ink) !important; box-shadow: none; }
-body[data-app='member'] [aria-labelledby='profile-strikes'] { text-align: left; background: none; border-radius: 0; padding-inline: 0; border-bottom: 1px solid var(--color-rule); padding-bottom: var(--space-lg); }
+body[data-app='member'] [aria-labelledby='profile-strikes'] { text-align: left; }
 body .btn-primary.text-zinc-900 { color: var(--color-accent-ink) !important; }
 
 [data-action] { min-height: 44px; }
