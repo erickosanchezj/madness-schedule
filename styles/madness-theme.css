@@ -17,6 +17,8 @@ body[data-app='member'] {
   --madness-green: #44d62c;
   --madness-pink-glow: rgb(219 62 177 / 18%);
   --madness-green-glow: rgb(68 214 44 / 17%);
+  --madness-green-light-opacity: .45;
+  --madness-pink-arcs-opacity: .8;
 }
 
 /* The brand pink stays on controls; lighter text keeps 4.5:1 on dark panels. */
@@ -30,9 +32,10 @@ body[data-app='member'] .nav-button.active-nav {
 }
 
 body[data-app='member'] .app-stage {
-  background: transparent;
+  background: var(--color-paper) url('../images/backgrounds/madness-texture.webp') center / cover no-repeat;
 }
 
+/* Independent, non-interactive light layers stay behind the scrolling content. */
 body[data-app='member'] .app-stage::before,
 body[data-app='member'] .app-stage::after {
   position: absolute;
@@ -43,20 +46,19 @@ body[data-app='member'] .app-stage::after {
 
 body[data-app='member'] .app-stage::before {
   z-index: -2;
-  background:
-    radial-gradient(ellipse at 100% 6%, var(--madness-green-glow), transparent 36%),
-    radial-gradient(ellipse at 12% 94%, var(--madness-pink-glow), transparent 38%),
-    linear-gradient(145deg, #111015 8%, #15161b 54%, #111015 100%);
+  opacity: var(--madness-green-light-opacity);
+  background: url('../images/backgrounds/madness-green-light.webp') right top / auto 100% no-repeat;
 }
 
 body[data-app='member'] .app-stage::after {
   z-index: -1;
-  opacity: .35;
-  background-image: repeating-linear-gradient(
-    135deg,
-    rgb(255 255 255 / 2%) 0 1px,
-    transparent 1px 10px
-  );
+  opacity: var(--madness-pink-arcs-opacity);
+  background: url('../images/backgrounds/madness-pink-arcs.webp') center bottom / auto 100% no-repeat;
+}
+
+/* The arcs belong to the logo and follow its existing screen visibility. */
+body[data-app='member'] .app-stage:has(#agenda-background[hidden])::after {
+  content: none;
 }
 
 body[data-app='member'] #main-content {
@@ -83,15 +85,6 @@ body[data-app='member'] .member-brand-dock {
 /* Keep the logo on the three main member screens, behind their content. */
 body[data-app='member'] .member-brand-dock:not([hidden]) {
   display: flex;
-}
-
-body[data-app='member'] .member-brand-dock::before {
-  position: absolute;
-  inset: 12% 8%;
-  z-index: -1;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, var(--madness-pink-glow), transparent 68%);
-  content: '';
 }
 
 body[data-app='member'] .member-brand-logo {
