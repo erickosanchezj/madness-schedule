@@ -103,6 +103,7 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
  }
 
  if(!before && process.argv.includes('--shell')){
+  await require('./verify-member-scroll.cjs')(page);
   // Safe-area values are simulated; these checks do not emulate Safari's compositor.
   for(const [width,height] of [[390,844],[390,720],[390,844],[844,390],[320,568]]){
    await page.setViewport({width,height});
