@@ -17,6 +17,7 @@ fs.mkdirSync(root+'/.hallmark/render',{recursive:true});
 const fontCSS = ['inter-latin-400-normal','inter-latin-500-normal','inter-latin-600-normal','inter-latin-700-normal'].map((n,i)=>`@font-face { font-family: Inter; font-weight: ${[400,500,600,700][i]}; src: url(data:font/woff2;base64,${fs.readFileSync(path.join(toolsDir,'@fontsource/inter/files/'+n+'.woff2')).toString('base64')}); }`).join('') + `@font-face {font-family: 'Archivo Black'; src: url(data:font/woff2;base64,${fs.readFileSync(path.join(toolsDir,'@fontsource/archivo-black/files/archivo-black-latin-400-normal.woff2')).toString('base64')});}`;
 async function settle(page) { await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(i=>{i.loading='eager';return i.decode().catch(()=>{})}));}); }
 const stub=`
+(()=>{
 window.__calls=[];
 const start=new Date(); start.setUTCHours(22,0,0,0); if(start<Date.now())start.setUTCDate(start.getUTCDate()+1);
 const ymd=start.toISOString().slice(0,10), time=start.toISOString().slice(11,16);
@@ -31,11 +32,13 @@ const auth={currentUser:null,onAuthStateChanged:cb=>setTimeout(()=>cb(null),0),s
 const messaging=()=>({});messaging.isSupported=()=>false;
 const firestore=()=>db;firestore.FieldValue={serverTimestamp:()=>new Date(),delete:()=>null};firestore.Timestamp={fromDate:d=>d};
 window.firebase={initializeApp:()=>{},firestore,auth:()=>auth,messaging,app:()=>({functions:()=>({httpsCallable:name=>async(data)=>{window.__calls.push({name,data});return {data:{}}}})})};
-window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
+window.__fixture={classes,user};
+window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
+})();`;
 (async()=>{
  const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  const page=await browser.newPage();await page.setRequestInterception(true);
- page.on('request',r=>{const u=r.url();if(u.includes('tailwindcss.com'))tailwindRequests.push(u);if(before&&u.endsWith('/baseline-tailwind.css'))return r.respond({contentType:'text/css',body:fs.readFileSync('/tmp/static-tailwind-baseline.css')});if(u.startsWith('http://localhost:8085/index.html')){let html=(before ? require('child_process').execFileSync('git',['show',baselineRef+':index.html'],{cwd:root,encoding:'utf8'}) : fs.readFileSync(root+'/index.html','utf8'));html=html.replace('// Íconos\n        lucide.createIcons();',`window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes,user};\n        // Íconos\n        lucide.createIcons();`);if(before)html=html.replace('<script src="https://cdn.tailwindcss.com"></script>','<link rel="stylesheet" href="/baseline-tailwind.css">');return r.respond({contentType:'text/html',body:html});}if(u.includes('firebase-app-compat.js'))return r.respond({contentType:'text/javascript',body:stub});if(u.includes('tailwindcss.com'))return r.respond({contentType:'text/javascript',body:''});if(u.includes('purify.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'dompurify/dist/purify.min.js'))});if(u.includes('unpkg.com/lucide'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'lucide/dist/umd/lucide.min.js'))});if(u.startsWith('http://localhost:8085/'))return r.continue();return r.respond({body:'',contentType:'text/javascript'});});
+ page.on('request',r=>{const u=r.url();if(u.includes('tailwindcss.com'))tailwindRequests.push(u);if(before&&u.endsWith('/baseline-tailwind.css'))return r.respond({contentType:'text/css',body:fs.readFileSync('/tmp/static-tailwind-baseline.css')});if(u.startsWith('http://localhost:8085/index.html')){let html=(before ? require('child_process').execFileSync('git',['show',baselineRef+':index.html'],{cwd:root,encoding:'utf8'}) : fs.readFileSync(root+'/index.html','utf8'));html=html.replace('// Íconos\n        lucide.createIcons();',`window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes:__fixture.classes,user:__fixture.user};\n        // Íconos\n        lucide.createIcons();`);if(before)html=html.replace('<script src="https://cdn.tailwindcss.com"></script>','<link rel="stylesheet" href="/baseline-tailwind.css">');return r.respond({contentType:'text/html',body:html});}if(u.startsWith('http://localhost:8085/scripts/member/main.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(root+'/scripts/member/main.js','utf8').replace('// Íconos', 'window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes:__fixture.classes,user:__fixture.user};\n  // Íconos')});if(u.includes('firebase-app-compat.js'))return r.respond({contentType:'text/javascript',body:stub});if(u.includes('tailwindcss.com'))return r.respond({contentType:'text/javascript',body:''});if(u.includes('purify.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'dompurify/dist/purify.min.js'))});if(u.includes('unpkg.com/lucide'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'lucide/dist/umd/lucide.min.js'))});if(u.startsWith('http://localhost:8085/'))return r.continue();return r.respond({body:'',contentType:'text/javascript'});});
  page.on('pageerror',e=>{pageErrors.push(e.message);console.log('PAGEERROR',e.message)});
  await page.setViewport({width:390,height:844,deviceScaleFactor:1});await page.goto('http://localhost:8085/index.html');await page.waitForFunction(()=>window.__preview);await page.addStyleTag({content:fontCSS});await settle(page);
  const prefix=screenshotDir+'/'+(before?'before':'after');
@@ -116,22 +119,22 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};`;
      const main=document.getElementById('main-content'),dock=document.getElementById('agenda-background');
      main.scrollTop=scroll;
      window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));
-     const box=e=>e.getBoundingClientRect(),nav=box(document.querySelector('.app-bottom-nav')),flowers=box(dock);
-     return {gap:innerHeight-nav.bottom,mainGap:nav.top-box(main).bottom,flowerGap:nav.top-flowers.bottom,navHeight:nav.height,rootScroll:document.scrollingElement.scrollTop,absolute:getComputedStyle(dock).position==='absolute',sibling:dock.parentElement===main.parentElement,accent:getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim()};
+     const box=e=>e.getBoundingClientRect(),nav=box(document.querySelector('.app-bottom-nav')),brand=box(dock);
+     return {gap:innerHeight-nav.bottom,mainGap:nav.top-box(main).bottom,brandGap:nav.top-brand.bottom,brandOffset:parseFloat(getComputedStyle(dock).bottom),navHeight:nav.height,rootScroll:document.scrollingElement.scrollTop,absolute:getComputedStyle(dock).position==='absolute',sibling:dock.parentElement===main.parentElement,accent:getComputedStyle(document.body).getPropertyValue('--color-accent').trim()};
     },scroll);
-    if(Math.abs(metrics.gap)>1||Math.abs(metrics.mainGap)>1||Math.abs(metrics.flowerGap)>1||metrics.navHeight!==107||metrics.rootScroll||!metrics.absolute||!metrics.sibling||metrics.accent!=='#ff921e')throw Error('PWA shell '+JSON.stringify({width,height,scroll,...metrics}));
+    if(Math.abs(metrics.gap)>1||Math.abs(metrics.mainGap)>1||Math.abs(metrics.brandGap-metrics.brandOffset)>1||metrics.navHeight!==107||metrics.rootScroll||!metrics.absolute||!metrics.sibling||metrics.accent!=='#db3eb1')throw Error('PWA shell '+JSON.stringify({width,height,scroll,...metrics}));
    }
    await page.evaluate(()=>{
     const row=document.querySelector('.class-row');row.scrollIntoView({block:'end'});
     const dock=document.getElementById('agenda-background');dock.style.pointerEvents='auto';
     const r=row.getBoundingClientRect(), y=Math.min(r.bottom-8,document.querySelector('nav').getBoundingClientRect().top-8);
-    if(!row.contains(document.elementFromPoint(r.left+8,y)))throw Error('Flowers cover a class row');
+    if(!row.contains(document.elementFromPoint(r.left+8,y)))throw Error('Brand artwork covers a class row');
     dock.style.pointerEvents='';
    });
    await page.screenshot({path:prefix+`-shell-${width}x${height}.png`,fullPage:true});
-   console.log('PWA shell, safe area, scroll/resume and flower order',width,height,'PASS');
+   console.log('PWA shell, safe area, scroll/resume and brand order',width,height,'PASS');
   }
-  await page.evaluate(()=>{__preview.app.navigateTo('history');if(!document.getElementById('agenda-background').hidden)throw Error('Flowers leaked into history');});
+  for(const screen of ['history','profile','classDetails'])await page.evaluate(screen=>{__preview.app.navigateTo(screen,{classId:'fixture-trx'});const dock=document.getElementById('agenda-background');if(!dock.hidden||getComputedStyle(dock).display!=='none')throw Error('Brand artwork leaked into '+screen);},screen);
  }
  if(!before){
  await require('./verify-tailwind-states.cjs').member(page,prefix);

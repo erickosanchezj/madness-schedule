@@ -1,0 +1,177 @@
+/* /styles/madness-theme.css */
+/* Adds the pink and neon-green Madness brand to the member app. */
+/* It gives the agenda a textured training-inspired background without images. */
+/* RELEVANT FILES: index.html, styles/member-shell.css, styles/app.css, images/madness-cross-training-logo.png */
+
+body[data-app='member'] {
+  --color-paper: #111015;
+  --color-paper-2: #1b1a21;
+  --color-paper-3: #28262f;
+  --color-rule: #3c3942;
+  --color-accent: #db3eb1;
+  --color-accent-hover: #e855bd;
+  --color-accent-text: #e855bd;
+  --color-accent-ink: #25091d;
+  --color-focus: #f088d2;
+  --color-photo-overlay: rgb(17 16 21 / 34%);
+  --madness-green: #44d62c;
+  --madness-pink-glow: rgb(219 62 177 / 18%);
+  --madness-green-glow: rgb(68 214 44 / 17%);
+}
+
+/* The brand pink stays on controls; lighter text keeps 4.5:1 on dark panels. */
+body[data-app='member'] .text-orange-100,
+body[data-app='member'] .text-orange-300,
+body[data-app='member'] .text-orange-400,
+body[data-app='member'] .text-indigo-300,
+body[data-app='member'] .text-indigo-400,
+body[data-app='member'] .nav-button.active-nav {
+  color: var(--color-accent-text) !important;
+}
+
+body[data-app='member'] .app-stage {
+  background: transparent;
+}
+
+body[data-app='member'] .app-stage::before,
+body[data-app='member'] .app-stage::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+}
+
+body[data-app='member'] .app-stage::before {
+  z-index: -2;
+  background:
+    radial-gradient(ellipse at 100% 6%, var(--madness-green-glow), transparent 36%),
+    radial-gradient(ellipse at 12% 94%, var(--madness-pink-glow), transparent 38%),
+    linear-gradient(145deg, #111015 8%, #15161b 54%, #111015 100%);
+}
+
+body[data-app='member'] .app-stage::after {
+  z-index: -1;
+  opacity: .35;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgb(255 255 255 / 2%) 0 1px,
+    transparent 1px 10px
+  );
+}
+
+body[data-app='member'] #main-content {
+  background: transparent !important;
+}
+
+body[data-app='member'] .agenda-brand-dock {
+  position: absolute;
+  isolation: isolate;
+  inset-inline: 0;
+  bottom: clamp(10px, 2vh, 22px);
+  z-index: 0;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 760px;
+  height: min(24vh, 180px);
+  margin-inline: auto;
+  padding-inline: 20px;
+  pointer-events: none;
+  line-height: 0;
+}
+
+/* Hidden artwork stays out of every screen except Agenda. */
+body[data-app='member'] .agenda-brand-dock:not([hidden]) {
+  display: flex;
+}
+
+body[data-app='member'] .agenda-brand-dock::before {
+  position: absolute;
+  inset: 12% 8%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--madness-pink-glow), transparent 68%);
+  content: '';
+}
+
+body[data-app='member'] .agenda-brand-logo {
+  display: block;
+  width: min(88%, 430px);
+  max-height: 142px;
+  margin-inline: auto;
+  object-fit: contain;
+  opacity: .92;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 12px rgb(219 62 177 / 18%));
+  user-select: none;
+}
+
+body[data-app='member'] .screen-header {
+  position: relative;
+  border-bottom-color: transparent;
+}
+
+body[data-app='member'] .screen-header::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--madness-green), var(--color-rule) 48%, var(--color-accent));
+  content: '';
+}
+
+body[data-app='member'] .screen-header h1 {
+  text-shadow: 0 0 24px rgb(219 62 177 / 12%);
+}
+
+body[data-app='member'] .card-panel {
+  border: 1px solid rgb(255 255 255 / 5%);
+  background: linear-gradient(145deg, rgb(29 28 35 / 94%), rgb(21 20 26 / 92%)) !important;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(3px);
+}
+
+body[data-app='member'] .announcement {
+  border-left: 3px solid var(--madness-green);
+  box-shadow: inset 0 0 24px rgb(68 214 44 / 4%);
+}
+
+body[data-app='member'] .btn-primary,
+body[data-app='member'] #auth-button,
+body[data-app='member'] #modal-close-btn,
+body[data-app='member'] #modal-content .bg-indigo-600 {
+  box-shadow: 0 5px 18px rgb(219 62 177 / 20%);
+}
+
+body[data-app='member'] .segmented-control {
+  border: 1px solid rgb(68 214 44 / 24%);
+  box-shadow: inset 0 -2px 0 rgb(68 214 44 / 85%);
+}
+
+body[data-app='member'] .nav-button.active-nav::before {
+  box-shadow: 0 0 10px rgb(219 62 177 / 40%);
+}
+
+body[data-app='member'] #auth-container {
+  background:
+    radial-gradient(ellipse at 90% 12%, var(--madness-green-glow), transparent 40%),
+    radial-gradient(ellipse at 10% 92%, var(--madness-pink-glow), transparent 42%),
+    var(--color-paper) !important;
+}
+
+@media (max-height: 700px) {
+  body[data-app='member'] .agenda-brand-dock {
+    height: min(20vh, 140px);
+  }
+
+  body[data-app='member'] .agenda-brand-logo {
+    max-height: 112px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-app='member'] .agenda-brand-logo {
+    filter: none;
+  }
+}
