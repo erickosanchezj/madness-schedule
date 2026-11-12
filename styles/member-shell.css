@@ -45,10 +45,11 @@ body[data-app='member'] .class-detail-feedback #toast { position: static; transf
 body[data-app='member'] .class-detail-feedback #toast.opacity-0 { display: none; }
 
 /* A single shell owns the viewport; scrolling never repositions the navigation or artwork. */
-/* Pin the outer page as well: iOS PWA rubber-banding must stay inside the content. */
+/* Contain edge swipes without making the root a fixed WebKit clipping box. */
 html:has(> body[data-app='member']) { height: 100%; overflow: hidden; overscroll-behavior: none; }
-/* Let both fixed insets size the frame; an explicit dvh height can leave an iOS safe-area gap. */
-body[data-app='member'] { position: fixed; inset: 0; display: flex; flex-direction: column; height: auto; overflow: hidden; overscroll-behavior: none; }
+body[data-app='member'] { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+/* Native status-bar insetting can report zero env() insets; keep the home indicator clear. */
+html[data-ios-standalone] body[data-app='member'] { --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--ios-home-inset, 0px)); }
 body[data-app='member'] #app-container { flex: 1 1 0; height: auto; min-height: 0; overflow: hidden; }
 body[data-app='member'] .app-stage { position: relative; isolation: isolate; z-index: 0; flex: 1 1 0; min-height: 0; }
 body[data-app='member'] #main-content { position: relative; z-index: 1; height: 100%; min-height: 0; padding-bottom: var(--space-lg); scroll-padding-bottom: var(--space-lg); overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }

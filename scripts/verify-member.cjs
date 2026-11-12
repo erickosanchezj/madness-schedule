@@ -8,8 +8,8 @@ const toolsDir = process.env.MADNESS_TEST_TOOLS || '/tmp/hallmark/node_modules';
 const puppeteer = require(path.join(toolsDir,'puppeteer-core'));
 const root=path.resolve(__dirname,'..');
 const before=process.argv.includes('--before');
-// Simulate viewport units that omit one iPhone top safe area.
-const shortDvh=process.argv.includes('--short-dvh');
+// Exercise the installed-iPhone bootstrap separately from normal browser mode.
+const iosStandalone=process.argv.includes('--ios-standalone');
 const baselineRef=process.env.MADNESS_BEFORE_REF || 'dfd478e';
 const screenshotDir=process.env.MADNESS_SCREENSHOTS || root+'/docs/redesign/screenshots';
 const tailwindRequests=[];
@@ -17,7 +17,7 @@ const pageErrors=[];
 fs.mkdirSync(screenshotDir,{recursive:true});
 fs.mkdirSync(root+'/.hallmark/render',{recursive:true});
 const fontCSS = ['inter-latin-400-normal','inter-latin-500-normal','inter-latin-600-normal','inter-latin-700-normal'].map((n,i)=>`@font-face { font-family: Inter; font-weight: ${[400,500,600,700][i]}; src: url(data:font/woff2;base64,${fs.readFileSync(path.join(toolsDir,'@fontsource/inter/files/'+n+'.woff2')).toString('base64')}); }`).join('') + `@font-face {font-family: 'Archivo Black'; src: url(data:font/woff2;base64,${fs.readFileSync(path.join(toolsDir,'@fontsource/archivo-black/files/archivo-black-latin-400-normal.woff2')).toString('base64')});}`;
-async function settle(page) { await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(i=>{i.loading='eager';return i.decode().catch(()=>{})}));}); }
+async function settle(page) { await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(i=>{i.loading='eager';return i.decode().catch(()=>{})}));await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));}); }
 const stub=`
 (()=>{
 window.__calls=[];
@@ -40,14 +40,21 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
 (async()=>{
  const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  const page=await browser.newPage();await page.setRequestInterception(true);
- page.on('request',r=>{const u=r.url();
- if(shortDvh&&u.startsWith('http://localhost:8085/styles/member-shell.css')){
-  const css=fs.readFileSync(root+'/styles/member-shell.css','utf8').replaceAll('100dvh','calc(100dvh - 62px)');
-  return r.respond({contentType:'text/css',body:css});
+ if(iosStandalone){
+  await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148');
+  await page.evaluateOnNewDocument(()=>{
+   Object.defineProperty(navigator,'standalone',{value:true});
+   Object.defineProperties(screen,{width:{value:402},height:{value:874}});
+  });
  }
+ page.on('request',r=>{const u=r.url();
  if(u.includes('tailwindcss.com'))tailwindRequests.push(u);if(before&&u.endsWith('/baseline-tailwind.css'))return r.respond({contentType:'text/css',body:fs.readFileSync('/tmp/static-tailwind-baseline.css')});if(u.startsWith('http://localhost:8085/index.html')){let html=(before ? require('child_process').execFileSync('git',['show',baselineRef+':index.html'],{cwd:root,encoding:'utf8'}) : fs.readFileSync(root+'/index.html','utf8'));html=html.replace('// Íconos\n        lucide.createIcons();',`window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes:__fixture.classes,user:__fixture.user};\n        // Íconos\n        lucide.createIcons();`);if(before)html=html.replace('<script src="https://cdn.tailwindcss.com"></script>','<link rel="stylesheet" href="/baseline-tailwind.css">');return r.respond({contentType:'text/html',body:html});}if(u.startsWith('http://localhost:8085/scripts/member/main.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(root+'/scripts/member/main.js','utf8').replace('// Íconos', 'window.__preview={state,render,app,renderAuthScreen,showModal,hideModal,classes:__fixture.classes,user:__fixture.user};\n  // Íconos')});if(u.includes('firebase-app-compat.js'))return r.respond({contentType:'text/javascript',body:stub});if(u.includes('tailwindcss.com'))return r.respond({contentType:'text/javascript',body:''});if(u.includes('purify.min.js'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'dompurify/dist/purify.min.js'))});if(u.includes('unpkg.com/lucide'))return r.respond({contentType:'text/javascript',body:fs.readFileSync(path.join(toolsDir,'lucide/dist/umd/lucide.min.js'))});if(u.startsWith('http://localhost:8085/'))return r.continue();return r.respond({body:'',contentType:'text/javascript'});});
  page.on('pageerror',e=>{pageErrors.push(e.message);console.log('PAGEERROR',e.message)});
  await page.setViewport({width:390,height:844,deviceScaleFactor:1});await page.goto('http://localhost:8085/index.html');await page.waitForFunction(()=>window.__preview);await page.addStyleTag({content:fontCSS});await settle(page);
+ if(!before){
+  const native=await page.evaluate(()=>({active:document.documentElement.hasAttribute('data-ios-standalone'),cover:document.querySelector('meta[name="viewport"]').content.includes('viewport-fit=cover'),legacy:!!document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')}));
+  if(native.active!==iosStandalone||native.cover||native.legacy)throw Error('Viewport bootstrap '+JSON.stringify(native));
+ }
  const prefix=screenshotDir+'/'+(before?'before':'after');
  await page.screenshot({path:prefix+'-login.png',fullPage:true});
  await page.evaluate(()=>{const p=__preview;p.state.currentUser=p.user;p.state.classes=p.classes;p.state.loading={classes:false,bookings:false};p.state.subscriptionStatus='paid';document.querySelector('#auth-container').style.display='none';document.querySelector('#app-container').style.display='flex';p.render();});
@@ -110,7 +117,7 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
  }
 
  if(!before && process.argv.includes('--shell')){
-  await require('./verify-member-scroll.cjs')(page);
+  await require('./verify-member-scroll.cjs')(page,{iosStandalone});
   // Safe-area values are simulated; these checks do not emulate Safari's compositor.
   for(const [width,height] of [[390,844],[390,720],[390,844],[844,390],[320,568]]){
    await page.setViewport({width,height});
@@ -130,7 +137,7 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
      const box=e=>e.getBoundingClientRect(),nav=box(document.querySelector('.app-bottom-nav')),brand=box(dock);
      return {gap:innerHeight-nav.bottom,mainGap:nav.top-box(main).bottom,brandGap:nav.top-brand.bottom,brandOffset:parseFloat(getComputedStyle(dock).bottom),navHeight:nav.height,rootScroll:document.scrollingElement.scrollTop,absolute:getComputedStyle(dock).position==='absolute',sibling:dock.parentElement===main.parentElement,accent:getComputedStyle(document.body).getPropertyValue('--color-accent').trim()};
     },scroll);
-    if(Math.abs(metrics.gap)>1||Math.abs(metrics.mainGap)>1||Math.abs(metrics.brandGap-metrics.brandOffset)>1||metrics.navHeight!==107||metrics.rootScroll||!metrics.absolute||!metrics.sibling||metrics.accent!=='#db3eb1')throw Error('PWA shell '+JSON.stringify({width,height,scroll,...metrics}));
+    if(Math.abs(metrics.gap)>1||Math.abs(metrics.mainGap)>1||Math.abs(metrics.brandGap-metrics.brandOffset)>1||metrics.navHeight!==73+(iosStandalone&&width>height?21:34)||metrics.rootScroll||!metrics.absolute||!metrics.sibling||metrics.accent!=='#db3eb1')throw Error('PWA shell '+JSON.stringify({width,height,scroll,...metrics}));
    }
    await page.evaluate(()=>{
     const row=document.querySelector('.class-row');row.scrollIntoView({block:'end'});
