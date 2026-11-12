@@ -6,12 +6,12 @@ module.exports = async page => {
   const client = await page.createCDPSession();
   try {
     await client.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
-    for (const [width, height] of [[320, 568], [390, 844], [390, 720], [844, 390]]) {
+    for (const [width, height, safeTop] of [[320, 568, 47], [390, 844, 47], [390, 720, 47], [402, 874, 62], [844, 390, 47]]) {
       await page.setViewport({ width, height });
       for (const screen of ['agenda', 'history', 'profile', 'classDetails']) {
         for (const longContent of [false, true]) {
-          const baseline = await page.evaluate(({ screen, longContent }) => {
-            document.documentElement.style.setProperty('--safe-top', '47px');
+          const baseline = await page.evaluate(({ screen, longContent, safeTop }) => {
+            document.documentElement.style.setProperty('--safe-top', `${safeTop}px`);
             document.documentElement.style.setProperty('--safe-bottom', '34px');
             __preview.app.navigateTo(screen, { classId: 'fixture-trx' });
             const scroller = screen === 'classDetails'
@@ -25,7 +25,7 @@ module.exports = async page => {
             scroller.scrollTop = 0;
             const nav = document.querySelector('.app-bottom-nav').getBoundingClientRect();
             return { top: nav.top, bottom: nav.bottom, scrollable: scroller.scrollHeight > scroller.clientHeight + 1 };
-          }, { screen, longContent });
+          }, { screen, longContent, safeTop });
           let moved = false;
           for (const edge of ['top', 'bottom']) {
             const points = await page.evaluate(({ screen, edge }) => {
@@ -56,12 +56,18 @@ module.exports = async page => {
                 const scroller = screen === 'classDetails'
                   ? document.querySelector('.class-detail-content')
                   : document.getElementById('main-content');
+                const frame = document.body.getBoundingClientRect();
+                const navStyle = getComputedStyle(document.querySelector('.app-bottom-nav'));
                 return { top: nav.top, bottom: nav.bottom, viewport: innerHeight,
+                  frameTop: frame.top, frameBottom: frame.bottom,
+                  safeBottom: parseFloat(navStyle.paddingBottom),
                   root: document.scrollingElement.scrollTop, scroll: scroller.scrollTop };
               }, screen);
               moved ||= Math.abs(metrics.scroll - points.start) > 1;
               if (metrics.root || Math.abs(metrics.top - baseline.top) > 1 ||
-                  Math.abs(metrics.bottom - metrics.viewport) > 1) {
+                  Math.abs(metrics.bottom - metrics.viewport) > 1 ||
+                  Math.abs(metrics.frameTop) > 1 || Math.abs(metrics.frameBottom - metrics.viewport) > 1 ||
+                  metrics.safeBottom !== 34) {
                 throw Error(`Navigation moved on ${screen} at ${width}x${height}: ${JSON.stringify(metrics)}`);
               }
             }
