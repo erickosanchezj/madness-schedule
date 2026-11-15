@@ -66,6 +66,8 @@ function startAuthGate(){
       renderAuthScreen();
     }
     loadingSpinner.classList.add('hidden');
+    // Start the five-second announcement only after the signed-in app is visible.
+    window.madnessFeedback?.setReady(Boolean(user));
   });
 }
 

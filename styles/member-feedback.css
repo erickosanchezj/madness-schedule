@@ -1,0 +1,63 @@
+/* styles/member-feedback.css */
+/* Styles the community story and the persistent form link above navigation. */
+/* Reuses the Madness logo, texture and neon light assets from the member theme. */
+/* RELEVANT FILES: index.html, scripts/member/feedback.js, styles/member-shell.css */
+.feedback-banner {
+  display: flex; align-items: center; gap: 12px; min-height: 58px;
+  padding: 8px max(16px, calc((100% - 728px) / 2));
+  border-top: 1px solid var(--color-accent); border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper-2); color: var(--color-ink); font-size: 14px; line-height: 1.4;
+}
+.feedback-banner > svg { flex: 0 0 22px; color: var(--color-accent-text); }
+.feedback-banner > svg:last-of-type { margin-left: auto; color: var(--color-muted); }
+.feedback-banner small { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--color-accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.feedback-banner small svg { width: 14px; height: 14px; }
+.feedback-banner:focus-visible { outline-offset: -4px; }
+body[data-app='member'] #toast { bottom: calc(var(--nav-height) + var(--safe-bottom) + 58px + var(--space-md)); }
+#feedback-story {
+  position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none;
+  margin: 0; padding: 0; border: 0; color: var(--color-ink); background: var(--color-paper);
+  overflow-y: auto; overscroll-behavior: contain;
+}
+#feedback-story::backdrop { background: var(--color-paper); }
+.feedback-story-content {
+  position: relative; isolation: isolate;
+  display: flex; flex-direction: column; gap: 0;
+  width: min(100%, 440px); min-height: 100%; margin-inline: auto;
+  padding: max(20px, var(--safe-top)) 24px max(16px, var(--safe-bottom));
+  background: url('../images/backgrounds/madness-texture.webp') center / cover;
+}
+.feedback-story-content::before, .feedback-story-content::after { position: absolute; inset: 0; z-index: -1; content: ''; pointer-events: none; }
+.feedback-story-content::before { background: url('../images/backgrounds/madness-green-light.webp') right top / 100% 100% no-repeat; opacity: .45; }
+.feedback-story-content::after { background: url('../images/backgrounds/madness-pink-arcs.webp') center bottom / 100% 100% no-repeat; opacity: .8; }
+.feedback-progress { width: 100%; height: 4px; flex: 0 0 4px; border: 0; border-radius: 4px; background: var(--color-rule); accent-color: var(--color-accent); }
+.feedback-progress::-webkit-progress-bar { background: var(--color-rule); border-radius: 4px; }
+.feedback-progress::-webkit-progress-value { background: var(--color-accent); border-radius: 4px; }
+.feedback-progress::-moz-progress-bar { background: var(--color-accent); border-radius: 4px; }
+.feedback-story-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 14px; font-weight: 700; }
+.feedback-story-header small { margin-left: 8px; color: var(--color-muted); font-weight: 400; white-space: nowrap; }
+.feedback-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; }
+.feedback-logo { display: block; width: 100%; height: auto; margin-block: 28px 44px; object-fit: contain; }
+.feedback-eyebrow { margin-bottom: 16px; color: var(--madness-green); text-transform: uppercase; font-size: 16px; font-weight: 800; letter-spacing: .04em; }
+#feedback-title { font: 900 clamp(30px, 10vw, 40px)/1.08 var(--font-display); text-transform: uppercase; }
+#feedback-title span { display: block; color: #e855bd; }
+#feedback-description { margin-top: 28px; color: var(--color-ink); font-size: 17px; line-height: 1.5; }
+.feedback-cta { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 12px; border-radius: 18px; background: #db3eb1; color: #160910; font-size: 16px; font-weight: 800; }
+.feedback-cta svg { flex-shrink: 0; width: 22px; height: 22px; }
+.feedback-cta:hover { background: #e855bd; }
+.feedback-story-action { margin-top: auto; padding-top: 32px; }
+.feedback-story-action > p { margin-top: 14px; text-align: center; color: var(--color-ink-2); font-size: 14px; }
+.feedback-pause { align-self: center; min-height: 44px; margin-top: auto; padding: 8px 16px; color: var(--color-ink); font-size: 14px; }
+@media (max-height: 650px) {
+  .feedback-story-content { gap: 8px; }
+  .feedback-logo { width: 75%; align-self: center; margin-block: 8px; }
+  .feedback-story-action { padding-top: 12px; }
+  #feedback-title br { display: none; }
+  #feedback-title { font-size: 28px; }
+  #feedback-description { margin-top: 16px; font-size: 15px; }
+  .feedback-eyebrow { margin-bottom: 10px; font-size: 14px; }
+}
+@media (max-width: 350px) {
+  .feedback-story-content { padding-inline: 16px; }
+  .feedback-cta { gap: 6px; font-size: 14px; }
+}
