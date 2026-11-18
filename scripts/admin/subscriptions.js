@@ -64,7 +64,10 @@ Object.assign(AdminPanel, {
     if (loading) loading.classList.add('hidden');
 
     if (!this.state.subscriptionUsers.length){
-      tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-zinc-400">No se encontraron usuarios</td></tr>';
+      // Search only looks inside the selected filter, so point staff to "Todos" when it is narrowed.
+      const filtered = (document.getElementById('subscription-filter')?.value || 'all') !== 'all';
+      const hint = filtered ? ' con este filtro. Elige "Todos los usuarios" para buscar a todos.' : '';
+      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-zinc-400">No se encontraron usuarios${hint}</td></tr>`;
       return;
     }
 

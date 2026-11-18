@@ -96,6 +96,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ===== REPORT SETTINGS (price per class for estimated revenue) =====
+    match /appSettings/reports {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['ticketPrice'])
+        && request.resource.data.ticketPrice is number
+        && request.resource.data.ticketPrice > 0;
+      allow delete: if false;
+    }
+
     // ===== Everything else locked =====
     match /{document=**} {
       allow read, write: if false;

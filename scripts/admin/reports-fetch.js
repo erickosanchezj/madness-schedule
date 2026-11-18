@@ -213,46 +213,24 @@ Object.assign(AdminPanel, {
     nextEl.textContent = 'Actualización en vivo';
   },
 
+  // Today's occupancy bar plus one recommendation for the selected range.
   updateCapacityGauge(){
     const fill = document.getElementById('capacity-gauge-fill');
-    const trendEl = document.getElementById('capacity-trend');
+    const todayEl = document.getElementById('capacity-today');
     const alertEl = document.getElementById('capacity-alert');
-    const compareEl = document.getElementById('capacity-compare');
-    const projectionEl = document.getElementById('capacity-projection');
     if (!fill || !this.state.attendanceData) return;
-    const today = this.dateHelper.today();
-    const d = this.state.attendanceData.report[today];
-    const fallbackRate = d ? Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100) : 0;
-    const rate = d ? (d.utilizationRate ?? fallbackRate) : 0;
+    const d = this.state.attendanceData.report[this.dateHelper.today()];
+    const rate = d ? (d.utilizationRate ?? Math.round((d.booked/Math.max(d.totalCapacity||0,1))*100)) : 0;
     fill.style.width = Math.min(rate,100)+'%';
     fill.classList.remove('bg-emerald-500','bg-amber-500','bg-rose-500');
     if (rate>85) fill.classList.add('bg-rose-500');
     else if (rate>60) fill.classList.add('bg-amber-500');
     else fill.classList.add('bg-emerald-500');
-
-    const projections = this.calculateCapacityProjections();
-    if (trendEl && projections){
-      const pct = Math.round((projections.growthRate||0)*100);
-      trendEl.textContent = pct>0 ? `▲ ${pct}%` : pct<0 ? `▼ ${Math.abs(pct)}%` : 'Estable';
+    if (todayEl){
+      todayEl.textContent = d ? `${rate}% (${d.booked||0} de ${d.totalCapacity||0} lugares)` : 'Hoy no está en el rango elegido';
     }
     if (alertEl){
-      alertEl.textContent = projections?.recommendation?.summary || (rate>90 ? 'Sobrecapacidad' : rate>80 ? 'Monitorear' : 'Normal');
-    }
-    if (compareEl){
-      const prevDate = new Date(`${today}T00:00:00-06:00`);
-      if (!Number.isNaN(prevDate.getTime())){
-        prevDate.setDate(prevDate.getDate()-7);
-        const prevKey = this.dateHelper.ymd(prevDate);
-        const prevData = this.state.attendanceData.report[prevKey];
-        const prevRate = prevData ? (prevData.utilizationRate ?? Math.round((prevData.booked/Math.max(prevData.totalCapacity||0,1))*100)) : 0;
-        const diff = rate - prevRate;
-        compareEl.textContent = `${diff>=0?'+':''}${diff}% vs semana pasada`;
-      } else {
-        compareEl.textContent = '—';
-      }
-    }
-    if (projectionEl && projections){
-      projectionEl.textContent = `${Math.round(projections.projectedUtilization||projections.averageUtilization||0)}% esperado`;
+      alertEl.textContent = this.calculateCapacityProjections()?.recommendation?.summary || 'Seguimiento normal';
     }
   },
 });

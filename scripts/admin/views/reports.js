@@ -16,7 +16,8 @@ document.querySelector('[data-view="subscriptions"]').outerHTML = `
               <option value="monthly">Solo Mensuales</option>
               <option value="monthly-unpaid">Mensuales No Pagados</option>
               <option value="totalpass-pending">TotalPass Pendientes</option>
-              <option value="unpaid">No Pagados</option>
+              <!-- Default: "No Pagados" is what staff check most, and it loads fewer users on login. -->
+              <option value="unpaid" selected>No Pagados</option>
               <option value="blacklisted">En lista negra</option>
             </select>
 
@@ -122,28 +123,17 @@ document.querySelector('[data-view="reports"]').outerHTML = `
           </div>
           <!-- Key numbers for the selected dates and filters (filled by renderReportKpis). -->
           <div id="report-kpis" class="admin-kpis"></div>
-          <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-4">
+          <!-- Today's occupancy and one recommendation. "Tendencia", "Vs. semana pasada" and
+               "Proyección" were removed: they compared days outside the loaded range. -->
+          <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-3 text-xs text-zinc-300">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-zinc-500">Ocupación de hoy</span>
+              <span id="capacity-today" class="font-semibold">Sin datos</span>
+            </div>
             <div class="w-full bg-zinc-700 h-2 rounded">
               <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-zinc-300">
-              <div>
-                <p class="text-zinc-500">Tendencia 7 días</p>
-                <p id="capacity-trend" class="font-semibold">Sin datos</p>
-              </div>
-              <div>
-                <p class="text-zinc-500">Alertas</p>
-                <p id="capacity-alert" class="font-semibold">Sin datos</p>
-              </div>
-              <div>
-                <p class="text-zinc-500">Vs. semana pasada</p>
-                <p id="capacity-compare" class="font-semibold">Sin datos</p>
-              </div>
-              <div>
-                <p class="text-zinc-500">Proyección día</p>
-                <p id="capacity-projection" class="font-semibold">Sin datos</p>
-              </div>
-            </div>
+            <p><span class="text-zinc-500">Recomendación: </span><span id="capacity-alert" class="font-semibold">Sin datos</span></p>
           </div>
           <!-- Main charts: one clear axis each (counts, %, $). Each canvas sits in its own div
                because the loading skeleton swaps that div's content. -->

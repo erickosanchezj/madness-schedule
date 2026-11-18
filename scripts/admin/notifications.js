@@ -13,15 +13,16 @@ Object.assign(AdminPanel, {
       .onSnapshot(async (snap)=>{
         const notifs = await Promise.all(snap.docs.map(async d=>{
           const data = d.data();
+          // New records store className/userName; only older records need these two reads.
           const [cls, usr] = await Promise.all([
-            data.classId ? this.db.collection('classes').doc(data.classId).get() : Promise.resolve(null),
-            data.userId ? this.db.collection('users').doc(data.userId).get() : Promise.resolve(null)
+            data.classId && !data.className ? this.db.collection('classes').doc(data.classId).get() : Promise.resolve(null),
+            data.userId && !data.userName ? this.db.collection('users').doc(data.userId).get() : Promise.resolve(null)
           ]);
           return {
             id: d.id,
             ...data,
-            className: cls?.data()?.name || cls?.data()?.title || data.className || data.classId || '',
-            userName: usr?.data()?.displayName || usr?.data()?.email || data.userId || ''
+            className: data.className || cls?.data()?.name || cls?.data()?.title || data.classId || '',
+            userName: data.userName || usr?.data()?.displayName || usr?.data()?.email || data.userId || ''
           };
         }));
         this.state.recentNotifications = notifs;

@@ -141,6 +141,7 @@ Object.assign(AdminPanel, {
   },
 
   renderCalendarGrid(){
+    this.updateCalendarHours(); // hides empty early hours (calendar-hours.js)
     const headerLabels = document.querySelectorAll('.calendar-header .day-label');
     if (headerLabels.length){
       const fallbackLabels = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];

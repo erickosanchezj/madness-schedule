@@ -209,13 +209,14 @@ test('unlock notification overlaps token cleanup and logging with correct failed
   });
   const pending = onUserUnlockNotification({ params: { userId: 'member' }, data: {
     before: { data: () => ({ blacklisted: true }) },
-    after: { data: () => ({ blacklisted: false, fcmTokens: { good: true, bad: true } }) },
+    after: { data: () => ({ blacklisted: false, displayName: 'Vale', fcmTokens: { good: true, bad: true } }) },
   } });
   await tick();
   assert.deepEqual(cleaned, ['bad']);
   assert.equal(records.length, 1);
   assert.equal(records[0].successCount, 1);
   assert.equal(records[0].failureCount, 1);
+  assert.equal(records[0].userName, 'Vale'); // stored so the admin list skips the user read
   gate.resolve(); await pending;
 });
 

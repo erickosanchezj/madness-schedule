@@ -156,6 +156,9 @@ async function processWaitlistNotification(entry) {
     userId,
     type: 'waitlist',
     waitlistId: id,
+    // Names stored so the admin list does not read class and user again.
+    className,
+    userName: userSnap.get('displayName') || userSnap.get('email') || '',
     sentAt: admin.firestore.FieldValue.serverTimestamp(),
     tokensUsed: [...tokens],
     successCount: res.successCount,

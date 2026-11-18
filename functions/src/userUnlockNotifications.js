@@ -49,6 +49,7 @@ exports.onUserUnlockNotification = onDocumentUpdated(
       db.collection('notifications').add({
         type: 'account_unlocked',
         userId: event.params?.userId,
+        userName: after.displayName || after.email || '', // admin list skips the user read
         sentAt: admin.firestore.FieldValue.serverTimestamp(),
         tokensUsed: [...tokens],
         successCount,

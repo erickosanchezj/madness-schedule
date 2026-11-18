@@ -161,6 +161,9 @@ exports.generateDailyClasses = onSchedule(
       type: "daily-classes",
       classId: "Generación automática",
       userId: `Se generaron ${created.length} clases`,
+      // Display names, so the admin list does not try to read these as document ids.
+      className: "Generación automática",
+      userName: `Se generaron ${created.length} clases`,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       createdCount: created.length,
       classes: created,

@@ -34,6 +34,7 @@ const AdminPanel = {
     todayAttendance: new Set(), // ids of today's classes that already have attendance saved
     todayAttendanceKey: '',
     unsubTodayAttendance: null,
+    unsubTicketPrice: null, // live listener on appSettings/reports (price per class)
     analyticsTracker: {
       bookingTimeline: {}
     },

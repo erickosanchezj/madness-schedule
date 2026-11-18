@@ -125,6 +125,7 @@ Object.assign(AdminPanel, {
           document.getElementById('login-screen').classList.add('hidden');
           document.getElementById('admin-panel').classList.remove('hidden');
           this.listenFeedbackReel();
+          this.listenTicketPrice();
           try {
             await this.loadWeeklyScheduleTemplate();
             this.listenWeeklyClasses();
@@ -143,6 +144,7 @@ Object.assign(AdminPanel, {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('admin-panel').classList.add('hidden');
         this.stopFeedbackReel();
+        this.stopTicketPrice();
         this.teardownBookingsListeners();
         if (this.state.unsubClasses) this.state.unsubClasses();
         this.stopAttendancePolling();

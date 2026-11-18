@@ -214,6 +214,8 @@ exports.sendTotalPassReminder = onTaskDispatched(
       classId,
       userId,
       type: 'totalpass',
+      // Stored so the admin list does not read the user again.
+      userName: userData.displayName || userData.email || '',
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       tokensUsed: [...tokens],
       successCount: responseAggregate.successCount,

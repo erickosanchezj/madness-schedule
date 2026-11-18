@@ -139,6 +139,7 @@ async function sendAdminBookingNotification(booking, classData, bookingId) {
     bookingId,
     type: 'admin_booking',
     className,
+    userName, // stored so the admin list does not read the user again
     classDate,
     time,
     sentAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -280,6 +281,9 @@ exports.sendBookingReminder = onTaskDispatched(
     const notificationRecord = {
       classId,
       userId,
+      // Names stored so the admin list does not read class and user again.
+      className: classData.name || classData.title || '',
+      userName: userSnap.get('displayName') || userSnap.get('email') || '',
       interval,
       sentAt: admin.firestore.FieldValue.serverTimestamp(),
       tokensUsed: [...tokens],

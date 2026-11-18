@@ -37,7 +37,7 @@ input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px var(--calendar
 .time-column { position: relative; padding-top: var(--space-xs); }
 .time-slot { height: var(--hour-height); font-size: 0.75rem; color: var(--calendar-color-12); display: flex; align-items: flex-start; justify-content: flex-end; padding-right: var(--space-xs); }
 .time-slot::after { content: ''; position: relative; display: block; width: 8px; height: 1px; margin-top: var(--space-xs); margin-left: var(--space-xs); background: var(--calendar-color-13); }
-.day-grid { position: relative; min-height: calc(var(--hour-height) * 16); background: var(--calendar-color-14); border: 1px solid var(--calendar-color-15); border-radius: 0.75rem; overflow: hidden; }
+.day-grid { position: relative; min-height: calc(var(--hour-height) * var(--calendar-hours, 16)); background: var(--calendar-color-14); border: 1px solid var(--calendar-color-15); border-radius: 0.75rem; overflow: hidden; }
 .day-grid::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient( to bottom, var(--calendar-color-11) 0px, var(--calendar-color-11) 1px, transparent 1px, transparent var(--hour-height) ); pointer-events: none; }
 .current-time-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--color-paper-3); box-shadow: 0 0 12px var(--calendar-color-18); z-index: 5; pointer-events: none; }
 .current-time-line::before { content: ''; position: absolute; left: var(--current-time-indicator-x, 12px); top: 50%; transform: translateY(-50%); width: 10px; height: 10px; border-radius: 9999px; background: var(--calendar-color-19); border: 2px solid var(--calendar-color-20); box-shadow: 0 0 8px var(--calendar-color-21); }

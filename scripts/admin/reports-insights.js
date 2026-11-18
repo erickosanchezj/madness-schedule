@@ -83,12 +83,11 @@ Object.assign(AdminPanel, {
     return { averages, topDays: averages.slice(0,2).map(item=>item.day) };
   },
 
-  buildCapacityRecommendations({ avgUtil, growthRate, dayPattern }){
+  // Tips based on average occupancy and the busiest weekdays of the selected range.
+  buildCapacityRecommendations({ avgUtil, dayPattern }){
     const suggestions = [];
     if (avgUtil>85) suggestions.push('Agregar clases o ampliar cupos en horarios de alta demanda.');
     if (avgUtil<50) suggestions.push('Impulsar campañas de retención y promociones para elevar la ocupación.');
-    if (growthRate>0.1) suggestions.push('Planear expansión de horarios ante el crecimiento sostenido.');
-    if (growthRate<-0.1) suggestions.push('Investigar cancelaciones y ajustar oferta para recuperar demanda.');
     if (dayPattern?.topDays?.length){
       suggestions.push(`Mayor demanda en ${dayPattern.topDays.join(' y ')}.`);
     }
@@ -161,23 +160,42 @@ Object.assign(AdminPanel, {
       </div>`).join('');
   },
 
-  // Price per class used for "Ingresos estimados". Saved in this browser only, so no database change.
+  // Price per class for "Ingresos estimados". Stored in appSettings/reports so every admin
+  // sees the same number. 120 is used until someone saves a price (or if the read fails).
   setupTicketPrice(){
     const input = document.getElementById('att-ticket-price');
     if (!input) return;
-    try {
-      const saved = Number(localStorage.getItem('madness.ticketPrice'));
-      if (saved > 0) this.DEFAULT_TICKET_PRICE = saved;
-    } catch {}
     input.value = this.DEFAULT_TICKET_PRICE;
-    input.addEventListener('change', () => {
+    input.addEventListener('change', async () => {
       const price = Number(input.value);
       if (!(price > 0)){ input.value = this.DEFAULT_TICKET_PRICE; return; }
-      this.DEFAULT_TICKET_PRICE = price;
-      try { localStorage.setItem('madness.ticketPrice', String(price)); } catch {}
-      // Revenue is recalculated from the cached report; no new Firestore reads.
-      this.renderAttendanceDashboardFromCache();
+      try {
+        // The live listener below applies the new price and redraws the report.
+        await this.db.collection('appSettings').doc('reports').set({ ticketPrice: price }, { merge: true });
+        this.showToast({ title: 'Precio guardado', message: `Ingresos estimados con $${price} por clase.` });
+      } catch (e) {
+        input.value = this.DEFAULT_TICKET_PRICE;
+        this.showToast({ title: 'No se pudo guardar el precio', message: e.message, variant: 'error' });
+      }
     });
+  },
+
+  // Called after admin login. One document, so it costs one read plus one per change.
+  listenTicketPrice(){
+    this.stopTicketPrice();
+    this.state.unsubTicketPrice = this.db.collection('appSettings').doc('reports').onSnapshot(snap => {
+      const saved = Number(snap.data()?.ticketPrice);
+      this.DEFAULT_TICKET_PRICE = saved > 0 ? saved : 120;
+      const input = document.getElementById('att-ticket-price');
+      if (input) input.value = this.DEFAULT_TICKET_PRICE;
+      // Revenue is recalculated from the cached report; no new report reads.
+      this.renderAttendanceDashboardFromCache();
+    }, err => console.error('No se pudo leer el precio por clase', err));
+  },
+
+  stopTicketPrice(){
+    if (this.state.unsubTicketPrice) this.state.unsubTicketPrice();
+    this.state.unsubTicketPrice = null;
   },
 
   downloadCSV(filename, rows){
