@@ -79,7 +79,6 @@ body[data-app='member'] .class-about { padding: 14px; border-radius: 14px; backg
 body[data-app='member'] .class-about h2 { margin-bottom: 4px; font-size: .9375rem; font-weight: 700; }
 body[data-app='member'] .class-about p { color: var(--color-ink-2); font-size: .9375rem; }
 body[data-app='member'] .class-policy { display: flex; gap: 10px; padding: 12px 14px; border: 1px dashed var(--color-rule); border-radius: 14px; color: var(--color-muted); font-size: .8125rem; }
-body[data-app='member'] .class-policy svg { flex-shrink: 0; width: 18px; height: 18px; }
 body[data-app='member'] .class-cta { display: grid; gap: var(--space-xs); }
 body[data-app='member'] .class-status { text-align: center; font-size: .875rem; font-weight: 600; }
 body[data-app='member'] .class-btn-outline { border: 1px solid var(--color-error); color: var(--color-error); font-weight: 700; }
