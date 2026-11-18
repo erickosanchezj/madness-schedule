@@ -12,11 +12,6 @@ function handleInteraction(e){
     case 'navigate': app.navigateTo(screen); break;
     case 'navigate-details': app.navigateTo('classDetails',{classId}); break;
     case 'set-filter': app.setScheduleFilter(filter); break;
-    case 'scroll-to-schedule': {
-      const scheduleHeader = document.getElementById('horario');
-      if (scheduleHeader) scheduleHeader.scrollIntoView({ behavior: 'smooth' });
-      break;
-    }
     case 'edit-name': app.editUserName(e); break;
     case 'logout': app.logout(); break;
     case 'confirm-booking': target.disabled=true; app.confirmBooking(classId).finally(()=>target.disabled=false); break;

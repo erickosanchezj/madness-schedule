@@ -59,14 +59,15 @@ function classBookingState(cls){
 }
 
 // One short status for a class row: text + tone (ok | low | full | warn | turn | mine).
+// No ✓ or "·" chains: the tone color already marks the state, and the row opens the class screen for details.
 function classRowStatus(s){
-  if (s.isBooked) return { text: '✓ Reservada', tone: 'mine' };
+  if (s.isBooked) return { text: 'Reservada', tone: 'mine' };
   if (s.effectiveAvailable <= 0 && !s.notified){
-    if (s.waitEntry) return { text: `En lista · posición ${Number(s.waitEntry.position) || 1}`, tone: 'warn' };
+    if (s.waitEntry) return { text: `Posición ${Number(s.waitEntry.position) || 1} en la lista`, tone: 'warn' };
     if (s.holdActive && !s.holdForMe) return { text: 'Apartado', tone: 'warn' };
-    return { text: 'Lleno · lista de espera', tone: 'full' };
+    return { text: 'Unirse a la lista de espera', tone: 'full' };
   }
-  if (s.notified || s.holdForMe) return { text: '¡Tu turno! Reserva ya', tone: 'turn' };
+  if (s.notified || s.holdForMe) return { text: 'Es tu turno de reservar', tone: 'turn' };
   if (s.capacity <= 0) return { text: 'Ver clase', tone: 'ok' };
   return s.available <= 4
     ? { text: `Quedan ${s.available}`, tone: 'low' }

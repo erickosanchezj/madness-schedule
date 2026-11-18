@@ -97,14 +97,15 @@
 
   <script>
     // Every string that changes, before (what agenda.js shows today) and after the unslop pass.
+    // After: no empty-state button (it only scrolled to Horario, which is right below).
     const COPY = {
       antes: {
         meta: 'Hoy · con Sofía · 60 min', empty: 'Aún no tienes reservas. ¡Anímate a agendar una clase!', emptyBtn: 'Ver Horario',
         mine: '✓ Reservada', full: 'Lleno · lista de espera', wait: 'En lista · posición 2', turn: '¡Tu turno! Reserva ya',
       },
       despues: {
-        meta: 'Hoy con Sofía', empty: 'Aún no tienes reservas.', emptyBtn: 'Ver horario',
-        mine: 'Reservada', full: 'Lleno', wait: 'Posición 2 en la lista', turn: 'Es tu turno de reservar',
+        meta: 'Hoy con Sofía', empty: 'Aún no tienes reservas.', emptyBtn: '',
+        mine: 'Reservada', full: 'Unirse a la lista de espera', wait: 'Posición 2 en la lista', turn: 'Es tu turno de reservar',
       },
     };
     // Fake schedule. kind picks the status: ok / low use the fixed text, the others come from COPY.
@@ -122,7 +123,7 @@
     const ui = { version: 'despues', bookings: true, day: 0 };
 
     function nextClassHTML(c) {
-      if (!ui.bookings) return `<div class="empty"><p>${c.empty}</p><button class="btn btn-primary">${c.emptyBtn}</button></div>`;
+      if (!ui.bookings) return `<div class="empty"><p>${c.empty}</p>${c.emptyBtn ? `<button class="btn btn-primary">${c.emptyBtn}</button>` : ''}</div>`;
       return `<article class="next" style="background-image:url('../../images/yoga.png')">
           <span class="pill">Empieza en 6 h 20 min</span>
           <h3>Yoga · 19:00</h3>
