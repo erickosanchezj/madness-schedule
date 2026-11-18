@@ -3,11 +3,11 @@
 // Moved out of admin.html to keep it short; inserted before AdminPanel starts.
 // RELEVANT FILES: admin.html, scripts/admin/calendar.js, scripts/admin/weekly-bookings.js
 
-// Replaces the placeholder in admin.html with the exact original markup.
+// Replaces the placeholder in admin.html (inside the "Semana" tab).
 document.querySelector('[data-view="week"]').outerHTML = `
       <div class="space-y-6">
-        <section aria-labelledby="week-title">
-          <h2 id="week-title" class="text-2xl font-bold mb-4 text-emerald-400 border-b border-zinc-700 pb-2">Clases de la Semana</h2>
+        <section class="admin-card" aria-labelledby="week-title">
+          <h2 id="week-title" class="admin-card-title">Clases de la semana</h2>
           <div class="calendar-container space-y-4">
             <div class="overflow-x-auto pb-2">
               <div class="lg:min-w-[960px] space-y-2">
@@ -55,53 +55,53 @@ document.querySelector('[data-view="week"]').outerHTML = `
         </section>
       </div>
 
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="reservas-title">
-        <h2 id="reservas-title" class="text-2xl font-bold mb-4">Reservas de la Semana</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
+      <section class="admin-card" aria-labelledby="reservas-title">
+        <h2 id="reservas-title" class="admin-card-title">Reservas de la semana</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <details class="day-column group" data-day="monday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Lunes</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>
             <div id="monday-bookings-list" class="space-y-4 text-sm pt-2"></div>
           </details>
           <details class="day-column group" data-day="tuesday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Martes</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>
             <div id="tuesday-bookings-list" class="space-y-4 text-sm pt-2"></div>
           </details>
           <details class="day-column group" data-day="wednesday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Miércoles</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>
             <div id="wednesday-bookings-list" class="space-y-4 text-sm pt-2"></div>
           </details>
           <details class="day-column group" data-day="thursday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Jueves</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>
             <div id="thursday-bookings-list" class="space-y-4 text-sm pt-2"></div>
           </details>
           <details class="day-column group" data-day="friday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Viernes</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>
             <div id="friday-bookings-list" class="space-y-4 text-sm pt-2"></div>
           </details>
           <details class="day-column group" data-day="saturday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Sábado</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>
             <div id="saturday-bookings-list" class="space-y-4 text-sm pt-2"></div>
           </details>
           <details class="day-column group" data-day="sunday">
-            <summary class="flex items-center justify-between text-lg font-semibold text-emerald-400 mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
+            <summary class="flex items-center justify-between font-semibold mb-3 border-b border-zinc-700 pb-2 cursor-pointer select-none">
               <span>Domingo</span>
               <span class="toggle-indicator text-sm text-zinc-400" aria-hidden="true">&#9662;</span>
             </summary>

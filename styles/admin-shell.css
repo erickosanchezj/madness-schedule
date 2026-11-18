@@ -1,0 +1,167 @@
+/* /styles/admin-shell.css */
+/* Layout and Madness brand for the admin panel: sidebar, tabs, cards and login. */
+/* The admin used to be one long page; this file turns it into a tabbed workspace. */
+/* RELEVANT FILES: admin.html, scripts/admin/tabs.js, styles/admin.css, styles/madness-theme.css */
+
+/* --- Brand tokens: same pink and neon green as the member app. --- */
+body[data-app='admin'] {
+  --color-paper: #111015;
+  --color-paper-2: #1b1a21;
+  --color-paper-3: #28262f;
+  --color-rule: #3c3942;
+  --color-accent: #db3eb1;
+  --color-accent-hover: #e855bd;
+  --color-accent-text: #e855bd;
+  --color-accent-ink: #25091d;
+  --color-focus: #f088d2;
+  --madness-green: #44d62c;
+  --admin-sidebar: 232px;
+  --admin-tabbar: 64px;
+  /* Calendar colors from admin.css, moved from indigo/cyan to pink/green. */
+  --calendar-color-5: #f088d2;
+  --calendar-color-6: rgb(219 62 177 / 28%);
+  --calendar-color-18: rgb(68 214 44 / 35%);
+  --calendar-color-19: #44d62c;
+  --calendar-color-21: rgb(68 214 44 / 55%);
+  --calendar-color-24: rgb(219 62 177 / 45%);
+  --calendar-color-31: rgb(219 62 177 / 8%);
+  --calendar-color-32: rgb(219 62 177 / 60%);
+  --calendar-color-33: rgb(219 62 177 / 25%);
+  --calendar-color-36: rgb(219 62 177 / 26%);
+  --calendar-color-37: #ffd6f1;
+  /* The texture stays faint so tables and charts remain easy to read. */
+  background-image: linear-gradient(rgb(17 16 21 / 90%), rgb(17 16 21 / 96%)), url('../images/backgrounds/madness-texture.webp');
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* Pink text tints keep 4.5:1 contrast on the dark cards. */
+body[data-app='admin'] .text-indigo-300,
+body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !important; }
+
+/* --- Login --- */
+.admin-login {
+  background:
+    radial-gradient(ellipse at 90% 10%, rgb(68 214 44 / 14%), transparent 40%),
+    radial-gradient(ellipse at 10% 90%, rgb(219 62 177 / 16%), transparent 42%);
+}
+.admin-login-card { padding: var(--space-xl) var(--space-lg); }
+.admin-login-logo { display: block; width: 100%; max-width: 260px; height: auto; margin: 0 auto var(--space-lg); outline: none; filter: drop-shadow(0 0 12px rgb(219 62 177 / 30%)); }
+
+/* --- Shared card surface (login card, every section card) --- */
+.admin-login-card,
+.admin-card {
+  min-width: 0;
+  border: 1px solid rgb(255 255 255 / 6%);
+  border-top-color: rgb(68 214 44 / 24%);
+  border-radius: var(--radius-card);
+  background: linear-gradient(145deg, rgb(30 28 36 / 94%), rgb(17 16 21 / 94%));
+  box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
+}
+.admin-card { padding: var(--space-lg); }
+.admin-card-title { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); font-size: 1.125rem; font-weight: 700; }
+/* A short green bar marks each card title, like the member headers. */
+.admin-card-title::before { content: ''; flex: 0 0 4px; height: 1.1em; border-radius: 2px; background: var(--madness-green); }
+
+/* --- Top bar (phones) --- */
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: calc(var(--safe-top) + var(--space-xs)) var(--space-md) var(--space-xs);
+  background: rgb(17 16 21 / 92%);
+  backdrop-filter: blur(8px);
+}
+/* Green-to-pink line under the bar, same as the member screen headers. */
+.admin-topbar::after { content: ''; position: absolute; right: 0; bottom: 0; left: 0; height: 1px; background: linear-gradient(90deg, var(--madness-green), var(--color-rule) 48%, var(--color-accent)); }
+.admin-logo { width: auto; height: 28px; outline: none; }
+.admin-badge { padding: 2px var(--space-xs); border: 1px solid rgb(68 214 44 / 45%); border-radius: 999px; color: var(--madness-green); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.admin-logout { display: inline-flex; align-items: center; gap: var(--space-xs); margin-left: auto; padding-inline: var(--space-sm); border-radius: var(--radius-input); color: var(--color-error); font-weight: 600; font-size: .875rem; }
+.admin-logout:hover { background: var(--color-paper-3); }
+
+/* --- Tabs: bottom bar on phones --- */
+.admin-tabs {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-bottom: var(--safe-bottom);
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+}
+.admin-tabs [role='tab'] { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: var(--admin-tabbar); color: var(--color-muted); font-size: .75rem; font-weight: 600; }
+.admin-tabs svg { width: 22px; height: 22px; }
+.admin-tabs [aria-selected='true'] { color: var(--color-accent-text); }
+.admin-tabs [aria-selected='true']::before { content: ''; position: absolute; top: 0; width: 32px; height: 3px; border-radius: 2px; background: var(--color-accent); box-shadow: 0 0 10px rgb(219 62 177 / 40%); }
+
+/* --- Content area --- */
+.admin-content { width: 100%; max-width: 1280px; margin-inline: auto; padding: var(--space-lg) var(--space-md) calc(var(--admin-tabbar) + var(--safe-bottom) + var(--space-lg)); }
+.admin-panel-view { display: flex; flex-direction: column; gap: var(--space-lg); }
+/* Needed because display:flex above would otherwise beat the [hidden] rule in app.css. */
+.admin-panel-view[hidden] { display: none; }
+.admin-view-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-md); }
+.admin-eyebrow { color: var(--madness-green); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.admin-view-title { font-family: var(--font-display); font-size: 1.75rem; line-height: 1.2; text-shadow: 0 0 24px rgb(219 62 177 / 14%); }
+.admin-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.admin-grid-2 { display: grid; gap: var(--space-lg); align-items: start; }
+.admin-stack { display: flex; flex-direction: column; gap: var(--space-lg); min-width: 0; }
+.admin-filters { padding: var(--space-md); border-radius: var(--radius-input); background: rgb(0 0 0 / 22%); }
+
+/* Phones: action buttons share the row; inputs take a full line above their buttons. */
+@media (max-width: 640px) {
+  .admin-actions { width: 100%; }
+  /* #admin-panel beats the nowrap rule in admin.css so long labels can wrap. */
+  #admin-panel .admin-actions > button { flex: 1 1 0; padding-inline: var(--space-sm); white-space: normal; font-size: .9375rem; }
+  .admin-input-row { flex-wrap: wrap; }
+  .admin-input-row > input { flex-basis: 100%; }
+  .admin-logout span { display: none; }
+  .admin-card { padding: var(--space-md); }
+}
+
+/* --- Desktop: fixed sidebar with logo, vertical tabs and logout --- */
+@media (min-width: 1024px) {
+  .admin-topbar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--admin-sidebar);
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-lg) var(--space-md);
+    border-right: 1px solid var(--color-rule);
+    background: rgb(17 16 21 / 94%);
+  }
+  .admin-topbar::after { display: none; }
+  .admin-logo { width: 100%; height: auto; }
+  .admin-logout { margin: auto 0 0; width: 100%; }
+  /* Tabs sit inside the sidebar area, under the logo and badge. */
+  .admin-tabs {
+    top: 150px;
+    right: auto;
+    bottom: auto;
+    width: var(--admin-sidebar);
+    grid-template-columns: 1fr;
+    gap: var(--space-2xs);
+    padding: 0 var(--space-md);
+    border: 0;
+    background: none;
+  }
+  .admin-tabs [role='tab'] { flex-direction: row; justify-content: flex-start; gap: var(--space-sm); min-height: 44px; padding-inline: var(--space-sm); border-radius: var(--radius-input); font-size: .9375rem; }
+  .admin-tabs [role='tab']:hover { background: var(--color-paper-3); color: var(--color-ink); }
+  .admin-tabs [aria-selected='true'] { background: rgb(219 62 177 / 14%); }
+  .admin-tabs [aria-selected='true']::before { top: 10px; bottom: 10px; left: 0; width: 3px; height: auto; }
+  .admin-content { margin-left: var(--admin-sidebar); width: auto; padding: var(--space-xl) var(--space-xl) var(--space-2xl); }
+  .admin-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-view-title { font-size: 2.25rem; }
+  /* The calendar asks for 960px; next to the sidebar 840px fits a 1280px screen. */
+  .admin-card .lg\:min-w-\[960px\] { min-width: 840px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-login-logo { filter: none; }
+}

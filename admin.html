@@ -1,7 +1,7 @@
 <!-- /admin.html -->
 <!-- Admin panel for managing classes, bookings and waitlists -->
 <!-- Allows staff to supervise daily operations and user management -->
-<!-- RELEVANT FILES: scripts/admin/core.js, scripts/admin/main.js, styles/admin.css, index.html -->
+<!-- RELEVANT FILES: scripts/admin/core.js, scripts/admin/tabs.js, styles/admin-shell.css, styles/admin.css -->
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -17,7 +17,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Madness - Panel de Administrador</title>
     <meta name="description" content="Madness: horarios, reservas y gestión de clases de entrenamiento.">
-    <meta name="theme-color" content="#18181b" />
+    <meta name="theme-color" content="#111015" />
     <link rel="stylesheet" href="./styles/tailwind.css?v=3.4.17">
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
@@ -25,14 +25,15 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
     <link rel="manifest" href="./admin-manifest.json" />
     <link rel="icon" type="image/png" sizes="192x192" href="./images/admin-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="./images/admin-512x512.png">
     <link rel="apple-touch-icon" href="./images/admin-192x192.png">
     <link rel="stylesheet" href="./styles/app.css?v=20261104">
     <script src="./scripts/app-accessibility.js" defer></script>
-    <link rel="stylesheet" href="./styles/admin.css?v=20261104">
+    <link rel="stylesheet" href="./styles/admin.css?v=20261118">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118">
   </head>
   <body data-app="admin" class="bg-zinc-900 text-white">
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -40,8 +41,9 @@
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] space-y-2" aria-live="polite" aria-atomic="true"></div>
 
     <main tabindex="-1" id="main-content">
-    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
-      <div class="bg-zinc-800 p-8 rounded-lg shadow-lg w-full max-w-sm">
+    <div id="login-screen" class="admin-login min-h-screen flex items-center justify-center p-4">
+      <div class="admin-login-card w-full max-w-sm">
+        <img src="./images/madness-cross-training-logo.png" alt="Madness Cross Training" class="admin-login-logo" width="1200" height="300">
         <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
         <input type="email" id="email-input" aria-label="Correo de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin" autocomplete="email">
         <input type="password" id="password-input" aria-label="Contraseña de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña" autocomplete="current-password">
@@ -51,142 +53,158 @@
       </div>
     </div>
 
-    <div id="admin-panel" class="hidden p-4 md:p-8">
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Panel de Administración</h1>
-        <button id="logout-btn" class="text-rose-400 hover:text-rose-300 font-semibold">Cerrar Sesión</button>
-      </div>
+    <!-- Admin shell: sidebar on desktop, top bar + bottom tabs on phones. -->
+    <!-- Each tab panel groups related tools. scripts/admin/tabs.js switches them. -->
+    <div id="admin-panel" class="hidden admin-shell">
+      <header class="admin-topbar">
+        <img src="./images/madness-cross-training-logo.png" alt="Madness Cross Training" class="admin-logo" width="1200" height="300">
+        <span class="admin-badge">Admin</span>
+        <button id="logout-btn" type="button" class="admin-logout">
+          <i data-lucide="log-out" class="w-5 h-5"></i><span>Cerrar sesión</span>
+        </button>
+      </header>
 
-      <nav class="admin-nav" aria-label="Secciones de administración">
-        <a href="#week-title">Clases</a><a href="#reservas-title">Reservas</a>
-        <a href="#subscription-title">Suscripciones</a><a href="#asistencia-title">Reportes</a>
-        <a href="#notifs-title">Notificaciones</a><a href="#daily-message-title">Mensajes</a>
-        <a href="#feedback-reel-title">Reel</a>
-        <a href="#usuarios-title">Usuarios</a><a href="#blacklist-title">Lista negra</a>
+      <nav class="admin-tabs" role="tablist" aria-label="Secciones de administración">
+        <button type="button" role="tab" id="tab-btn-semana" data-tab="semana" aria-controls="panel-semana"><i data-lucide="calendar-days"></i><span>Semana</span></button>
+        <button type="button" role="tab" id="tab-btn-miembros" data-tab="miembros" aria-controls="panel-miembros"><i data-lucide="users"></i><span>Miembros</span></button>
+        <button type="button" role="tab" id="tab-btn-reportes" data-tab="reportes" aria-controls="panel-reportes"><i data-lucide="bar-chart-3"></i><span>Reportes</span></button>
+        <button type="button" role="tab" id="tab-btn-avisos" data-tab="avisos" aria-controls="panel-avisos"><i data-lucide="megaphone"></i><span>Avisos</span></button>
       </nav>
-      <div class="mb-6 flex flex-wrap gap-3">
-        <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
-          <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Completar semana
-        </button>
-        <button id="create-class-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">
-          <i data-lucide="plus" class="inline-block -mt-1 mr-2"></i>Crear Nueva Clase
-        </button>
-      </div>
 
-      <div data-view="week"></div>
-
-      <div data-view="reports"></div>
-
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="notifs-title">
-        <div class="flex items-center justify-between gap-4 mb-4">
-          <h2 id="notifs-title" class="text-2xl font-bold">Últimas 10 notificaciones</h2>
-          <button
-            type="button"
-            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
-            data-toggle-target="recent-notifs"
-            data-expanded-label="Colapsar"
-            data-collapsed-label="Expandir"
-            aria-controls="recent-notifs"
-            aria-expanded="false"
-          >
-            <span data-toggle-label>Expandir</span>
-          </button>
-        </div>
-        <ul id="recent-notifs" class="space-y-2 text-sm hidden"></ul>
-      </section>
-
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="daily-message-title">
-        <div class="flex items-center justify-between gap-4 mb-4">
-          <h2 id="daily-message-title" class="text-2xl font-bold">Mensaje del Día</h2>
-          <button
-            type="button"
-            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
-            data-toggle-target="daily-message-section-body"
-            data-expanded-label="Colapsar"
-            data-collapsed-label="Expandir"
-            aria-controls="daily-message-section-body"
-            aria-expanded="false"
-          >
-            <span data-toggle-label>Expandir</span>
-          </button>
-        </div>
-        <div id="daily-message-section-body" class="hidden">
-          <form id="daily-message-form" class="space-y-4">
-            <input type="hidden" id="daily-message-id">
+      <div class="admin-content">
+        <!-- SEMANA: calendar, weekly bookings and the two class actions. -->
+        <div id="panel-semana" role="tabpanel" aria-labelledby="tab-btn-semana" data-tab-panel="semana" class="admin-panel-view">
+          <div class="admin-view-head">
             <div>
-              <label for="daily-message-text" class="block text-sm font-medium text-zinc-300 mb-2">Mensaje para los alumnos</label>
-              <textarea id="daily-message-text" class="w-full bg-zinc-700 text-white p-3 rounded-md h-28" placeholder="Ej: Está lloviendo hoy, maneja con cuidado." required></textarea>
-              <p id="daily-message-form-status" class="text-xs text-indigo-300 mt-2 hidden"></p>
+              <p class="admin-eyebrow">Operación diaria</p>
+              <h1 class="admin-view-title">Semana</h1>
             </div>
-            <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
-              <input type="checkbox" id="daily-message-active" class="w-4 h-4 accent-indigo-600" checked>
-              Mostrar mensaje en la app
-            </label>
-            <div class="flex flex-wrap gap-2">
-              <button type="submit" id="daily-message-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar Mensaje</button>
-              <button type="button" id="daily-message-reset" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Limpiar</button>
+            <div class="admin-actions">
+              <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
+                <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Completar semana
+              </button>
+              <button id="create-class-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">
+                <i data-lucide="plus" class="inline-block -mt-1 mr-2"></i>Crear clase
+              </button>
             </div>
-          </form>
-          <div id="daily-messages-list" class="mt-6 space-y-4 text-sm"></div>
+          </div>
+          <div data-view="week"></div>
         </div>
-      </section>
 
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="feedback-reel-title">
-        <h2 id="feedback-reel-title" class="text-2xl font-bold mb-4">Reel del formulario</h2>
-        <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
-          <input type="checkbox" role="switch" id="feedback-reel-enabled" class="w-4 h-4 accent-indigo-600"
-            aria-describedby="feedback-reel-description feedback-reel-status" disabled>
-          Mostrar reel al abrir la app
-        </label>
-        <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Controla el anuncio de 5 segundos para todos los alumnos. El banner del formulario seguirá disponible.</p>
-        <p id="feedback-reel-status" class="text-sm text-zinc-400 mt-2" role="status">Cargando configuración…</p>
-      </section>
+        <!-- MIEMBROS: subscriptions, user search, blacklist and password reset. -->
+        <div id="panel-miembros" role="tabpanel" aria-labelledby="tab-btn-miembros" data-tab-panel="miembros" class="admin-panel-view" hidden>
+          <div class="admin-view-head">
+            <div>
+              <p class="admin-eyebrow">Alumnos y pagos</p>
+              <h1 class="admin-view-title">Miembros</h1>
+            </div>
+          </div>
 
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
-        <h2 id="usuarios-title" class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
+          <div data-view="subscriptions"></div>
 
-        <div>
-          <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Reinicio de Contraseña</label>
-          <div class="flex gap-2">
-            <input type="email" id="user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="Correo del usuario">
-            <button id="send-reset-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
+          <section class="admin-card" aria-labelledby="usuarios-title">
+            <h2 id="usuarios-title" class="admin-card-title">Buscar usuario</h2>
+            <label for="find-user-query-input" class="block text-sm font-medium text-zinc-300 mb-2">Nombre o correo</label>
+            <div class="flex gap-2 admin-input-row">
+              <input type="text" id="find-user-query-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md"
+                     placeholder="Ej: Valery, Erick o alguien@correo.com">
+              <button id="find-user-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md">Buscar</button>
+              <button id="list-users-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Listar</button>
+            </div>
+            <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
+            <div id="user-pagination-controls" class="mt-2 hidden flex flex-wrap gap-2">
+              <button id="user-prev-page-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página anterior</button>
+              <button id="user-next-page-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página siguiente</button>
+              <button id="user-show-all-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1 px-3 rounded-md text-sm">Mostrar todos</button>
+            </div>
+            <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
+          </section>
+
+          <div class="admin-grid-2">
+            <section class="admin-card" aria-labelledby="blacklist-title">
+              <h2 id="blacklist-title" class="admin-card-title">Lista negra</h2>
+              <p class="text-sm text-zinc-400 mb-4">Revisa usuarios bloqueados por cancelaciones tardías y rehabilítalos cuando sea necesario.</p>
+              <div class="flex flex-wrap gap-2">
+                <button id="list-blacklisted-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-md">Listar usuarios en lista negra</button>
+                <button id="reset-strikes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md">Resetear strikes (todos)</button>
+              </div>
+              <p id="blacklisted-users-feedback" class="text-xs text-zinc-400 mt-3 hidden"></p>
+              <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 gap-4"></div>
+            </section>
+
+            <section class="admin-card" aria-labelledby="password-reset-title">
+              <h2 id="password-reset-title" class="admin-card-title">Reinicio de contraseña</h2>
+              <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Correo del usuario</label>
+              <div class="flex gap-2 admin-input-row">
+                <input type="email" id="user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="alguien@correo.com">
+                <button id="send-reset-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
+              </div>
+            </section>
           </div>
         </div>
 
-        <hr class="border-zinc-700 my-6">
+        <!-- REPORTES: attendance, capacity and revenue dashboard. -->
+        <div id="panel-reportes" role="tabpanel" aria-labelledby="tab-btn-reportes" data-tab-panel="reportes" class="admin-panel-view" hidden>
+          <div class="admin-view-head">
+            <div>
+              <p class="admin-eyebrow">Asistencia y proyección</p>
+              <h1 class="admin-view-title">Reportes</h1>
+            </div>
+          </div>
+          <div data-view="reports"></div>
+        </div>
 
-        <!-- Buscar por nombre/correo + listar -->
-        <div>
-          <label for="find-user-query-input" class="block text-sm font-medium text-zinc-300 mb-2">
-            Buscar usuario (nombre o correo)
-          </label>
-          <div class="flex gap-2">
-            <input type="text" id="find-user-query-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md"
-                   placeholder="Ej: Valery, Erick o alguien@correo.com">
-            <button id="find-user-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md">Buscar</button>
-            <button id="list-users-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Listar</button>
+        <!-- AVISOS: daily message, feedback reel and push history. -->
+        <div id="panel-avisos" role="tabpanel" aria-labelledby="tab-btn-avisos" data-tab-panel="avisos" class="admin-panel-view" hidden>
+          <div class="admin-view-head">
+            <div>
+              <p class="admin-eyebrow">Comunicación con alumnos</p>
+              <h1 class="admin-view-title">Avisos</h1>
+            </div>
           </div>
 
-          <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
-          <div id="user-pagination-controls" class="mt-2 hidden flex flex-wrap gap-2">
-            <button id="user-prev-page-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página anterior</button>
-            <button id="user-next-page-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página siguiente</button>
-            <button id="user-show-all-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1 px-3 rounded-md text-sm">Mostrar todos</button>
-          </div>
-          <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
-        </div>
-      </section>
+          <div class="admin-grid-2">
+            <section class="admin-card" aria-labelledby="daily-message-title">
+              <h2 id="daily-message-title" class="admin-card-title">Mensaje del día</h2>
+              <form id="daily-message-form" class="space-y-4">
+                <input type="hidden" id="daily-message-id">
+                <div>
+                  <label for="daily-message-text" class="block text-sm font-medium text-zinc-300 mb-2">Mensaje para los alumnos</label>
+                  <textarea id="daily-message-text" class="w-full bg-zinc-700 text-white p-3 rounded-md h-28" placeholder="Ej: Está lloviendo hoy, maneja con cuidado." required></textarea>
+                  <p id="daily-message-form-status" class="text-xs text-indigo-300 mt-2 hidden"></p>
+                </div>
+                <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
+                  <input type="checkbox" id="daily-message-active" class="w-4 h-4 accent-indigo-600" checked>
+                  Mostrar mensaje en la app
+                </label>
+                <div class="flex flex-wrap gap-2">
+                  <button type="submit" id="daily-message-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar Mensaje</button>
+                  <button type="button" id="daily-message-reset" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Limpiar</button>
+                </div>
+              </form>
+              <div id="daily-messages-list" class="mt-6 space-y-4 text-sm"></div>
+            </section>
 
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="blacklist-title">
-        <h2 id="blacklist-title" class="text-2xl font-bold mb-2">Gestión de Lista Negra</h2>
-        <p class="text-sm text-zinc-400 mb-4">Revisa usuarios bloqueados por cancelaciones tardías y rehabilítalos cuando sea necesario.</p>
-        <div class="flex flex-wrap gap-2">
-          <button id="list-blacklisted-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-md">Listar usuarios en lista negra</button>
-          <button id="reset-strikes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md">Resetear strikes (todos)</button>
+            <div class="admin-stack">
+              <section class="admin-card" aria-labelledby="feedback-reel-title">
+                <h2 id="feedback-reel-title" class="admin-card-title">Reel del formulario</h2>
+                <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
+                  <input type="checkbox" role="switch" id="feedback-reel-enabled" class="w-4 h-4 accent-indigo-600"
+                    aria-describedby="feedback-reel-description feedback-reel-status" disabled>
+                  Mostrar reel al abrir la app
+                </label>
+                <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Controla el anuncio de 5 segundos para todos los alumnos. El banner del formulario seguirá disponible.</p>
+                <p id="feedback-reel-status" class="text-sm text-zinc-400 mt-2" role="status">Cargando configuración…</p>
+              </section>
+
+              <section class="admin-card" aria-labelledby="notifs-title">
+                <h2 id="notifs-title" class="admin-card-title">Últimas 10 notificaciones</h2>
+                <ul id="recent-notifs" class="space-y-2 text-sm"></ul>
+              </section>
+            </div>
+          </div>
         </div>
-        <p id="blacklisted-users-feedback" class="text-xs text-zinc-400 mt-3 hidden"></p>
-        <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-      </section>
+      </div>
     </div>
     </main>
 
@@ -222,6 +240,7 @@
     <script src="./scripts/admin/user-cards.js"></script>
     <script src="./scripts/admin/blacklist.js"></script>
     <script src="./scripts/admin/manual-bookings.js"></script>
+    <script src="./scripts/admin/tabs.js"></script>
     <script src="./scripts/admin/main.js"></script>
   </body>
 </html>

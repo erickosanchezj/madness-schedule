@@ -1,29 +1,14 @@
 // scripts/admin/views/reports.js
 // Markup for "Gestión de Suscripciones" and "Reporte de Asistencia y Proyección".
-// Moved out of admin.html to keep it short; inserted before AdminPanel starts.
+// Two templates: subscriptions go to "Miembros", the report goes to "Reportes".
 // RELEVANT FILES: admin.html, scripts/admin/subscriptions.js, scripts/admin/reports-charts.js
 
-// Replaces the placeholder in admin.html with the exact original markup.
-document.querySelector('[data-view="reports"]').outerHTML = `
-      <section aria-labelledby="subscription-title" class="mt-8">
-        <div class="flex items-center justify-between gap-4 mb-4 border-b border-zinc-700 pb-2">
-          <h2 id="subscription-title" class="text-2xl font-bold text-emerald-400">
-            Gestión de Suscripciones
-          </h2>
-          <button
-            type="button"
-            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
-            data-toggle-target="subscription-section-body"
-            data-expanded-label="Colapsar"
-            data-collapsed-label="Expandir"
-            aria-controls="subscription-section-body"
-            aria-expanded="false"
-          >
-            <span data-toggle-label>Expandir</span>
-          </button>
-        </div>
+// Fills the "Miembros" tab placeholder with the subscriptions table.
+document.querySelector('[data-view="subscriptions"]').outerHTML = `
+      <section aria-labelledby="subscription-title" class="admin-card">
+        <h2 id="subscription-title" class="admin-card-title">Suscripciones</h2>
 
-        <div id="subscription-section-body" class="bg-zinc-800 rounded-lg p-6 hidden">
+        <div id="subscription-section-body">
           <div class="mb-4 flex gap-3 flex-wrap">
             <select id="subscription-filter" aria-label="Filtro de suscripciones" class="bg-zinc-700 text-white p-2 rounded">
               <option value="all">Todos los usuarios</option>
@@ -69,23 +54,13 @@ document.querySelector('[data-view="reports"]').outerHTML = `
           </div>
         </div>
       </section>
+`;
 
-      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="asistencia-title">
-        <div class="flex items-center justify-between gap-4 mb-2">
-          <h2 id="asistencia-title" class="text-2xl font-bold">Reporte de Asistencia y Proyección</h2>
-          <button
-            type="button"
-            class="toggle-section inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
-            data-toggle-target="attendance-section-body"
-            data-expanded-label="Colapsar"
-            data-collapsed-label="Expandir"
-            aria-controls="attendance-section-body"
-            aria-expanded="false"
-          >
-            <span data-toggle-label>Expandir</span>
-          </button>
-        </div>
-        <div id="attendance-section-body" class="space-y-4 hidden">
+// Fills the "Reportes" tab placeholder with the attendance dashboard.
+document.querySelector('[data-view="reports"]').outerHTML = `
+      <section class="admin-card" aria-labelledby="asistencia-title">
+        <h2 id="asistencia-title" class="admin-card-title">Asistencia y proyección</h2>
+        <div id="attendance-section-body" class="space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 gap-2">
             <div class="flex items-center gap-4">
               <span id="att-last">Última actualización: Sin datos</span>
@@ -95,7 +70,7 @@ document.querySelector('[data-view="reports"]').outerHTML = `
               <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
             </button>
           </div>
-          <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 text-xs">
+          <div class="admin-filters grid grid-cols-1 xl:grid-cols-2 gap-3 text-xs">
             <div class="flex flex-wrap items-center gap-2">
               <label for="att-start-date">Desde:</label>
               <input type="date" id="att-start-date" class="bg-zinc-700 text-white p-1 rounded-md" />
