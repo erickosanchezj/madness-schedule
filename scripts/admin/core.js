@@ -84,20 +84,6 @@ const AdminPanel = {
     return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
   },
 
-  expandTodayBookingsAccordion(){
-    // Expands the bookings accordion for the current weekday and collapses the rest.
-    const weekdayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-    const todayKey = weekdayKeys[new Date().getDay()];
-    if (!todayKey) return;
-    const reservasSection = document.querySelector('section[aria-labelledby="reservas-title"]');
-    if (!reservasSection) return;
-    reservasSection.querySelectorAll('.day-column[data-day]').forEach((detail) => {
-      if (!(detail instanceof HTMLDetailsElement)) return;
-      if (detail.dataset.day === todayKey) detail.setAttribute('open','');
-      else detail.removeAttribute('open');
-    });
-  },
-
   // --- TOASTS ---
   showToast({ title='Hecho', message='', variant='success', timeout=3000 }){
     const color = variant==='error'?'rose': variant==='warn'?'amber':'emerald';

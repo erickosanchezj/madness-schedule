@@ -5,7 +5,8 @@
 
 Object.assign(AdminPanel, {
 
-  // Called from renderAll(), so it updates live with classes, bookings and waitlists.
+  // Called from renderAll() (live data) and every minute by the calendar ticker,
+  // so a button switches to "Tomar asistencia" when the 30-minute window opens.
   renderTodayPanel(){
     const container = document.getElementById('today-classes');
     if (!container) return;
@@ -23,8 +24,9 @@ Object.assign(AdminPanel, {
       const enrolled = Number(cls.enrolledCount || 0);
       const capacity = Number(cls.capacity || 0);
       const full = capacity > 0 && enrolled >= capacity;
-      // The attendance tab only opens from 2 days before now until 30 min before class.
+      // Attendance opens 30 min before class (same rule as the class modal).
       const canTakeAttendance = this.isClassInProgressWindow(cls);
+      const opensAt = this.timeFmt.format(new Date(new Date(`${cls.classDate}T${cls.time}:00Z`).getTime() - 30*60000));
       return `
         <article class="admin-today-class">
           <div class="flex items-start justify-between gap-2">
@@ -37,7 +39,7 @@ Object.assign(AdminPanel, {
           <div class="text-sm mt-2">${this.classRosterHTML(cls)}</div>
           <button type="button" data-today-class="${DOMPurify.sanitize(cls.id)}"
                   class="w-full mt-3 ${canTakeAttendance ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-zinc-600 hover:bg-zinc-700'} text-white font-bold py-2 px-4 rounded-md text-sm">
-            ${canTakeAttendance ? 'Tomar asistencia' : 'Ver clase'}
+            ${canTakeAttendance ? 'Tomar asistencia' : `Ver clase · asistencia desde ${DOMPurify.sanitize(opensAt)}`}
           </button>
         </article>`;
     }).join('');

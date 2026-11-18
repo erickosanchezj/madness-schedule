@@ -122,6 +122,7 @@ Object.assign(AdminPanel, {
   ensureCurrentTimeTicker(){
     if (this.currentTimeTicker) return;
     this.currentTimeTicker = setInterval(() => {
+      this.renderTodayPanel();
       this.highlightTodayColumn();
       this.updateCurrentTimeIndicator();
     }, 60000);
