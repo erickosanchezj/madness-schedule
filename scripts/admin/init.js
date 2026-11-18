@@ -101,6 +101,7 @@ Object.assign(AdminPanel, {
       dailyList.addEventListener('click', (e)=>this.handleDailyMessageListClick(e));
     }
 
+    this.setupDailyMessageForm();
     this.resetDailyMessageForm();
     document.getElementById('feedback-reel-enabled').addEventListener('change', () => this.saveFeedbackReel());
 

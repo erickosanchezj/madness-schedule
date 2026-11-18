@@ -1,5 +1,5 @@
 // scripts/admin/daily-messages.js
-// Daily announcement CRUD: list, edit, toggle, delete and save.
+// Daily announcement CRUD: list, edit, toggle, delete, save, optional expiry date and live preview.
 // Staff write the messages shown in the member app.
 // RELEVANT FILES: scripts/member/screens/agenda.js, scripts/admin/init.js, firestore.rules
 
@@ -55,6 +55,30 @@ Object.assign(AdminPanel, {
       });
   },
 
+  // A message with an expiry date hides itself after that day ends (Mexico City).
+  isDailyMessageExpired(msg){
+    const expires = msg?.expiresAt?.toDate ? msg.expiresAt.toDate() : null;
+    return !!expires && expires.getTime() <= Date.now();
+  },
+
+  // Wires the live preview and the "Solo hoy" shortcut. Called once from init().
+  setupDailyMessageForm(){
+    document.getElementById('daily-message-text')?.addEventListener('input', () => this.renderDailyMessagePreview());
+    document.getElementById('daily-message-today')?.addEventListener('click', () => {
+      document.getElementById('daily-message-expires').value = this.dateHelper.today();
+    });
+  },
+
+  // Shows the text the way members see it: same line breaks, same card look.
+  renderDailyMessagePreview(){
+    const preview = document.getElementById('daily-message-preview');
+    if (!preview) return;
+    const text = document.getElementById('daily-message-text')?.value.trim() || '';
+    preview.innerHTML = text
+      ? `<p>${DOMPurify.sanitize(text).replace(/\n/g, '<br>')}</p><span aria-hidden="true">✕</span>`
+      : '<p class="text-zinc-500">Escribe un mensaje para verlo aquí.</p>';
+  },
+
   renderDailyMessages(){
     const list = document.getElementById('daily-messages-list');
     if (!list) return;
@@ -73,9 +97,14 @@ Object.assign(AdminPanel, {
         ? msg.creatorName
         : (msg.createdBy ? String(msg.createdBy) : '');
       const creator = rawCreator ? DOMPurify.sanitize(rawCreator) : '';
-      const statusBadge = msg.isActive
-        ? '<span class="px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Activo</span>'
-        : '<span class="px-2 py-1 rounded-md bg-zinc-700 text-zinc-300 text-xs">Inactivo</span>';
+      const expired = this.isDailyMessageExpired(msg);
+      const statusBadge = expired
+        ? '<span class="px-2 py-1 rounded-md bg-zinc-700 text-zinc-300 text-xs">Vencido</span>'
+        : msg.isActive
+          ? '<span class="px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-xs">Activo</span>'
+          : '<span class="px-2 py-1 rounded-md bg-zinc-700 text-zinc-300 text-xs">Inactivo</span>';
+      const expiresAt = msg.expiresAt?.toDate ? msg.expiresAt.toDate() : null;
+      const expiresLine = expiresAt ? `<span>${expired ? 'Se ocultó' : 'Se oculta'} al terminar el ${DOMPurify.sanitize(this.dayShortFmt.format(expiresAt))}</span>` : '';
       const creatorLine = creator ? `<span class="text-xs text-zinc-500">Creado por: ${creator}</span>` : '';
       return `
         <article class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-4">
@@ -85,6 +114,7 @@ Object.assign(AdminPanel, {
               <div class="flex flex-wrap gap-3 text-xs text-zinc-400">
                 <span>${safeCreated}</span>
                 ${creatorLine}
+                ${expiresLine}
               </div>
             </div>
             ${statusBadge}
@@ -107,6 +137,9 @@ Object.assign(AdminPanel, {
     if (idInput) idInput.value = '';
     if (textArea) textArea.value = '';
     if (activeInput) activeInput.checked = true;
+    const expiresInput = document.getElementById('daily-message-expires');
+    if (expiresInput) expiresInput.value = '';
+    this.renderDailyMessagePreview();
     if (statusEl){
       statusEl.textContent = '';
       statusEl.classList.add('hidden');
@@ -128,6 +161,9 @@ Object.assign(AdminPanel, {
     idInput.value = msg.id || '';
     textArea.value = msg.message || '';
     activeInput.checked = !!msg.isActive;
+    const expiresInput = document.getElementById('daily-message-expires');
+    if (expiresInput) expiresInput.value = msg.expiresAt?.toDate ? this.dateHelper.ymd(msg.expiresAt.toDate()) : '';
+    this.renderDailyMessagePreview();
     if (submitBtn) submitBtn.textContent = 'Actualizar Mensaje';
     if (statusEl){
       const createdAt = msg.createdAt?.toDate ? msg.createdAt.toDate() : null;
@@ -196,11 +232,19 @@ Object.assign(AdminPanel, {
       this.showToast({ title:'Escribe un mensaje', variant:'warn' });
       return;
     }
+    const expiresDate = document.getElementById('daily-message-expires')?.value || '';
+    if (expiresDate && expiresDate < this.dateHelper.today()){
+      this.showToast({ title:'Esa fecha ya pasó', message:'Elige hoy o un día futuro, o deja el campo vacío.', variant:'warn' });
+      return;
+    }
     const payload = {
       message,
       isActive,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+    // Last second of that day in Mexico City (UTC-6 all year since 2022).
+    if (expiresDate) payload.expiresAt = new Date(`${expiresDate}T23:59:59-06:00`);
+    else if (docId) payload.expiresAt = firebase.firestore.FieldValue.delete(); // editing: clear an old date
     try{
       if (docId){
         await this.db.collection('dailyMessages').doc(docId).update(payload);

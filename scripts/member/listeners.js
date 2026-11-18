@@ -131,11 +131,13 @@ function attachAgendaListeners(){
     .limit(10)
     .onSnapshot(snap => {
       const dismissed = readDismissedMessages();
+      // expiresAt is optional; staff set it in the admin so a message hides itself after that day.
+      const expired = msg => msg.expiresAt?.toDate && msg.expiresAt.toDate().getTime() <= Date.now();
       const activeMessages = snap.docs.map(doc => {
         const data = doc.data() || {};
         const rawText = typeof data.message === 'string' ? data.message.trim() : '';
         return { id: doc.id, ...data, message: rawText };
-      }).filter(msg => msg.isActive && msg.message && !dismissed.includes(msg.id));
+      }).filter(msg => msg.isActive && msg.message && !expired(msg) && !dismissed.includes(msg.id));
       if (!activeMessages.length){
         stopDailyMessageRotation();
         state.dailyMessage = null;

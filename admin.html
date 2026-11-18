@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261104">
     <script src="./scripts/app-accessibility.js" defer></script>
     <link rel="stylesheet" href="./styles/admin.css?v=20261118-hours">
-    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-kpis">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-preview">
   </head>
   <body data-app="admin" class="bg-zinc-900 text-white">
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -139,6 +139,18 @@
                   <label for="daily-message-text" class="block text-sm font-medium text-zinc-300 mb-2">Mensaje para los alumnos</label>
                   <textarea id="daily-message-text" class="w-full bg-zinc-700 text-white p-3 rounded-md h-28" placeholder="Ej: Está lloviendo hoy, maneja con cuidado." required></textarea>
                   <p id="daily-message-form-status" class="text-xs text-indigo-300 mt-2 hidden"></p>
+                </div>
+                <div>
+                  <label for="daily-message-expires" class="block text-sm font-medium text-zinc-300 mb-2">Ocultar después del (opcional)</label>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input type="date" id="daily-message-expires" class="bg-zinc-700 text-white p-2 rounded-md">
+                    <button type="button" id="daily-message-today" class="bg-zinc-600 hover:bg-zinc-700 text-white font-semibold py-2 px-3 rounded-md text-sm">Solo hoy</button>
+                  </div>
+                  <p class="text-xs text-zinc-400 mt-1">Se oculta solo al terminar ese día. Vacío = se queda hasta que lo desactives.</p>
+                </div>
+                <div>
+                  <p class="block text-sm font-medium text-zinc-300 mb-2">Vista previa en la app</p>
+                  <div id="daily-message-preview" class="admin-message-preview" aria-live="polite"></div>
                 </div>
                 <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
                   <input type="checkbox" id="daily-message-active" class="w-4 h-4 accent-indigo-600" checked>

@@ -260,16 +260,17 @@ Object.assign(AdminPanel, {
         const safeInstructor = DOMPurify.sanitize(cls.instructor || '');
         const startLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.startMs)));
         const endLabel = DOMPurify.sanitize(this.timeFmt.format(new Date(event.endMs)));
-        const capacityClass = enrolled >= capacity && capacity > 0 ? 'text-rose-200' : 'text-emerald-200';
-        block.setAttribute('aria-label', `Editar ${safeName} de ${startLabel} a ${endLabel}`);
+        const full = capacity > 0 && enrolled >= capacity;
+        block.setAttribute('aria-label', `Editar ${safeName} de ${startLabel} a ${endLabel}, ${enrolled} de ${capacity || '—'} lugares reservados`);
         block.title = `${safeName}: ${startLabel} - ${endLabel}`;
 
         block.innerHTML = `
           <div class="class-meta">
             <strong class="text-sm text-white leading-tight">${safeName}</strong>
             <time class="class-start">${startLabel}</time>
+            <span class="class-booked${full ? ' is-full' : ''}" title="Lugares reservados">${enrolled}/${capacity || '—'}</span>
           </div>
-          <span class="text-xs font-semibold ${capacityClass}">${safeInstructor || 'Instructor por asignar'} - ${enrolled} / ${capacity || '—'}</span>
+          <span class="text-xs text-zinc-300">${safeInstructor || 'Instructor por asignar'}</span>
         `;
         block.onclick = () => this.showClassModal(cls);
         block.onkeydown = (evt) => {
