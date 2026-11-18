@@ -112,7 +112,6 @@ Object.assign(AdminPanel, {
     this.resetDailyMessageForm();
     document.getElementById('feedback-reel-enabled').addEventListener('change', () => this.saveFeedbackReel());
 
-    this.setupSectionToggles();
     this.expandTodayBookingsAccordion();
 
     // Users: find + list

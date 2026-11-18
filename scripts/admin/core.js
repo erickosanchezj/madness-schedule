@@ -90,38 +90,6 @@ const AdminPanel = {
     return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}`;
   },
 
-  setupSectionToggles(){
-    const buttons = document.querySelectorAll('[data-toggle-target]');
-    buttons.forEach((btn) => {
-      const targetId = btn.dataset.toggleTarget;
-      if (!targetId) return;
-      const target = document.getElementById(targetId);
-      if (!target) return;
-      const labelEl = btn.querySelector('[data-toggle-label]');
-      const expandedLabel = btn.dataset.expandedLabel || 'Colapsar';
-      const collapsedLabel = btn.dataset.collapsedLabel || 'Expandir';
-
-      const updateState = (expanded) => {
-        btn.setAttribute('aria-expanded', String(expanded));
-        if (labelEl) labelEl.textContent = expanded ? expandedLabel : collapsedLabel;
-      };
-
-      const isInitiallyHidden = target.classList.contains('hidden');
-      updateState(!isInitiallyHidden);
-
-      btn.addEventListener('click', () => {
-        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
-        if (isExpanded) {
-          target.classList.add('hidden');
-          updateState(false);
-        } else {
-          target.classList.remove('hidden');
-          updateState(true);
-        }
-      });
-    });
-  },
-
   expandTodayBookingsAccordion(){
     // Expands the bookings accordion for the current weekday and collapses the rest.
     const weekdayKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
