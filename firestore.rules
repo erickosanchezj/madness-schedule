@@ -22,7 +22,8 @@ service cloud.firestore {
     // A reel holds only these fields, with size limits; the button link must be https or empty.
     function validReel(d) {
       return d.keys().hasOnly(['eyebrow', 'title', 'highlight', 'description', 'ctaText', 'ctaUrl',
-                               'footer', 'seconds', 'active', 'order', 'updatedAt'])
+                               'footer', 'seconds', 'active', 'order', 'updatedAt',
+                               'align', 'position', 'size', 'logo', 'background', 'frequency'])
         && d.title is string && d.title.size() > 0 && d.title.size() <= 60
         && d.eyebrow is string && d.eyebrow.size() <= 60
         && d.highlight is string && d.highlight.size() <= 60
@@ -31,7 +32,14 @@ service cloud.firestore {
         && d.ctaUrl is string && d.ctaUrl.size() <= 500 && (d.ctaUrl == '' || d.ctaUrl.matches('https://.*'))
         && d.footer is string && d.footer.size() <= 80
         && d.seconds is int && d.seconds >= 3 && d.seconds <= 15
-        && d.active is bool && d.order is number && d.updatedAt is timestamp;
+        && d.active is bool && d.order is number && d.updatedAt is timestamp
+        // Layout choices are optional: reels saved before they existed must still be editable.
+        && (!('align' in d) || d.align in ['left', 'center'])
+        && (!('position' in d) || d.position in ['top', 'middle', 'bottom'])
+        && (!('size' in d) || d.size in ['s', 'm', 'l'])
+        && (!('logo' in d) || d.logo is bool)
+        && (!('background' in d) || d.background in ['texture', 'arcs', 'plain', 'trx', 'yoga', 'hiit', 'functional', 'capoeira'])
+        && (!('frequency' in d) || d.frequency in ['daily3', 'daily', 'once', 'always']);
     }
 
     // ===== CLASSES (Refined) =====

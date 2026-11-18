@@ -1,5 +1,5 @@
 /* styles/member-feedback.css */
-/* Styles the reel story (segments, copy, button) and the persistent form link above navigation. */
+/* Styles the reel story (segments, copy, button, layout choices) and the persistent form link above navigation. */
 /* Reuses the Madness logo, texture and neon light assets from the member theme. */
 /* RELEVANT FILES: index.html, scripts/member/feedback.js, scripts/admin/reels.js, styles/member-shell.css */
 .feedback-banner {
@@ -29,6 +29,7 @@ body[data-app='member'] #toast { bottom: calc(var(--nav-height) + var(--safe-bot
   width: min(100%, 440px); min-height: 100%; margin-inline: auto;
   padding: max(20px, var(--safe-top)) 24px max(16px, var(--safe-bottom));
   background: url('../images/backgrounds/madness-texture.webp') center / cover;
+  container-type: inline-size; /* lets the title size follow the reel width (cqw), also in the admin preview */
 }
 .feedback-story-content::before, .feedback-story-content::after { position: absolute; inset: 0; z-index: -1; content: ''; pointer-events: none; }
 .feedback-story-content::before { background: url('../images/backgrounds/madness-green-light.webp') right top / 100% 100% no-repeat; opacity: .45; }
@@ -44,7 +45,7 @@ body[data-app='member'] #toast { bottom: calc(var(--nav-height) + var(--safe-bot
 .feedback-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; }
 .feedback-logo { display: block; width: 100%; height: auto; margin-block: 28px 44px; object-fit: contain; }
 .feedback-eyebrow { margin-bottom: 16px; color: var(--madness-green); text-transform: uppercase; font-size: 16px; font-weight: 800; letter-spacing: .04em; }
-#feedback-title { font: 900 clamp(30px, 10vw, 40px)/1.08 var(--font-display); text-transform: uppercase; }
+#feedback-title { font: 900 clamp(30px, 10vw, 40px)/1.08 var(--font-display); font-size: clamp(30px, 10cqw, 40px); text-transform: uppercase; }
 #feedback-title span { display: block; color: #e855bd; }
 #feedback-description { margin-top: 28px; color: var(--color-ink); font-size: 17px; line-height: 1.5; }
 .feedback-cta { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 12px; border-radius: 18px; background: #db3eb1; color: #160910; font-size: 16px; font-weight: 800; }
@@ -53,12 +54,34 @@ body[data-app='member'] #toast { bottom: calc(var(--nav-height) + var(--safe-bot
 .feedback-story-action { margin-top: auto; padding-top: 32px; }
 .feedback-story-action > p { margin-top: 14px; text-align: center; color: var(--color-ink-2); font-size: 14px; }
 .feedback-pause { align-self: center; min-height: 44px; margin-top: auto; padding: 8px 16px; color: var(--color-ink); font-size: 14px; }
+/* ----- Layout choices (scripts/reel-template.js → className) ----- */
+/* Text position: the text block fills the free space; the button always stays at the bottom. */
+.feedback-story-copy { display: flex; flex: 1 0 auto; flex-direction: column; }
+.reel-pos-middle .feedback-story-copy { justify-content: center; }
+.reel-pos-bottom .feedback-story-copy { justify-content: flex-end; }
+.reel-align-center .feedback-story-copy { text-align: center; }
+.reel-no-logo .feedback-logo { display: none; }
+/* Title size: S and L next to the default M. vw first for browsers without container units. */
+.reel-size-s #feedback-title { font-size: clamp(24px, 8vw, 30px); font-size: clamp(24px, 8cqw, 30px); }
+.reel-size-l #feedback-title { font-size: clamp(34px, 12.5vw, 50px); font-size: clamp(34px, 12.5cqw, 50px); }
+/* Backgrounds. Default "texture" = texture + green light + pink arcs (rules above). */
+.feedback-story-content.reel-bg-arcs, .feedback-story-content.reel-bg-plain { background: var(--color-paper); }
+.reel-bg-arcs::before, .reel-bg-plain::before, .reel-bg-plain::after, .reel-photo::after { display: none; }
+.reel-bg-trx { background-image: url('../images/trx.png'); }
+.reel-bg-yoga { background-image: url('../images/yoga.png'); }
+.reel-bg-hiit { background-image: url('../images/HIIT.png'); }
+.reel-bg-functional { background-image: url('../images/functional.png'); }
+.reel-bg-capoeira { background-image: url('../images/capoeira.png'); }
+/* Class photos get a dark veil so the text stays readable. */
+.reel-photo::before { background: linear-gradient(to bottom, rgb(17 16 21 / 25%), rgb(17 16 21 / 60%) 50%, rgb(17 16 21 / 94%)); opacity: 1; }
 @media (max-height: 650px) {
   .feedback-story-content { gap: 8px; }
   .feedback-logo { width: 75%; align-self: center; margin-block: 8px; }
   .feedback-story-action { padding-top: 12px; }
   #feedback-title br { display: none; }
   #feedback-title { font-size: 28px; }
+  .reel-size-s #feedback-title { font-size: 24px; }
+  .reel-size-l #feedback-title { font-size: 32px; }
   #feedback-description { margin-top: 16px; font-size: 15px; }
   .feedback-eyebrow { margin-bottom: 10px; font-size: 14px; }
 }

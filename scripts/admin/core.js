@@ -38,6 +38,7 @@ const AdminPanel = {
     reels: [],              // all reels, sorted by order (scripts/admin/reels.js)
     unsubReels: null,
     editingReelId: null,
+    reelPlayTimer: null, // "Reproducir" in the reel preview (scripts/admin/reels.js)
     unsubBanner: null,      // live listener on appSettings/feedbackBanner (scripts/admin/banner.js)
     bannerDirty: false,     // true while staff have unsaved banner edits
     analyticsTracker: {

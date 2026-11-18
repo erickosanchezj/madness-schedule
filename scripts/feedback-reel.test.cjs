@@ -1,6 +1,6 @@
 // scripts/feedback-reel.test.cjs
 // Exercises the admin switch and the member reel story against in-memory settings and reels.
-// Guards global disabling, save failures, cached settings, login cleanup and the reel sequence.
+// Guards global disabling, save failures, cached settings, login cleanup, the reel sequence, layout and frequency.
 // RELEVANT FILES: scripts/admin/feedback-reel.js, scripts/member/feedback.js, scripts/reel-template.js, firestore.rules
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -79,9 +79,16 @@ function load(file, globals) {
   });
 }
 
-function member(db) {
+// In-memory localStorage (the member app remembers how often each reel was seen).
+function memoryStorage(initial = {}) {
+  const data = { ...initial };
+  return { data, getItem: key => (key in data ? data[key] : null), setItem: (key, value) => { data[key] = String(value); } };
+}
+const mexicoDay = (offsetDays = 0) => new Date(Date.now() + offsetDays * 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+
+function member(db, localStorage = memoryStorage()) {
   const ids = ['feedback-story', 'feedback-banner', 'feedback-story-link', 'main-content', 'feedback-steps',
-    'feedback-copy', 'feedback-action', 'feedback-cta-text', 'feedback-footer', 'feedback-seconds'];
+    'feedback-copy', 'feedback-action', 'feedback-cta-text', 'feedback-footer', 'feedback-seconds', 'feedback-story-content'];
   const nodes = Object.fromEntries(ids.map(id => [id, element()]));
   const progress = element(), pause = element(), close = element(), events = new Map();
   const frames = new Map();
@@ -95,7 +102,7 @@ function member(db) {
   };
   const window = { innerWidth: 400 };
   // reel-template.js and feedback.js share one context, like two <script> tags on one page.
-  const context = vm.createContext({ console: { warn() {} }, document, window, db,
+  const context = vm.createContext({ console: { warn() {} }, document, window, db, localStorage,
     requestAnimationFrame: cb => { frames.set(++nextFrame, cb); return nextFrame; },
     cancelAnimationFrame: id => frames.delete(id)
   });
@@ -103,7 +110,7 @@ function member(db) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, file), 'utf8'), context);
   }
   return {
-    controller: window.madnessFeedback, story: nodes['feedback-story'], pause, close, nodes,
+    controller: window.madnessFeedback, story: nodes['feedback-story'], pause, close, nodes, localStorage, template: window.madnessReel,
     tap(clientX) { nodes['feedback-story'].dispatch('click', { clientX, target: { closest: () => null } }); },
     resume() { document.hidden = false; events.get('visibilitychange')(); },
     clickForm() { nodes['feedback-story-link'].dispatch('click'); },
@@ -313,4 +320,63 @@ test('reels read errors show no story', () => {
   db.failReels();
   db.emit(true);
   assert.equal(app.story.open, false);
+});
+
+test('layout choices become classes; old reels without them keep today\'s look', () => {
+  const db = settingsSource(), app = member(db);
+  db.reels = [
+    { id: 'old', order: 1, title: 'Viejo' },
+    { id: 'new', order: 2, title: 'Nuevo', align: 'center', position: 'bottom', size: 'l', logo: false, background: 'capoeira' },
+  ];
+  app.controller.setReady(true);
+  db.emit(true);
+  const classes = () => app.nodes['feedback-story-content'].className;
+  assert.equal(classes(), 'feedback-story-content reel-align-left reel-pos-top reel-size-m reel-bg-texture');
+  app.tap(300);
+  assert.equal(classes(), 'feedback-story-content reel-align-center reel-pos-bottom reel-size-l reel-bg-capoeira reel-photo reel-no-logo');
+  // Unknown values fall back to the defaults; the default frequency is 3 times a day.
+  assert.deepEqual({ ...app.template.layout({ align: 'diagonal', size: 'xl', background: 'http://evil', frequency: 'hourly' }) },
+    { logo: true, align: 'left', position: 'top', size: 'm', background: 'texture', frequency: 'daily3' });
+});
+
+test('default frequency shows a reel up to 3 times a day; a new day starts again', () => {
+  const db = settingsSource(), app = member(db);
+  app.controller.setReady(true);
+  db.emit(true);
+  for (let open = 1; open <= 3; open += 1) {
+    assert.equal(app.story.open, true, `open ${open} shows the reel`);
+    app.tap(20); app.tap(20); // going back on the same reel does not count twice
+    app.close.dispatch('click');
+    app.resume();
+  }
+  assert.equal(app.story.open, false, 'the 4th open of the day shows nothing');
+  assert.deepEqual(JSON.parse(app.localStorage.data.madnessReelViews), { default: { day: mexicoDay(), count: 3 } });
+
+  // Seen 3 times yesterday: today it shows again.
+  const nextDb = settingsSource();
+  const next = member(nextDb, memoryStorage({ madnessReelViews: JSON.stringify({ default: { day: mexicoDay(-1), count: 3 } }) }));
+  next.controller.setReady(true);
+  nextDb.emit(true);
+  assert.equal(next.story.open, true);
+});
+
+test('once, daily and always frequencies; only allowed reels join the story', () => {
+  const views = { a: { day: mexicoDay(-30), count: 1 }, b: { day: mexicoDay(), count: 1 }, c: { day: mexicoDay(), count: 9 } };
+  const db = settingsSource(), app = member(db, memoryStorage({ madnessReelViews: JSON.stringify(views) }));
+  db.reels = [
+    { id: 'a', order: 1, title: 'Una vez', frequency: 'once' },     // seen a month ago → never again
+    { id: 'b', order: 2, title: 'Diario', frequency: 'daily' },     // seen today → not again today
+    { id: 'c', order: 3, title: 'Siempre', frequency: 'always' },   // always shows
+    { id: 'd', order: 4, title: 'Nuevo', frequency: 'once' },       // never seen → shows
+  ];
+  app.controller.setReady(true);
+  db.emit(true);
+  assert.match(app.nodes['feedback-copy'].innerHTML, /Siempre/);
+  assert.equal((app.nodes['feedback-steps'].innerHTML.match(/feedback-step/g) || []).length, 2, 'only 2 segments');
+  app.tap(300);
+  assert.match(app.nodes['feedback-copy'].innerHTML, /Nuevo/);
+  app.tap(300);
+  app.resume();
+  assert.match(app.nodes['feedback-copy'].innerHTML, /Siempre/, 'next open: the "once" reel is gone');
+  assert.equal((app.nodes['feedback-steps'].innerHTML.match(/feedback-step/g) || []).length, 1);
 });

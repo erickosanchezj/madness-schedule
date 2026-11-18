@@ -1,6 +1,6 @@
 // scripts/member/feedback.js
-// Plays the active reels one after another (story style) on entry and app resume.
-// Respects the admin on/off switch and the reels staff edit; the form banner stays available.
+// Plays the active reels one after another (story style) on entry and app resume, each with its own layout.
+// Respects the admin on/off switch, the reels staff edit and how often each reel may show; the form banner stays available.
 // RELEVANT FILES: index.html, scripts/reel-template.js, styles/member-feedback.css, scripts/admin/reels.js
 (() => {
   const story = document.getElementById('feedback-story');
@@ -8,6 +8,8 @@
   const pauseButton = story.querySelector('.feedback-pause');
   const steps = document.getElementById('feedback-steps'); // one visual segment per reel
   const link = document.getElementById('feedback-story-link');
+  const content = document.getElementById('feedback-story-content'); // gets the reel's layout classes
+  const VIEWS_KEY = 'madnessReelViews'; // { [reelId]: { day: 'YYYY-MM-DD', count } } on this phone
   let ready = false;
   let enabled = false;
   let unsubscribeSettings;
@@ -24,12 +26,14 @@
   let frame;
   let previousFocus;
   let returningFromForm = false;
+  let seenThisStory = new Set(); // going back to a reel in the same story does not count twice
 
   // Puts one reel's text, button and seconds on screen.
   function render(reel) {
     const template = window.madnessReel;
     duration = (template ? template.seconds(reel) : 5) * 1000;
     if (!template) return;
+    content.className = `feedback-story-content ${template.className(reel)}`;
     document.getElementById('feedback-copy').innerHTML = template.copyHTML(reel);
     document.getElementById('feedback-action').hidden = !reel.ctaUrl; // no link = no button
     if (reel.ctaUrl) link.href = reel.ctaUrl;
@@ -44,11 +48,38 @@
       `<span class="feedback-step${i < index ? ' is-done' : i === index ? ' is-current' : ''}"><i></i></span>`).join('');
   }
 
+  // ----- How often a reel shows: remembered per reel and per Mexico City day, on this phone only. -----
+  const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+  function readViews() {
+    try { return JSON.parse(localStorage.getItem(VIEWS_KEY)) || {}; } catch { return {}; }
+  }
+  function canShow(reel, views) {
+    const seen = views[reel.id] || {};
+    const countToday = seen.day === today() ? Number(seen.count) || 0 : 0;
+    const frequency = window.madnessReel ? window.madnessReel.layout(reel).frequency : 'daily3';
+    if (frequency === 'once') return !seen.day; // never seen on this phone
+    if (frequency === 'daily') return countToday < 1;
+    if (frequency === 'daily3') return countToday < 3;
+    return true; // 'always'
+  }
+  function markSeen(reel) {
+    if (!reel?.id || seenThisStory.has(reel.id)) return;
+    seenThisStory.add(reel.id);
+    const views = readViews();
+    const day = today();
+    const count = views[reel.id]?.day === day ? (Number(views[reel.id].count) || 0) + 1 : 1;
+    // Keep only reels that still exist, so the record stays tiny.
+    const kept = Object.fromEntries(Object.entries(views).filter(([id]) => reels.some(r => r.id === id)));
+    kept[reel.id] = { day, count };
+    try { localStorage.setItem(VIEWS_KEY, JSON.stringify(kept)); } catch { /* private mode: show without counting */ }
+  }
+
   function showStep(next) {
     index = next;
     elapsed = 0;
     lastTick = 0;
     render(queue[index] || {});
+    markSeen(queue[index]);
     progress.max = duration;
     progress.value = 0;
     drawSteps();
@@ -94,8 +125,13 @@
     if (!ready || !enabled || !reelsLoaded || !reels.length || document.hidden || story.open) return;
     // A booking/profile dialog must retain priority over this announcement.
     if (document.querySelector('dialog[open]')) return;
+    // Only the reels this member may still see now (frequency); none left means no story.
+    const views = readViews();
+    const allowed = reels.filter(reel => canShow(reel, views));
+    if (!allowed.length) return;
     previousFocus = document.activeElement;
-    queue = reels;
+    queue = allowed;
+    seenThisStory = new Set();
     showStep(0);
     story.showModal();
     setPaused(false);

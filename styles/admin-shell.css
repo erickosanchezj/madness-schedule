@@ -193,11 +193,38 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
 .admin-reel-editor { display: grid; gap: var(--space-lg); margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid var(--color-rule); }
 .admin-reel-editor[hidden] { display: none; }
 /* Phone-sized frame; the story inside uses the member app's own styles. */
-.admin-reel-phone { width: 100%; max-width: 360px; height: 640px; overflow: hidden; border: 1px solid var(--color-rule); border-radius: 28px; background: var(--color-paper); }
+.admin-reel-phone { width: 360px; max-width: 100%; height: 640px; overflow: hidden; border: 1px solid var(--color-rule); border-radius: 28px; background: var(--color-paper); }
+.admin-reel-phone.is-small { width: 320px; height: 568px; }
+.admin-reel-phone.is-large { width: 390px; height: 844px; }
 .admin-reel-phone .feedback-story-content { width: 100%; height: 100%; min-height: 0; overflow: hidden; }
-.admin-reel-phone #feedback-title { font-size: 34px; }
 .admin-reel-phone img { outline: none; } /* admin.css outlines every image; not inside the phone */
-@media (min-width: 1024px) { .admin-reel-editor { grid-template-columns: minmax(0, 1fr) 360px; } }
+/* "Chico" copies the short-screen rules of styles/member-feedback.css (max-height: 650px), which a frame cannot trigger. */
+.admin-reel-phone.is-small .feedback-logo { width: 75%; align-self: center; margin-block: 8px; }
+.admin-reel-phone.is-small .feedback-story-action { padding-top: 12px; }
+.admin-reel-phone.is-small #feedback-title { font-size: 28px; }
+.admin-reel-phone.is-small .reel-size-s #feedback-title { font-size: 24px; }
+.admin-reel-phone.is-small .reel-size-l #feedback-title { font-size: 32px; }
+.admin-reel-phone.is-small #feedback-title br { display: none; }
+.admin-reel-phone.is-small #feedback-description { margin-top: 16px; font-size: 15px; }
+.admin-reel-phone.is-small .feedback-eyebrow { margin-bottom: 10px; font-size: 14px; }
+@media (min-width: 1024px) { .admin-reel-editor { grid-template-columns: minmax(0, 1fr) auto; } }
+/* Layout choices: radio buttons (and the preview size buttons) drawn as pills. */
+.admin-seg { min-width: 0; margin: 0; padding: 0; border: 0; }
+.admin-seg-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-seg-options label, .admin-seg-options button {
+  position: relative; display: inline-flex; flex: 1 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 40px; padding: 6px 10px; border: 1px solid var(--color-rule); border-radius: var(--radius-input);
+  background: var(--color-paper); color: var(--color-ink-2); font-size: .875rem; cursor: pointer;
+}
+.admin-seg-options input { position: absolute; opacity: 0; pointer-events: none; }
+.admin-seg-options label:has(.admin-reel-thumb) { flex: 0 0 72px; } /* background tiles keep one size */
+.admin-seg-options label:has(input:checked), .admin-seg-options button[aria-pressed='true'] { border-color: var(--color-accent); background: rgb(219 62 177 / 18%); color: var(--color-accent-text); font-weight: 700; }
+.admin-seg-options label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.admin-seg-hint { margin-top: 4px; color: var(--color-muted); font-size: .75rem; }
+/* Background thumbnails; the class photos come from the .reel-bg-* rules in member-feedback.css. */
+.admin-reel-thumb { width: 48px; height: 48px; border: 1px solid var(--color-rule); border-radius: 8px; background-color: var(--color-paper); background-position: center; background-size: cover; }
+.admin-reel-thumb.reel-bg-texture { background-image: url('../images/backgrounds/madness-texture.webp'); }
+.admin-reel-thumb.reel-bg-arcs { background-image: url('../images/backgrounds/madness-pink-arcs.webp'); background-position: center bottom; }
 
 /* Banner preview: the member banner's own classes, dimmed when it is turned off. */
 .admin-banner-preview { border-radius: var(--radius-input); }

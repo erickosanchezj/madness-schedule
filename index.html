@@ -42,10 +42,10 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261119-clean">
     <link rel="stylesheet" href="./styles/member-shell.css?v=20261119-clean">
     <link rel="stylesheet" href="./styles/madness-theme.css?v=20261119-clean">
-    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261119-banner">
+    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261119-layout">
     <link rel="stylesheet" href="./styles/member-screens.css?v=20261119">
-    <script src="./scripts/reel-template.js?v=20261118-reels" defer></script>
-    <script src="./scripts/member/feedback.js?v=20261119-only-active" defer></script>
+    <script src="./scripts/reel-template.js?v=20261119-layout" defer></script>
+    <script src="./scripts/member/feedback.js?v=20261119-layout" defer></script>
     <script src="./scripts/member/banner.js?v=20261119" defer></script>
     <script src="./scripts/app-accessibility.js" defer></script>
 
@@ -90,7 +90,7 @@
     </div>
 
     <dialog id="feedback-story" aria-labelledby="feedback-title" aria-describedby="feedback-description">
-      <div class="feedback-story-content">
+      <div id="feedback-story-content" class="feedback-story-content">
         <!-- One segment per active reel (filled by scripts/member/feedback.js); the progress is for screen readers. -->
         <div id="feedback-steps" class="feedback-steps" aria-hidden="true"></div>
         <progress class="sr-only" max="5000" value="0" aria-label="Progreso del anuncio"></progress>
