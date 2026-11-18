@@ -31,6 +31,14 @@ Object.assign(AdminPanel, {
     container?.querySelector('[data-action="close-member"]')?.focus();
   },
 
+  // Re-reads one member after a change (strikes, unlock) and redraws their open card.
+  async refreshOpenMemberCard(userId){
+    const fresh = await this.db.collection('users').doc(userId).get();
+    const index = this.state.userSearchResults.findIndex(doc => doc.id === userId);
+    if (index !== -1) this.state.userSearchResults.splice(index, 1, fresh);
+    this.renderUserCards();
+  },
+
   closeMemberCard(){
     this.state.userSearchResults = [];
     this.renderUserCards();

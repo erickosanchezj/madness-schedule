@@ -146,10 +146,16 @@ Object.assign(AdminPanel, {
     }
 
     // Event handlers for modal buttons
-    document.getElementById('delete-button').onclick = () => {
-      if (confirm('¿Estás seguro de eliminar esta clase?')) {
-        this.deleteClass();
-      }
+    // Red confirm dialog that says how many bookings and waitlist entries go with the class.
+    document.getElementById('delete-button').onclick = async () => {
+      const booked = (this.state.bookingsMap.get(cls.id) || []).length;
+      const waiting = (this.state.waitlistsMap.get(cls.id) || []).length;
+      const ok = await this.confirmDanger({
+        title: `¿Eliminar ${cls.name || 'esta clase'}?`,
+        message: `También se borrarán ${booked} reservas y ${waiting} personas en lista de espera. No se puede deshacer.`,
+        confirmLabel: 'Eliminar clase'
+      });
+      if (ok) this.deleteClass();
     };
     document.getElementById('cancel-button').onclick = () => this.hideClassModal();
     document.getElementById('save-button').onclick = () => this.saveClass();

@@ -32,6 +32,8 @@ Object.assign(AdminPanel, {
       query = query.where('totalPass','==',true).where('totalPassVerified','==',false);
     } else if (filter === 'unpaid') {
       query = query.where('subscriptionStatus','==','unpaid');
+    } else if (filter === 'blacklisted') {
+      query = query.where('blacklisted','==',true);
     }
 
     this.state.unsubSubscriptionUsers = query.onSnapshot(snapshot => {
@@ -183,7 +185,7 @@ Object.assign(AdminPanel, {
       return `
         <tr>
           <td class="p-3">
-            <button type="button" onclick="AdminPanel.openMemberCard('${user.id}')" class="admin-member-link font-medium text-left">${safeName}</button>
+            <button type="button" onclick="AdminPanel.openMemberCard('${user.id}')" class="admin-member-link font-medium text-left">${safeName}</button>${user.blacklisted ? ' <span class="admin-blocked-badge">Bloqueado</span>' : ''}
             <div class="text-xs text-zinc-400">${safeEmail}</div>
           </td>
           <td class="p-3">

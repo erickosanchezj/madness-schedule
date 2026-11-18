@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261104">
     <script src="./scripts/app-accessibility.js" defer></script>
     <link rel="stylesheet" href="./styles/admin.css?v=20261118-3days">
-    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-hoy">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-danger">
   </head>
   <body data-app="admin" class="bg-zinc-900 text-white">
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -91,7 +91,7 @@
           <div data-view="week"></div>
         </div>
 
-        <!-- MIEMBROS: one members table (tap a name for details) and the blacklist. -->
+        <!-- MIEMBROS: one members table (tap a name for details) and the danger zone. -->
         <div id="panel-miembros" role="tabpanel" aria-labelledby="tab-btn-miembros" data-tab-panel="miembros" class="admin-panel-view" hidden>
           <div class="admin-view-head">
             <div>
@@ -102,15 +102,11 @@
 
           <div data-view="subscriptions"></div>
 
-          <section class="admin-card" aria-labelledby="blacklist-title">
-            <h2 id="blacklist-title" class="admin-card-title">Lista negra</h2>
-            <p class="text-sm text-zinc-400 mb-4">Revisa usuarios bloqueados por cancelaciones tardías y rehabilítalos cuando sea necesario.</p>
-            <div class="flex flex-wrap gap-2">
-              <button id="list-blacklisted-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-md">Listar usuarios en lista negra</button>
-              <button id="reset-strikes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md">Resetear strikes (todos)</button>
-            </div>
-            <p id="blacklisted-users-feedback" class="text-xs text-zinc-400 mt-3 hidden"></p>
-            <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+          <!-- Danger zone: global actions kept apart from everyday member tools. -->
+          <section class="admin-card admin-danger-zone" aria-labelledby="blacklist-title">
+            <h2 id="blacklist-title" class="admin-card-title">Zona de riesgo</h2>
+            <p class="text-sm text-zinc-400 mb-4">Pone en 0 los strikes de todos y desbloquea a todos los que están en lista negra. Para ver o rehabilitar a una sola persona, usa el filtro "En lista negra" de la lista de miembros.</p>
+            <button id="reset-strikes-btn" class="admin-danger-btn">Resetear strikes (todos)</button>
           </section>
         </div>
 
@@ -192,6 +188,7 @@
     <script src="./scripts/admin/views/reports.js"></script>
     <script src="./scripts/admin/views/class-modal.js"></script>
     <script src="./scripts/admin/core.js"></script>
+    <script src="./scripts/admin/confirm-dialog.js"></script>
     <script src="./scripts/admin/init.js"></script>
     <script src="./scripts/admin/listeners.js"></script>
     <script src="./scripts/admin/notifications.js"></script>

@@ -64,6 +64,8 @@ Object.assign(AdminPanel, {
     };
     const chartSkeleton = '<div class="h-64 bg-zinc-700/50 rounded animate-pulse"></div>';
     ensure('trend', () => document.getElementById('attendanceTrendChart'), chartSkeleton);
+    ensure('utilization', () => document.getElementById('utilizationChart'), chartSkeleton);
+    ensure('periodRevenue', () => document.getElementById('periodRevenueChart'), chartSkeleton);
     ensure('revenue', () => document.getElementById('revenueChart'), chartSkeleton);
     ensure('retention', () => document.getElementById('retentionChart'), chartSkeleton);
     ensure('popularity', () => document.getElementById('popularityChart'), chartSkeleton);
@@ -76,6 +78,23 @@ Object.assign(AdminPanel, {
       if (!entry?.parent || !entry.html) return;
       if (entry.parent.innerHTML !== entry.html) {
         entry.parent.innerHTML = entry.html;
+      }
+    });
+  },
+
+  // One simple line chart with a single y axis. Hides its card when the metric is unchecked.
+  renderPeriodLineChart(canvasId, show, labels, label, data, color, tickFormat){
+    const canvas = document.getElementById(canvasId);
+    const card = canvas?.closest('[data-chart-card]');
+    if (card) card.hidden = !show;
+    if (!canvas || !show) return null;
+    return new Chart(canvas.getContext('2d'), {
+      type:'line',
+      data:{ labels, datasets:[{ label, data, borderColor:color, backgroundColor:color, tension:0.2, fill:false }] },
+      options:{
+        responsive:true,
+        scales:{ x:{ ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } }, y:{ beginAtZero:true, ticks:{ color:'#a1a1aa', callback:tickFormat }, grid:{ color:'#3f3f46' } } },
+        plugins:{ legend:{ display:false } }
       }
     });
   },
@@ -113,12 +132,6 @@ Object.assign(AdminPanel, {
     if (selected.has('booked')){
       datasets.push({ label:'Reservas', data: metrics.map(m=>m.booked||0), backgroundColor:'rgba(59,130,246,0.6)', stack:'counts' });
     }
-    if (selected.has('utilization')){
-      datasets.push({ label:'Utilización %', data: metrics.map(m=>m.utilizationRate||0), type:'line', yAxisID:'y1', borderColor:'#a855f7', tension:0.2, fill:false, pointBackgroundColor:'#a855f7' });
-    }
-    if (selected.has('revenue')){
-      datasets.push({ label:'Ingresos estimados', data: metrics.map(m=>m.revenue||0), type:'line', yAxisID:'y2', borderColor:'#fbbf24', tension:0.2, fill:false, pointBackgroundColor:'#fbbf24' });
-    }
     this.destroyAttendanceCharts();
     this.state.attendanceCharts.trend = new Chart(trendCtx, {
       type:'bar',
@@ -127,13 +140,19 @@ Object.assign(AdminPanel, {
         responsive:true,
         scales:{
           x:{ stacked:true, ticks:{ color:'#d4d4d8' }, grid:{ color:'#3f3f46' } },
-          y:{ stacked:true, ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } },
-          y1:{ position:'right', beginAtZero:true, ticks:{ color:'#c4b5fd', callback:v=>v+'%' }, grid:{ drawOnChartArea:false } },
-          y2:{ position:'right', beginAtZero:true, ticks:{ color:'#facc15', callback:v=>`$${v}` }, grid:{ drawOnChartArea:false } }
+          y:{ stacked:true, ticks:{ color:'#a1a1aa' }, grid:{ color:'#3f3f46' } }
         },
         plugins:{ legend:{ labels:{ color:'#e4e4e7' } } }
       }
     });
+
+    // Utilization (%) and revenue ($) used to share the bar chart on extra axes.
+    // Now each has its own chart; the "Métricas" checkboxes show or hide them.
+    const charts = this.state.attendanceCharts;
+    charts.utilization = this.renderPeriodLineChart('utilizationChart', selected.has('utilization'), labels,
+      'Utilización %', metrics.map(m=>m.utilizationRate||0), '#a855f7', v=>`${v}%`);
+    charts.periodRevenue = this.renderPeriodLineChart('periodRevenueChart', selected.has('revenue'), labels,
+      'Ingresos estimados', metrics.map(m=>m.revenue||0), '#fbbf24', v=>`$${v}`);
 
     if (revenueCtx){
       const revenueSeries = dataCache.aggregates?.revenueSeries || [];

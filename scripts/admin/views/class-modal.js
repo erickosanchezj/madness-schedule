@@ -3,7 +3,7 @@
 // Moved out of admin.html; must exist before app-accessibility.js runs.
 // RELEVANT FILES: admin.html, scripts/admin/class-modal.js, scripts/app-accessibility.js
 
-// Replaces the placeholder in admin.html with the exact original markup.
+// Replaces the placeholder in admin.html with the modal markup (labeled fields).
 document.querySelector('[data-view="class-modal"]').outerHTML = `
     <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
       <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -16,46 +16,49 @@ document.querySelector('[data-view="class-modal"]').outerHTML = `
           </nav>
         </div>
         <div id="details-content" role="tabpanel" aria-labelledby="tab-details">
+          <!-- Every field has a visible label; the small text under it explains what to enter. -->
           <div class="mt-4">
-            <input type="text" id="class-name" aria-label="Nombre de la clase" placeholder="Nombre de la clase" class="w-full bg-zinc-700 p-2 rounded">
-            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Escribe el nombre que verán los alumnos en el horario.</p>
+            <label for="class-name" class="field-label">Nombre de la clase</label>
+            <input type="text" id="class-name" placeholder="Ej: TRX" class="w-full bg-zinc-700 p-2 rounded">
+            <p class="text-xs text-zinc-400 mt-1">Es el nombre que verán los alumnos en el horario.</p>
           </div>
           <div class="mt-4">
-            <input type="text" id="class-instructor" aria-label="Instructor de la clase" placeholder="Instructor" class="w-full bg-zinc-700 p-2 rounded">
-            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica quién impartirá la sesión.</p>
+            <label for="class-instructor" class="field-label">Instructor</label>
+            <input type="text" id="class-instructor" placeholder="Ej: Ana" class="w-full bg-zinc-700 p-2 rounded">
           </div>
-          <div class="mt-4">
-            <input type="text" id="class-time" aria-label="Hora de la clase" placeholder="Hora (ej. 18:00)" class="w-full bg-zinc-700 p-2 rounded">
-            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Coloca la hora de inicio en formato 24 horas.</p>
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div class="flex flex-col">
+              <label for="class-date" class="field-label">Fecha</label>
+              <input type="date" id="class-date" class="w-full bg-zinc-700 p-2 rounded">
+            </div>
+            <div class="flex flex-col">
+              <label for="class-time" class="field-label">Hora de inicio</label>
+              <input type="time" id="class-time" class="w-full bg-zinc-700 p-2 rounded">
+            </div>
           </div>
           <p id="class-time-warning" class="mt-2 text-xs text-amber-400 hidden"></p>
-          <div class="mt-4">
-            <textarea id="class-description" aria-label="Descripción de la clase" placeholder="Descripción" class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
-            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Resume la dinámica o enfoque de la clase.</p>
-          </div>
           <div class="grid grid-cols-2 gap-4 mt-4">
             <div class="flex flex-col">
-              <input type="date" id="class-date" aria-label="Fecha de la clase" placeholder="Fecha" class="w-full bg-zinc-700 p-2 rounded">
-              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Selecciona la fecha exacta de la clase.</p>
+              <label for="class-duration" class="field-label">Duración (min)</label>
+              <input type="number" id="class-duration" placeholder="60" class="w-full bg-zinc-700 p-2 rounded" min="30" max="960">
             </div>
             <div class="flex flex-col">
-              <input type="number" id="class-capacity" aria-label="Capacidad de la clase" placeholder="Capacidad" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
-              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Define el número máximo de asistentes.</p>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4 mt-4">
-            <div class="flex flex-col">
-              <input type="number" id="class-duration" aria-label="Duración en minutos" placeholder="Duración (min)" class="w-full bg-zinc-700 p-2 rounded" min="30" max="960">
-              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Indica cuánto dura la sesión en minutos.</p>
-            </div>
-            <div class="flex flex-col">
-              <input type="number" id="class-enrolled" aria-label="Personas inscritas" placeholder="Inscritos" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
-              <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Consulta cuántos alumnos están inscritos ahora.</p>
+              <label for="class-capacity" class="field-label">Capacidad</label>
+              <input type="number" id="class-capacity" placeholder="15" class="w-full bg-zinc-700 p-2 rounded" min="1" max="30">
             </div>
           </div>
           <div class="mt-4">
-            <input type="url" id="class-image" aria-label="URL de imagen de la clase" placeholder="URL de imagen" class="w-full bg-zinc-700 p-2 rounded">
-            <p class="text-xs text-zinc-400 mt-1 text-left sm:text-right">Pega la URL de la foto o banner de la clase.</p>
+            <label for="class-enrolled" class="field-label">Inscritos ahora</label>
+            <input type="number" id="class-enrolled" class="w-full bg-zinc-700 p-2 rounded" min="0" readonly>
+          </div>
+          <div class="mt-4">
+            <label for="class-description" class="field-label">Descripción</label>
+            <textarea id="class-description" placeholder="Resume la dinámica o enfoque de la clase." class="w-full bg-zinc-700 p-2 rounded h-24"></textarea>
+          </div>
+          <div class="mt-4">
+            <label for="class-image" class="field-label">URL de imagen</label>
+            <input type="url" id="class-image" placeholder="https://…" class="w-full bg-zinc-700 p-2 rounded">
+            <p class="text-xs text-zinc-400 mt-1">Pega la URL de la foto o banner de la clase.</p>
           </div>
           <div class="mt-4 p-4 bg-zinc-700 rounded-lg border border-zinc-600">
             <h3 class="text-lg font-semibold mb-3">Reservas Manuales (WhatsApp)</h3>
@@ -92,7 +95,7 @@ document.querySelector('[data-view="class-modal"]').outerHTML = `
           <button id="save-attendance-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 hidden">Guardar Asistencia</button>
         </div>
         <div class="flex justify-end gap-3 pt-2">
-          <button id="delete-button" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded">Eliminar</button>
+          <button id="delete-button" class="admin-danger-btn">Eliminar</button>
           <button id="cancel-button" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded">Cancelar</button>
           <button id="save-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar Cambios</button>
         </div>

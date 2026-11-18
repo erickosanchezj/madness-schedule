@@ -31,8 +31,6 @@ Object.assign(AdminPanel, {
     document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
     document.getElementById('create-class-btn').onclick = () => this.showCreateClassModal();
     document.getElementById('att-refresh').onclick = () => this.fetchAttendanceData(true);
-    const blacklistBtn = document.getElementById('list-blacklisted-btn');
-    if (blacklistBtn) blacklistBtn.onclick = () => this.listBlacklistedUsers();
     const resetStrikesBtn = document.getElementById('reset-strikes-btn');
     if (resetStrikesBtn) resetStrikesBtn.onclick = () => this.resetAllStrikesForEveryone();
     const manualBookingsBtn = document.getElementById('generate-manual-bookings-btn');

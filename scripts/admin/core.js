@@ -31,7 +31,6 @@ const AdminPanel = {
     attendanceRangeKey: '',
     attendanceTickTimer: null,
     userSearchResults: [], // the member open in the detail card (0 or 1 docs)
-    blacklistedUsers: [],
     analyticsTracker: {
       bookingTimeline: {}
     },

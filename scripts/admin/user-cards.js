@@ -25,12 +25,16 @@ Object.assign(AdminPanel, {
       <div class="p-4 bg-zinc-700/50 rounded-lg">
         <h4 class="font-bold">${safeName}</h4>
         <p class="text-sm text-zinc-400">${safeEmail}</p>
-        <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3</p>
+        <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3${userData.blacklisted ? ' · En lista negra' : ''}</p>
         <div class="mt-3 flex flex-wrap gap-2">
           <button data-action="set-three-strikes" data-user-id="${safeUid}"${strikesBtnDisabled}
                   class="${strikesBtnClass} font-semibold py-2 px-3 rounded-md text-sm">
             ${strikesBtnLabel}
           </button>
+          ${userData.blacklisted ? `<button data-action="whitelist-user" data-user-id="${safeUid}"
+                  class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-3 rounded-md text-sm">
+            Rehabilitar
+          </button>` : ''}
           <button data-action="password-reset" data-email="${safeEmailAttr}"
                   class="bg-zinc-600 hover:bg-zinc-700 text-white font-semibold py-2 px-3 rounded-md text-sm">
             Reiniciar contraseña
@@ -120,6 +124,9 @@ Object.assign(AdminPanel, {
     document.querySelectorAll('[data-action="set-three-strikes"]').forEach(btn=>{
       btn.onclick = () => this.setUserToThreeStrikes(btn.dataset.userId);
     });
+    document.querySelectorAll('[data-action="whitelist-user"]').forEach(btn=>{
+      btn.onclick = () => this.whitelistUser(btn.dataset.userId);
+    });
     document.querySelectorAll('[data-action="password-reset"]').forEach(btn=>{
       btn.onclick = () => this.sendPasswordReset(btn.dataset.email);
     });
@@ -152,17 +159,7 @@ Object.assign(AdminPanel, {
         blacklistedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge:true });
 
-      const refreshedDoc = await this.db.collection('users').doc(userId).get();
-      const index = this.state.userSearchResults.findIndex(doc => doc.id === userId);
-      if (index !== -1){
-        this.state.userSearchResults.splice(index, 1, refreshedDoc);
-      }
-      this.renderUserCards();
-
-      const blacklistContainer = document.getElementById('blacklisted-users-container');
-      if (blacklistContainer && blacklistContainer.innerHTML.trim()){
-        await this.listBlacklistedUsers();
-      }
+      await this.refreshOpenMemberCard(userId);
 
       this.showToast({
         title:'3 strikes aplicados',

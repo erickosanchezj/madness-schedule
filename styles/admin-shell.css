@@ -177,6 +177,26 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
 .admin-member-link { min-height: 0; padding: 0; color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent); text-underline-offset: .2em; }
 .admin-member-link:hover { color: var(--color-accent-text); }
 
+/* --- Destructive actions: red button, danger zone card and confirm dialog --- */
+.admin-danger-btn { padding: var(--space-xs) var(--space-md); border-radius: var(--radius-input); background: #be123c; color: #fff; font-weight: 700; }
+.admin-danger-btn:hover { background: #e11d48; }
+.admin-danger-zone { border-color: rgb(225 29 72 / 45%); border-top-color: rgb(225 29 72 / 70%); }
+.admin-danger-zone .admin-card-title::before { background: #e11d48; }
+.admin-confirm { width: min(420px, calc(100% - 32px)); padding: var(--space-lg); border: 1px solid rgb(225 29 72 / 50%); border-radius: var(--radius-card); background: var(--color-paper-2); color: var(--color-ink); }
+.admin-confirm::backdrop { background: var(--color-overlay); }
+.admin-confirm h2 { margin-bottom: var(--space-sm); font-size: 1.125rem; font-weight: 700; }
+.admin-confirm p { margin-bottom: var(--space-md); color: var(--color-ink-2); font-size: .9375rem; }
+.admin-confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-lg); }
+.admin-blocked-badge { display: inline-block; margin-left: var(--space-2xs); padding: 0 var(--space-xs); border-radius: 999px; background: rgb(225 29 72 / 18%); color: var(--color-error); font-size: .6875rem; font-weight: 700; }
+
+/* --- Reports: chart titles and the collapsible "Más detalle" block --- */
+.admin-chart-title { margin-bottom: var(--space-xs); color: var(--color-ink-2); font-size: .875rem; font-weight: 600; }
+.admin-more > summary { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border: 1px solid var(--color-rule); border-radius: var(--radius-input); color: var(--color-accent-text); font-weight: 600; cursor: pointer; list-style: none; }
+.admin-more > summary::-webkit-details-marker { display: none; }
+.admin-more > summary::before { content: '▸'; transition: transform var(--dur-micro); }
+.admin-more[open] > summary::before { transform: rotate(90deg); }
+.admin-more-body { padding-top: var(--space-md); }
+
 @media (prefers-reduced-motion: reduce) {
   .admin-login-logo { filter: none; }
 }

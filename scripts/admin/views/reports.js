@@ -17,6 +17,7 @@ document.querySelector('[data-view="subscriptions"]').outerHTML = `
               <option value="monthly-unpaid">Mensuales No Pagados</option>
               <option value="totalpass-pending">TotalPass Pendientes</option>
               <option value="unpaid">No Pagados</option>
+              <option value="blacklisted">En lista negra</option>
             </select>
 
             <input
@@ -149,28 +150,51 @@ document.querySelector('[data-view="reports"]').outerHTML = `
               </div>
             </div>
           </div>
+          <!-- Main charts: one clear axis each (counts, %, $). Each canvas sits in its own div
+               because the loading skeleton swaps that div's content. -->
           <div class="space-y-4">
             <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
-              <canvas id="attendanceTrendChart"></canvas>
+              <h3 class="admin-chart-title">Asistencia</h3>
+              <div><canvas id="attendanceTrendChart"></canvas></div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
-                <div id="capacity-heatmap" class="grid grid-cols-1 gap-2 text-xs text-zinc-300 min-h-[180px]"></div>
+              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4" data-chart-card>
+                <h3 class="admin-chart-title">Utilización %</h3>
+                <div><canvas id="utilizationChart"></canvas></div>
               </div>
-              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
-                <canvas id="revenueChart"></canvas>
-              </div>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
-                <canvas id="retentionChart"></canvas>
-              </div>
-              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
-                <canvas id="popularityChart"></canvas>
+              <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4" data-chart-card>
+                <h3 class="admin-chart-title">Ingresos estimados</h3>
+                <div><canvas id="periodRevenueChart"></canvas></div>
               </div>
             </div>
           </div>
-          <div id="attendance-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
+          <!-- Advanced charts stay closed until staff ask for them. -->
+          <details class="admin-more">
+            <summary>Más detalle: horarios, meta de ingresos, retención, popularidad y desglose por día</summary>
+            <div class="space-y-4 admin-more-body">
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                  <h3 class="admin-chart-title">Asistentes por horario</h3>
+                  <div><div id="capacity-heatmap" class="grid grid-cols-1 gap-2 text-xs text-zinc-300 min-h-[180px]"></div></div>
+                </div>
+                <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                  <h3 class="admin-chart-title">Ingresos vs meta por día</h3>
+                  <div><canvas id="revenueChart"></canvas></div>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                  <h3 class="admin-chart-title">Retención</h3>
+                  <div><canvas id="retentionChart"></canvas></div>
+                </div>
+                <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">
+                  <h3 class="admin-chart-title">Clases más populares</h3>
+                  <div><canvas id="popularityChart"></canvas></div>
+                </div>
+              </div>
+              <div id="attendance-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm"></div>
+            </div>
+          </details>
         </div>
       </section>
 `;
