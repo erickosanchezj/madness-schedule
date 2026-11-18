@@ -42,9 +42,10 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261112-profile-card">
     <link rel="stylesheet" href="./styles/member-shell.css?v=20261112-native-viewport">
     <link rel="stylesheet" href="./styles/madness-theme.css?v=20261112-smoky-cards">
-    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261118-reels">
+    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261119-banner">
     <script src="./scripts/reel-template.js?v=20261118-reels" defer></script>
     <script src="./scripts/member/feedback.js?v=20261119-only-active" defer></script>
+    <script src="./scripts/member/banner.js?v=20261119" defer></script>
     <script src="./scripts/app-accessibility.js" defer></script>
 
   </head>
@@ -65,7 +66,8 @@
         <a id="feedback-banner" class="feedback-banner" target="_blank" rel="noopener noreferrer"
           href="https://docs.google.com/forms/d/e/1FAIpQLSfe_odZeI0RBcS9WPdyUgabFLQSelxqHenmeGho4Gq5-a376Q/viewform">
           <i data-lucide="link" aria-hidden="true"></i>
-          <span>Queremos escucharte<small>Responder formulario <i data-lucide="arrow-up-right" aria-hidden="true"></i></small></span>
+          <!-- Text and link are editable in admin → Avisos (scripts/member/banner.js applies them). -->
+          <span><span id="feedback-banner-title">Queremos escucharte</span><small><span id="feedback-banner-link">Responder formulario</span> <i data-lucide="arrow-up-right" aria-hidden="true"></i></small></span>
           <i data-lucide="chevron-right" aria-hidden="true"></i>
           <span class="sr-only">(abre en otra pestaña)</span>
         </a>

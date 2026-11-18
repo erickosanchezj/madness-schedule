@@ -38,6 +38,8 @@ const AdminPanel = {
     reels: [],              // all reels, sorted by order (scripts/admin/reels.js)
     unsubReels: null,
     editingReelId: null,
+    unsubBanner: null,      // live listener on appSettings/feedbackBanner (scripts/admin/banner.js)
+    bannerDirty: false,     // true while staff have unsaved banner edits
     analyticsTracker: {
       bookingTimeline: {}
     },

@@ -112,6 +112,20 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ===== BANNER ABOVE THE MEMBER MENU (edited in admin → Avisos) =====
+    match /appSettings/feedbackBanner {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['enabled', 'title', 'linkText', 'url'])
+        && request.resource.data.enabled is bool
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 60
+        && request.resource.data.linkText is string && request.resource.data.linkText.size() <= 40
+        && request.resource.data.url is string && request.resource.data.url.size() <= 500
+        && request.resource.data.url.matches('https://.*');
+      allow delete: if false;
+    }
+
     // ===== REPORT SETTINGS (price per class for estimated revenue) =====
     match /appSettings/reports {
       allow read: if isAdmin();

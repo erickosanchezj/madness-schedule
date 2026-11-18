@@ -199,6 +199,10 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
 .admin-reel-phone img { outline: none; } /* admin.css outlines every image; not inside the phone */
 @media (min-width: 1024px) { .admin-reel-editor { grid-template-columns: minmax(0, 1fr) 360px; } }
 
+/* Banner preview: the member banner's own classes, dimmed when it is turned off. */
+.admin-banner-preview { border-radius: var(--radius-input); }
+.admin-banner-preview.is-off { opacity: .45; }
+
 /* Member names in the members table open the detail card. */
 .admin-member-link { min-height: 0; padding: 0; color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent); text-underline-offset: .2em; }
 .admin-member-link:hover { color: var(--color-accent-text); }

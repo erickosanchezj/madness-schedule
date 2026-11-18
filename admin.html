@@ -33,9 +33,9 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261104">
     <script src="./scripts/app-accessibility.js" defer></script>
     <link rel="stylesheet" href="./styles/admin.css?v=20261118-hours">
-    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-reels">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261119-banner">
     <!-- Member reel styles, reused by the reel preview so it looks exactly like the app. -->
-    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261118-reels">
+    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261119-banner">
   </head>
   <body data-app="admin" class="bg-zinc-900 text-white">
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -123,7 +123,7 @@
           <div data-view="reports"></div>
         </div>
 
-        <!-- AVISOS: daily message, push history and the reels editor (full width below). -->
+        <!-- AVISOS: daily message, menu banner, push history and the reels editor (full width below). -->
         <div id="panel-avisos" role="tabpanel" aria-labelledby="tab-btn-avisos" data-tab-panel="avisos" class="admin-panel-view" hidden>
           <div class="admin-view-head">
             <div>
@@ -167,6 +167,41 @@
             </section>
 
             <div class="admin-stack">
+              <!-- Banner above the member bottom menu (scripts/admin/banner.js). -->
+              <section class="admin-card" aria-labelledby="banner-card-title">
+                <h2 id="banner-card-title" class="admin-card-title">Banner sobre el menú</h2>
+                <form id="banner-form" class="space-y-4">
+                  <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
+                    <input type="checkbox" role="switch" id="banner-enabled" class="w-4 h-4 accent-indigo-600"> Mostrar banner en la app
+                  </label>
+                  <div>
+                    <label for="banner-text" class="block text-sm font-medium text-zinc-300 mb-2">Texto principal</label>
+                    <input id="banner-text" maxlength="60" required class="w-full bg-zinc-700 text-white p-2 rounded-md">
+                  </div>
+                  <div>
+                    <label for="banner-link-text" class="block text-sm font-medium text-zinc-300 mb-2">Texto del enlace (opcional)</label>
+                    <input id="banner-link-text" maxlength="40" class="w-full bg-zinc-700 text-white p-2 rounded-md">
+                  </div>
+                  <div>
+                    <label for="banner-url" class="block text-sm font-medium text-zinc-300 mb-2">Enlace</label>
+                    <input id="banner-url" type="url" maxlength="500" placeholder="https://…" required class="w-full bg-zinc-700 text-white p-2 rounded-md">
+                  </div>
+                  <div>
+                    <p class="block text-sm font-medium text-zinc-300 mb-2">Vista previa en la app</p>
+                    <span id="banner-preview" class="feedback-banner admin-banner-preview">
+                      <i data-lucide="link" aria-hidden="true"></i>
+                      <span><span id="banner-preview-title"></span><small><span id="banner-preview-link"></span> <i data-lucide="arrow-up-right" aria-hidden="true"></i></small></span>
+                      <i data-lucide="chevron-right" aria-hidden="true"></i>
+                    </span>
+                    <p id="banner-preview-off" class="text-xs text-zinc-400 mt-2" hidden>Oculto: los miembros no verán el banner.</p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <button type="submit" id="banner-save-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar banner</button>
+                    <span id="banner-status" class="text-xs text-zinc-400" role="status"></span>
+                  </div>
+                </form>
+              </section>
+
               <section class="admin-card" aria-labelledby="notifs-title">
                 <h2 id="notifs-title" class="admin-card-title">Últimas 10 notificaciones</h2>
                 <ul id="recent-notifs" class="space-y-2 text-sm"></ul>
@@ -202,6 +237,7 @@
     <script src="./scripts/admin/daily-messages.js"></script>
     <script src="./scripts/admin/feedback-reel.js?v=20261118"></script>
     <script src="./scripts/admin/reels.js"></script>
+    <script src="./scripts/admin/banner.js"></script>
     <script src="./scripts/admin/generation.js"></script>
     <script src="./scripts/admin/calendar.js"></script>
     <script src="./scripts/admin/calendar-hours.js"></script>
