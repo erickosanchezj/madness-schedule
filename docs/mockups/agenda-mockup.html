@@ -49,6 +49,7 @@
     .pill { justify-self: start; padding: 2px 10px; border-radius: 999px; background: rgb(219 62 177 / 22%); color: var(--pink-text); font-size: 13px; font-weight: 700; }
     .next .actions { display: flex; gap: 8px; margin-top: 8px; }
     .btn { min-height: 44px; padding: 0 18px; border-radius: 12px; font-weight: 700; font-size: 15px; }
+    a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     .btn-primary { background: var(--pink); color: var(--pink-ink); box-shadow: 0 5px 18px rgb(219 62 177 / 25%); }
     .btn-ghost { color: var(--rose); }
     .more { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 8px; padding: 10px 14px;
@@ -66,7 +67,7 @@
 
     /* 4. Compact timeline rows */
     .list { display: grid; gap: 10px; }
-    .row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: stretch; text-align: left; width: 100%; }
+    .row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: stretch; text-align: left; width: 100%; color: inherit; text-decoration: none; }
     .row time { padding-top: 12px; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
     .card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px;
       border-radius: 14px; background: linear-gradient(145deg, rgb(16 20 18 / 92%), rgb(8 11 9 / 89%));
@@ -99,21 +100,21 @@
 
       <section aria-labelledby="next-title">
         <p class="eyebrow" id="next-title">Tu próxima clase</p>
-        <article class="next" style="background-image:url('../../images/yoga.png')">
+        <article class="next" style="background-image:url('../../images/yoga.png')"><!-- "Ver detalle" opens the class mockup -->
           <span class="pill">Empieza en 6 h 20 min</span>
           <h2>Yoga · 19:00</h2>
           <p class="meta">Hoy · con Sofía · 60 min</p>
-          <div class="actions"><button class="btn btn-primary">Ver detalle</button><button class="btn btn-ghost">Cancelar</button></div>
+          <div class="actions"><a class="btn btn-primary" href="class-mockup.html?c=yoga&state=booked&t=19:00&day=0">Ver detalle</a><button class="btn btn-ghost">Cancelar</button></div>
         </article>
         <button class="more"><span>+1 reserva: <b>TRX mañana 07:00</b></span><span class="chev">›</span></button>
       </section>
 
       <section aria-labelledby="schedule-title">
         <p class="eyebrow" id="schedule-title">Horario</p>
-        <div class="days" id="days" role="group" aria-label="Elegir día"></div>
+        <div class="days" id="days" role="group" aria-label="Elegir día"></div><!-- Hoy / Mañana only -->
         <div class="list" id="list" style="margin-top:14px"></div>
       </section>
-      <p class="note">Maqueta con datos de ejemplo. Toca los días para ver otros horarios.</p>
+      <p class="note">Maqueta con datos de ejemplo. Toca Hoy/Mañana y cualquier clase para ver su pantalla.</p>
     </main>
 
     <div class="bottom">
@@ -127,27 +128,21 @@
     const img = n => `../../images/${n}.png`;
     const DAYS = [
       { label: 'Hoy', day: 18, classes: [
-        { t: '13:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'ok', text: '9 lugares', soon: 'en 20 min' },
-        { t: '18:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', status: 'full', text: 'Lleno · lista de espera' },
-        { t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', status: 'mine', text: '✓ Tu reserva' },
-        { t: '20:00', name: 'Functional', who: 'Leo', pic: 'functional', status: 'low', text: 'Quedan 4' } ] },
+        { t: '13:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'ok', text: '9 lugares', soon: 'en 20 min', state: 'available' },
+        { t: '18:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', status: 'full', text: 'Lleno · lista de espera', state: 'full' },
+        { t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', status: 'mine', text: '✓ Reservada', state: 'booked' },
+        { t: '20:00', name: 'Functional', who: 'Leo', pic: 'functional', status: 'low', text: 'Quedan 4', state: 'available' } ] },
       { label: 'Mañana', day: 19, classes: [
-        { t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'mine', text: '✓ Tu reserva' },
-        { t: '18:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', status: 'full', text: 'En lista · posición 2' },
-        { t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', status: 'ok', text: '11 lugares' } ] },
-      { label: 'vie', day: 20, classes: [
-        { t: '07:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', status: 'ok', text: '13 lugares' },
-        { t: '19:00', name: 'Functional', who: 'Leo', pic: 'functional', status: 'low', text: 'Quedan 2' } ] },
-      { label: 'sáb', day: 21, classes: [
-        { t: '09:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'ok', text: '10 lugares' },
-        { t: '10:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', status: 'ok', text: '12 lugares' } ] },
+        { t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'mine', text: '✓ Reservada', state: 'booked' },
+        { t: '18:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', status: 'full', text: 'En lista · posición 2', state: 'waiting' },
+        { t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', status: 'ok', text: '11 lugares', state: 'available' } ] },
     ];
     let current = 0;
     function render() {
       document.getElementById('days').innerHTML = DAYS.map((d, i) =>
         `<button class="day" aria-pressed="${i === current}" data-i="${i}"><small>${d.label}</small><b>${d.day}</b></button>`).join('');
       document.getElementById('list').innerHTML = DAYS[current].classes.map(c => `
-        <button class="row${c.status === 'mine' ? ' is-mine' : ''}">
+        <a class="row${c.status === 'mine' ? ' is-mine' : ''}" href="class-mockup.html?c=${c.pic}&state=${c.state}&t=${c.t}&day=${current}">
           <time>${c.t}</time>
           <span class="card">
             <img src="${img(c.pic)}" alt="">
@@ -155,7 +150,7 @@
               <span class="status ${c.status === 'wait' ? 'full' : c.status}">${c.text}</span>${c.soon ? `<span class="soon">${c.soon}</span>` : ''}</span>
             <span class="chev">›</span>
           </span>
-        </button>`).join('');
+        </a>`).join('');
     }
     document.getElementById('days').addEventListener('click', e => {
       const btn = e.target.closest('[data-i]');

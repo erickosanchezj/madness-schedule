@@ -1,0 +1,160 @@
+<!-- docs/mockups/class-mockup.html -->
+<!-- Visual mockup of a reimagined class screen (details + booking), with every booking state and fake data. -->
+<!-- Lets the owner review the new layout on a phone before scripts/member/screens/class-details.js changes. -->
+<!-- RELEVANT FILES: docs/mockups/agenda-mockup.html, scripts/member/screens/class-details.js, styles/member-shell.css -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Clase (maqueta)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #111015; --paper-2: #1b1a21; --rule: #3c3942; --ink: #f4f4f5; --ink-2: #d4d4d8; --muted: #a1a1aa;
+      --pink: #db3eb1; --pink-text: #e855bd; --pink-ink: #25091d; --green: #44d62c; --amber: #fcd34d; --rose: #fda4af;
+      --display: 'Archivo Black', 'Inter', sans-serif; --body: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
+    button, a { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: none; }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100dvh; padding-bottom: 240px; background: var(--paper); }
+
+    /* Hero: photo, back button, title, one meta line and a time pill */
+    .hero { position: relative; isolation: isolate; display: grid; align-content: end; gap: 6px; min-height: 290px; padding: 16px; }
+    .hero img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; }
+    .hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(to bottom, rgb(17 16 21 / 20%), var(--paper) 92%); }
+    .back { position: absolute; top: 12px; left: 16px; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(17 16 21 / 70%); border: 1px solid var(--rule); font-size: 22px; }
+    .hero h1 { font: 400 34px/1.1 var(--display); text-transform: uppercase; }
+    .meta { color: var(--ink-2); font-size: 15px; }
+    .pill[hidden] { display: none; }
+    .pill { justify-self: start; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: rgb(68 214 44 / 16%); color: var(--green); }
+
+    .body { display: grid; gap: 14px; padding: 4px 16px 16px; }
+    /* Three facts side by side instead of three tall rows */
+    .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .fact { padding: 10px 12px; border-radius: 14px; background: var(--paper-2); border: 1px solid rgb(68 214 44 / 12%); }
+    .fact small { display: block; color: var(--muted); font-size: 12px; }
+    .fact b { display: block; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+    .bar { height: 6px; margin-top: 6px; border-radius: 6px; background: var(--rule); overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--pink); }
+    .card { padding: 14px; border-radius: 14px; background: var(--paper-2); }
+    .card h2 { font-size: 15px; margin-bottom: 4px; }
+    .card p { color: var(--ink-2); font-size: 15px; }
+    .policy { display: flex; gap: 10px; font-size: 13px; color: var(--muted); padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--rule); }
+
+    /* Sticky action area above the menu (the banner is hidden on this screen) */
+    .cta { position: fixed; left: 50%; bottom: 68px; width: 100%; max-width: 480px; transform: translateX(-50%); padding: 12px 16px 14px;
+      background: var(--paper); box-shadow: 0 -14px 24px rgb(17 16 21 / 95%); display: grid; gap: 8px; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; border-radius: 14px; font-weight: 800; font-size: 16px; }
+    .primary { background: var(--pink); color: var(--pink-ink); box-shadow: 0 6px 20px rgb(219 62 177 / 28%); }
+    .outline { border: 1px solid var(--rose); color: var(--rose); }
+    .disabled { background: #2b2930; color: var(--muted); cursor: not-allowed; }
+    .held { border: 1px solid rgb(252 211 77 / 60%); color: var(--amber); }
+    .status { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; text-align: center; }
+    .status.ok { color: var(--green); } .status.warn { color: var(--amber); } .status.bad { color: var(--rose); } .status.mine { color: var(--pink-text); }
+    .alert { padding: 12px 14px; border-radius: 14px; background: rgb(136 19 55 / 45%); border: 1px solid rgb(225 29 72 / 60%); color: #ffe4e6; font-size: 14px; }
+    .nav { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; transform: translateX(-50%); display: grid; grid-template-columns: repeat(3, 1fr);
+      height: 68px; background: var(--paper-2); border-top: 1px solid var(--rule); }
+    .nav span { display: grid; place-items: center; align-content: center; color: var(--muted); font-size: 12px; font-weight: 600; }
+    .nav .on { color: var(--pink-text); }
+
+    /* Small phones: shorter photo and tighter fact tiles so nothing wraps. */
+    @media (max-width: 360px) { .fact { padding: 8px 10px; } .fact b { font-size: 13px; white-space: nowrap; } }
+    @media (max-height: 700px) { .hero { min-height: 220px; } }
+
+    /* Mockup-only control to preview every state */
+    .states { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--rule); }
+    .states p { width: 100%; color: var(--muted); font-size: 12px; }
+    .states button { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rule); font-size: 12px; color: var(--ink-2); }
+    .states button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <img id="photo" src="" alt="">
+      <a class="back" href="agenda-mockup.html" aria-label="Volver a la agenda">←</a>
+      <span class="pill" id="pill"></span>
+      <h1 id="name"></h1>
+      <p class="meta" id="meta"></p>
+    </header>
+    <main class="body">
+      <div class="facts">
+        <div class="fact"><small>Instructor</small><b id="who"></b></div>
+        <div class="fact"><small>Duración</small><b>60 min</b></div>
+        <div class="fact"><small>Lugares</small><b id="spots"></b><div class="bar"><i id="bar"></i></div></div>
+      </div>
+      <section class="card"><h2>Sobre la clase</h2><p id="desc"></p></section>
+      <p class="policy"><span aria-hidden="true">ℹ️</span><span id="policy"></span></p>
+      <div class="states" id="states"><p>Maqueta: elige un estado para ver cómo cambia la pantalla.</p></div>
+    </main>
+    <div class="cta" id="cta"></div>
+    <nav class="nav"><span class="on">📅<br>Agenda</span><span>🕘<br>Historial</span><span>👤<br>Perfil</span></nav>
+  </div>
+
+  <script>
+    // Fake classes. In the app the description comes from the class (admin → class form), which today is not shown.
+    const CLASSES = {
+      trx: { name: 'TRX', who: 'Ana', cap: 13, enr: 4, desc: 'Entrenamiento en suspensión: fuerza y core con tu propio peso. Para todos los niveles.' },
+      HIIT: { name: 'HIIT', who: 'Leo', cap: 15, enr: 15, desc: 'Intervalos cortos de alta intensidad para mejorar tu condición en poco tiempo.' },
+      yoga: { name: 'Yoga', who: 'Sofía', cap: 15, enr: 6, desc: 'Movilidad, respiración y equilibrio. Trae tu tapete si tienes uno.' },
+      functional: { name: 'Functional', who: 'Leo', cap: 15, enr: 11, desc: 'Movimientos de la vida diaria con kettlebells, cajas y cuerdas.' },
+      capoeira: { name: 'Capoeira', who: 'Iván', cap: 15, enr: 15, desc: 'Arte marcial brasileña con música, ritmo y mucho movimiento.' },
+    };
+    const STATES = {
+      available: 'Disponible', booked: 'Reservada', full: 'Llena', waiting: 'En lista', yourturn: 'Tu turno', held: 'Apartado', unpaid: 'Pago pendiente',
+    };
+    const params = new URLSearchParams(location.search);
+    const key = CLASSES[params.get('c')] ? params.get('c') : 'trx';
+    const cls = CLASSES[key];
+    const time = params.get('t') || '13:00';
+    const dayLabel = params.get('day') === '1' ? 'Mañana jue 19 nov' : 'Hoy mié 18 nov';
+    let state = STATES[params.get('state')] ? params.get('state') : 'available';
+
+    const addHours = (hhmm, h) => { const [H, M] = hhmm.split(':').map(Number); return `${String((H + h + 24) % 24).padStart(2, '0')}:${String(M).padStart(2, '0')}`; };
+    const cancelBy = addHours(time, -2); // the server gives a strike when cancelling 2 h or less before class
+
+    function render() {
+      const full = ['full', 'waiting', 'held'].includes(state);
+      const enrolled = full ? cls.cap : state === 'booked' ? cls.enr + 1 : cls.enr;
+      const left = cls.cap - enrolled;
+      document.getElementById('photo').src = `../../images/${key}.png`;
+      document.getElementById('name').textContent = cls.name;
+      document.getElementById('meta').textContent = `${dayLabel} · ${time}–${addHours(time, 1)}`;
+      // Countdown from the mockup's fake "now" (Wed 12:40); the date itself is already in the line below.
+      const [H, M] = time.split(':').map(Number);
+      const mins = H * 60 + M - (12 * 60 + 40) + (params.get('day') === '1' ? 1440 : 0);
+      document.getElementById('pill').textContent = mins < 60 ? `Empieza en ${mins} min` : `Empieza en ${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}`;
+      document.getElementById('pill').hidden = params.get('day') === '1'; // tomorrow: the date line is enough
+      document.getElementById('who').textContent = cls.who;
+      document.getElementById('spots').textContent = state === 'held' ? 'Apartado' : left > 0 ? `Quedan ${left}` : 'Llena';
+      document.getElementById('bar').style.width = `${Math.round((enrolled / cls.cap) * 100)}%`;
+      document.getElementById('desc').textContent = cls.desc;
+      document.getElementById('policy').textContent = state === 'booked'
+        ? `Puedes cancelar sin strike hasta las ${cancelBy}. Después cuenta como strike (con 3 se bloquean tus reservas).`
+        : `Si reservas, puedes cancelar sin strike hasta las ${cancelBy} (2 h antes).`;
+
+      const cta = {
+        available: `<button class="btn primary">Reservar · ${time}</button><p class="status ok">${left} lugares disponibles</p>`,
+        booked: `<p class="status mine">✓ Reservada · te esperamos a las ${time}</p><button class="btn outline">Cancelar reserva</button>`,
+        full: `<button class="btn primary">Unirme a la lista de espera</button><p class="status warn">Si se libera un lugar te avisamos y tendrás 5 min para tomarlo.</p>`,
+        waiting: `<p class="status warn">Estás en la lista · posición 2</p><button class="btn outline">Salir de la lista</button>`,
+        yourturn: `<p class="status ok">¡Se liberó un lugar! Te quedan 4:32 min</p><button class="btn primary">Tomar mi lugar</button>`,
+        held: `<button class="btn held" disabled>Apartado</button><p class="status warn">Un lugar está apartado para la lista de espera unos minutos.</p>`,
+        unpaid: `<div class="alert"><b>Suscripción mensual no pagada.</b><br>Tu periodo de gracia terminó el 10 nov. Paga para seguir reservando.</div><button class="btn disabled" disabled>Reserva bloqueada</button>`,
+      }[state];
+      document.getElementById('cta').innerHTML = cta;
+      document.getElementById('states').innerHTML = '<p>Maqueta: elige un estado para ver cómo cambia la pantalla.</p>' +
+        Object.entries(STATES).map(([k, label]) => `<button data-state="${k}" aria-pressed="${k === state}">${label}</button>`).join('');
+    }
+    document.getElementById('states').addEventListener('click', e => {
+      const btn = e.target.closest('[data-state]');
+      if (btn) { state = btn.dataset.state; render(); }
+    });
+    render();
+  </script>
+</body>
+</html>
