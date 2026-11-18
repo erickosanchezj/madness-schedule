@@ -10,7 +10,10 @@ Object.assign(AdminPanel, {
     const today = new Date();
     today.setHours(0,0,0,0);
     const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1);
+    // getDay() is 0 on Sunday, so count Sunday as 6 days after Monday.
+    // Otherwise Sunday would jump to next week's Monday.
+    const daysSinceMonday = (today.getDay() + 6) % 7;
+    startOfWeek.setDate(today.getDate() - daysSinceMonday);
 
     const weekDates = [];
     for (let i = 0; i < 7; i++) {
