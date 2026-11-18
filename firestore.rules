@@ -87,6 +87,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // ===== FEEDBACK REEL SETTING =====
+    match /appSettings/feedbackReel {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['enabled'])
+        && request.resource.data.enabled is bool;
+      allow delete: if false;
+    }
+
     // ===== Everything else locked =====
     match /{document=**} {
       allow read, write: if false;

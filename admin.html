@@ -61,6 +61,7 @@
         <a href="#week-title">Clases</a><a href="#reservas-title">Reservas</a>
         <a href="#subscription-title">Suscripciones</a><a href="#asistencia-title">Reportes</a>
         <a href="#notifs-title">Notificaciones</a><a href="#daily-message-title">Mensajes</a>
+        <a href="#feedback-reel-title">Reel</a>
         <a href="#usuarios-title">Usuarios</a><a href="#blacklist-title">Lista negra</a>
       </nav>
       <div class="mb-6 flex flex-wrap gap-3">
@@ -130,6 +131,17 @@
         </div>
       </section>
 
+      <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="feedback-reel-title">
+        <h2 id="feedback-reel-title" class="text-2xl font-bold mb-4">Reel del formulario</h2>
+        <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
+          <input type="checkbox" role="switch" id="feedback-reel-enabled" class="w-4 h-4 accent-indigo-600"
+            aria-describedby="feedback-reel-description feedback-reel-status" disabled>
+          Mostrar reel al abrir la app
+        </label>
+        <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Controla el anuncio de 5 segundos para todos los alumnos. El banner del formulario seguirá disponible.</p>
+        <p id="feedback-reel-status" class="text-sm text-zinc-400 mt-2" role="status">Cargando configuración…</p>
+      </section>
+
       <section class="mt-8 p-6 bg-zinc-800 rounded-lg" aria-labelledby="usuarios-title">
         <h2 id="usuarios-title" class="text-2xl font-bold mb-4">Gestión de Usuarios</h2>
 
@@ -195,6 +207,7 @@
     <script src="./scripts/admin/listeners.js"></script>
     <script src="./scripts/admin/notifications.js"></script>
     <script src="./scripts/admin/daily-messages.js"></script>
+    <script src="./scripts/admin/feedback-reel.js?v=20261118"></script>
     <script src="./scripts/admin/generation.js"></script>
     <script src="./scripts/admin/calendar.js"></script>
     <script src="./scripts/admin/weekly-bookings.js"></script>
