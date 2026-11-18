@@ -117,8 +117,8 @@ body[data-app='member'] .history-day::first-letter { text-transform: uppercase; 
 body[data-app='member'] .history-row .schedule-card { grid-template-columns: 44px minmax(0, 1fr); } /* no chevron: rows do not open anything */
 body[data-app='member'] .is-none { color: var(--color-muted); }
 
-/* Historial and Perfil end above the brand logo fixed behind the content (styles/madness-theme.css, .member-brand-dock). */
-body[data-app='member'] .history-screen, body[data-app='member'] .profile-screen { padding-bottom: calc(min(24vh, 180px) + var(--space-md)) !important; }
+/* Agenda, Historial and Perfil end above the brand logo fixed behind the content (styles/madness-theme.css, .member-brand-dock). */
+body[data-app='member'] .agenda-screen, body[data-app='member'] .history-screen, body[data-app='member'] .profile-screen { padding-bottom: calc(min(24vh, 180px) + var(--space-md)) !important; }
 
 /* ---------- Perfil ---------- */
 body[data-app='member'] .profile-me { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 14px; }
