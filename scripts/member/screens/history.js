@@ -57,7 +57,7 @@ function getHistoryScreenHTML(){
   if (!finished.length){
     return wrap(`
       <div class="history-panel history-empty">
-        <p>Aquí verás las clases que termines y tu asistencia.</p>
+        <p>Todavía no tienes clases terminadas.</p>
         <button type="button" data-action="navigate" data-screen="agenda" class="btn-primary px-4">Reservar una clase</button>
       </div>`);
   }
@@ -118,8 +118,9 @@ function historySummaryHTML(finished){
 }
 
 // Finished classes of the last 14 days, grouped by day ("Hoy", "Ayer", "lun 16 nov"), same rows as the Agenda.
+// Status words match the legend above (Asististe, Falta, Sin registro); color already marks the result, so no ✓ / ✕.
 function historyListHTML(recent){
-  const chips = { att: ['ok', '✓ Asististe'], abs: ['full', '✕ Falta registrada'], none: ['none', 'Sin registro de asistencia'] };
+  const chips = { att: ['ok', 'Asististe'], abs: ['full', 'Falta'], none: ['none', 'Sin registro'] };
   const yesterday = historyYMD(1);
   const days = [...new Set(recent.map(item => item.ymd))];
   const groups = days.map(ymd => {
