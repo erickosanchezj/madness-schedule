@@ -57,18 +57,22 @@ input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px var(--calendar
         .calendar-header,
 .calendar-grid { grid-template-columns: 70px repeat(7, 180px); }
       }
+      /* Phones and tablets: show yesterday, today and tomorrow. */
+      /* Auto columns let Monday and Sunday show only two days when a neighbour is outside the loaded week. */
       @media (max-width: 768px) {
         .calendar-header,
-.calendar-grid { grid-template-columns: 60px minmax(0, 1fr); }
-.calendar-header .day-label { display: none; }
-.calendar-header .day-label.today-label { display: block; }
+.calendar-grid { grid-template-columns: 52px; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; }
+.calendar-header .day-label { display: none; padding-inline: var(--space-2xs); font-size: .6875rem; }
+.calendar-header .day-label.today-label,
+.calendar-header .day-label:has(+ .today-label),
+.calendar-header .today-label + .day-label { display: block; }
 .calendar-grid .day-grid { display: none; }
-.calendar-grid .day-grid.today-column { display: block; }
+.calendar-grid .day-grid.today-column,
+.calendar-grid .day-grid:has(+ .today-column),
+.calendar-grid .today-column + .day-grid { display: block; }
       }
       @media (max-width: 640px) {
         :root { --hour-height: 52px; }
-        .calendar-header,
-.calendar-grid { grid-template-columns: 60px minmax(0, 1fr); }
 .class-block { font-size: 0.7rem; padding: 0.4rem; }
       }
       @media (prefers-reduced-motion: reduce) {
