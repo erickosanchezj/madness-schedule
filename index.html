@@ -42,8 +42,9 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261112-profile-card">
     <link rel="stylesheet" href="./styles/member-shell.css?v=20261112-native-viewport">
     <link rel="stylesheet" href="./styles/madness-theme.css?v=20261112-smoky-cards">
-    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261115">
-    <script src="./scripts/member/feedback.js?v=20261118" defer></script>
+    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261118-reels">
+    <script src="./scripts/reel-template.js?v=20261118-reels" defer></script>
+    <script src="./scripts/member/feedback.js?v=20261118-reels" defer></script>
     <script src="./scripts/app-accessibility.js" defer></script>
 
   </head>
@@ -87,24 +88,26 @@
 
     <dialog id="feedback-story" aria-labelledby="feedback-title" aria-describedby="feedback-description">
       <div class="feedback-story-content">
-        <progress class="feedback-progress" max="5000" value="0" aria-label="Progreso del anuncio"></progress>
+        <!-- One segment per active reel (filled by scripts/member/feedback.js); the progress is for screen readers. -->
+        <div id="feedback-steps" class="feedback-steps" aria-hidden="true"></div>
+        <progress class="sr-only" max="5000" value="0" aria-label="Progreso del anuncio"></progress>
         <header class="feedback-story-header">
-          <span>Comunidad Madness <small>5 s</small></span>
+          <span>Comunidad Madness <small id="feedback-seconds">5 s</small></span>
           <button type="button" class="feedback-close" aria-label="Cerrar anuncio"><i data-lucide="x" aria-hidden="true"></i></button>
         </header>
         <img class="feedback-logo" src="./images/madness-cross-training-logo.png" alt="Madness Cross Training" width="1200" height="300">
-        <div class="feedback-story-copy">
+        <div id="feedback-copy" class="feedback-story-copy">
           <p class="feedback-eyebrow">El reto es contigo</p>
           <h2 id="feedback-title">Tu voz nos<br>hace <span>más fuertes.</span></h2>
           <p id="feedback-description">Queremos escucharte, team.<br>Ayúdanos a mejorar tu experiencia.</p>
         </div>
-        <div class="feedback-story-action">
+        <div id="feedback-action" class="feedback-story-action">
           <a id="feedback-story-link" class="feedback-cta" target="_blank" rel="noopener noreferrer"
             href="https://docs.google.com/forms/d/e/1FAIpQLSfe_odZeI0RBcS9WPdyUgabFLQSelxqHenmeGho4Gq5-a376Q/viewform">
-            <i data-lucide="link" aria-hidden="true"></i>Responder formulario<i data-lucide="arrow-up-right" aria-hidden="true"></i>
+            <i data-lucide="link" aria-hidden="true"></i><span id="feedback-cta-text">Responder formulario</span><i data-lucide="arrow-up-right" aria-hidden="true"></i>
             <span class="sr-only">(abre en otra pestaña)</span>
           </a>
-          <p>Tu opinión impulsa a Madness</p>
+          <p id="feedback-footer">Tu opinión impulsa a Madness</p>
         </div>
         <button type="button" class="feedback-pause" aria-pressed="false">Pausar anuncio</button>
       </div>

@@ -35,6 +35,9 @@ const AdminPanel = {
     todayAttendanceKey: '',
     unsubTodayAttendance: null,
     unsubTicketPrice: null, // live listener on appSettings/reports (price per class)
+    reels: [],              // all reels, sorted by order (scripts/admin/reels.js)
+    unsubReels: null,
+    editingReelId: null,
     analyticsTracker: {
       bookingTimeline: {}
     },

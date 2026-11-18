@@ -104,6 +104,7 @@ Object.assign(AdminPanel, {
     this.setupDailyMessageForm();
     this.resetDailyMessageForm();
     document.getElementById('feedback-reel-enabled').addEventListener('change', () => this.saveFeedbackReel());
+    this.setupReelEditor();
 
     const subscriptionFilter = document.getElementById('subscription-filter');
     const userSearchInput = document.getElementById('user-search');
@@ -126,6 +127,7 @@ Object.assign(AdminPanel, {
           document.getElementById('login-screen').classList.add('hidden');
           document.getElementById('admin-panel').classList.remove('hidden');
           this.listenFeedbackReel();
+          this.listenReels();
           this.listenTicketPrice();
           try {
             await this.loadWeeklyScheduleTemplate();
@@ -145,6 +147,7 @@ Object.assign(AdminPanel, {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('admin-panel').classList.add('hidden');
         this.stopFeedbackReel();
+        this.stopReels();
         this.stopTicketPrice();
         this.teardownBookingsListeners();
         if (this.state.unsubClasses) this.state.unsubClasses();

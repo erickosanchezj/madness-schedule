@@ -33,7 +33,9 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261104">
     <script src="./scripts/app-accessibility.js" defer></script>
     <link rel="stylesheet" href="./styles/admin.css?v=20261118-hours">
-    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-preview">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-reels">
+    <!-- Member reel styles, reused by the reel preview so it looks exactly like the app. -->
+    <link rel="stylesheet" href="./styles/member-feedback.css?v=20261118-reels">
   </head>
   <body data-app="admin" class="bg-zinc-900 text-white">
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -121,7 +123,7 @@
           <div data-view="reports"></div>
         </div>
 
-        <!-- AVISOS: daily message, feedback reel and push history. -->
+        <!-- AVISOS: daily message, push history and the reels editor (full width below). -->
         <div id="panel-avisos" role="tabpanel" aria-labelledby="tab-btn-avisos" data-tab-panel="avisos" class="admin-panel-view" hidden>
           <div class="admin-view-head">
             <div>
@@ -165,23 +167,14 @@
             </section>
 
             <div class="admin-stack">
-              <section class="admin-card" aria-labelledby="feedback-reel-title">
-                <h2 id="feedback-reel-title" class="admin-card-title">Reel del formulario</h2>
-                <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
-                  <input type="checkbox" role="switch" id="feedback-reel-enabled" class="w-4 h-4 accent-indigo-600"
-                    aria-describedby="feedback-reel-description feedback-reel-status" disabled>
-                  Mostrar reel al abrir la app
-                </label>
-                <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Controla el anuncio de 5 segundos para todos los alumnos. El banner del formulario seguirá disponible.</p>
-                <p id="feedback-reel-status" class="text-sm text-zinc-400 mt-2" role="status">Cargando configuración…</p>
-              </section>
-
               <section class="admin-card" aria-labelledby="notifs-title">
                 <h2 id="notifs-title" class="admin-card-title">Últimas 10 notificaciones</h2>
                 <ul id="recent-notifs" class="space-y-2 text-sm"></ul>
               </section>
             </div>
           </div>
+
+          <div data-view="reels"></div>
         </div>
       </div>
     </div>
@@ -199,6 +192,8 @@
     <script src="./scripts/admin/views/week.js"></script>
     <script src="./scripts/admin/views/reports.js"></script>
     <script src="./scripts/admin/views/class-modal.js"></script>
+    <script src="./scripts/admin/views/reels.js"></script>
+    <script src="./scripts/reel-template.js?v=20261118-reels"></script>
     <script src="./scripts/admin/core.js"></script>
     <script src="./scripts/admin/confirm-dialog.js"></script>
     <script src="./scripts/admin/init.js"></script>
@@ -206,6 +201,7 @@
     <script src="./scripts/admin/notifications.js"></script>
     <script src="./scripts/admin/daily-messages.js"></script>
     <script src="./scripts/admin/feedback-reel.js?v=20261118"></script>
+    <script src="./scripts/admin/reels.js"></script>
     <script src="./scripts/admin/generation.js"></script>
     <script src="./scripts/admin/calendar.js"></script>
     <script src="./scripts/admin/calendar-hours.js"></script>

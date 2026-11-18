@@ -1,7 +1,7 @@
 /* styles/member-feedback.css */
-/* Styles the community story and the persistent form link above navigation. */
+/* Styles the reel story (segments, copy, button) and the persistent form link above navigation. */
 /* Reuses the Madness logo, texture and neon light assets from the member theme. */
-/* RELEVANT FILES: index.html, scripts/member/feedback.js, styles/member-shell.css */
+/* RELEVANT FILES: index.html, scripts/member/feedback.js, scripts/admin/reels.js, styles/member-shell.css */
 .feedback-banner {
   display: flex; align-items: center; gap: 12px; min-height: 58px;
   padding: 8px max(16px, calc((100% - 728px) / 2));
@@ -30,10 +30,12 @@ body[data-app='member'] #toast { bottom: calc(var(--nav-height) + var(--safe-bot
 .feedback-story-content::before, .feedback-story-content::after { position: absolute; inset: 0; z-index: -1; content: ''; pointer-events: none; }
 .feedback-story-content::before { background: url('../images/backgrounds/madness-green-light.webp') right top / 100% 100% no-repeat; opacity: .45; }
 .feedback-story-content::after { background: url('../images/backgrounds/madness-pink-arcs.webp') center bottom / 100% 100% no-repeat; opacity: .8; }
-.feedback-progress { width: 100%; height: 4px; flex: 0 0 4px; border: 0; border-radius: 4px; background: var(--color-rule); accent-color: var(--color-accent); }
-.feedback-progress::-webkit-progress-bar { background: var(--color-rule); border-radius: 4px; }
-.feedback-progress::-webkit-progress-value { background: var(--color-accent); border-radius: 4px; }
-.feedback-progress::-moz-progress-bar { background: var(--color-accent); border-radius: 4px; }
+/* Story segments: one per reel. Done = full, current = --fill (set every frame), next = empty. */
+.feedback-steps { display: flex; gap: 4px; flex: 0 0 4px; }
+.feedback-step { flex: 1; height: 4px; overflow: hidden; border-radius: 4px; background: var(--color-rule); }
+.feedback-step i { display: block; width: 0; height: 100%; background: var(--color-accent); }
+.feedback-step.is-done i { width: 100%; }
+.feedback-step.is-current i { width: var(--fill, 0%); }
 .feedback-story-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 14px; font-weight: 700; }
 .feedback-story-header small { margin-left: 8px; color: var(--color-muted); font-weight: 400; white-space: nowrap; }
 .feedback-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; }
