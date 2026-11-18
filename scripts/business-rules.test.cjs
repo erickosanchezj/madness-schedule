@@ -38,7 +38,7 @@ function loadIndex(users) {
     // Capture scheduled handlers by their cron string so the test can run them directly.
     'firebase-functions/v2/scheduler': { onSchedule: (o, h) => { handlers[o.schedule] = h; return h; } },
     'firebase-admin/functions': { getFunctions: () => ({}) },
-    './lib/pruneTokenInUsers': {}, './src/memberBooking': {},
+    './lib/pruneTokenInUsers': {}, './src/memberBooking': {}, './src/cancelClass': {},
   };
   for (const n of ['bookingReminders', 'totalPassReminders', 'waitlistNotifications', 'generateDailyClasses', 'userUnlockNotifications']) mocks[`./src/${n}`] = {};
   const exportsObj = load('functions/index.js', mocks);

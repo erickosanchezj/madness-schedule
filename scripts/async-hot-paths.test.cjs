@@ -159,7 +159,7 @@ test('cancellation cleans both task groups concurrently only after transaction c
     'firebase-admin/functions': { getFunctions: () => ({ taskQueue: target => ({
       delete: task => { assert.ok(committed); deleted.push({ target, task }); return gate.promise; },
     }) }) },
-    './lib/pruneTokenInUsers': {}, './src/memberBooking': {},
+    './lib/pruneTokenInUsers': {}, './src/memberBooking': {}, './src/cancelClass': {},
   };
   for (const name of ['bookingReminders', 'totalPassReminders', 'waitlistNotifications', 'generateDailyClasses', 'userUnlockNotifications']) mocks[`./src/${name}`] = {};
   const { cancelBooking } = load('functions/index.js', mocks);

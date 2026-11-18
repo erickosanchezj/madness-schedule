@@ -30,6 +30,10 @@ exports.createBooking = onCall({ region: "us-central1" }, memberBooking.createBo
 exports.joinWaitlist = onCall({ region: "us-central1" }, memberBooking.joinWaitlist);
 exports.leaveWaitlist = onCall({ region: "us-central1" }, memberBooking.leaveWaitlist);
 
+// Admin "Eliminar clase": notifies booked members and the waitlist, then deletes everything.
+const { cancelClass } = require("./src/cancelClass");
+exports.cancelClass = onCall({ region: "us-central1" }, cancelClass);
+
 /**
  * Member cancellation handled on the server to prevent clock tampering.
  * Calculates lateness using the Firebase server clock and applies strikes.

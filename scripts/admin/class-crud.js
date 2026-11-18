@@ -121,25 +121,34 @@ Object.assign(AdminPanel, {
     }
   },
 
-  async deleteClass(){
+  // Deletes the class through the cancelClass Cloud Function, which first notifies
+  // booked members and the waitlist, then deletes class, bookings and waitlist together.
+  async deleteClass(reason = ''){
     const id = document.getElementById('class-id').value; if(!id) return;
+    const btn = document.getElementById('delete-button');
+    if (btn){ btn.disabled = true; btn.textContent = 'Eliminando…'; }
     try{
-      // One atomic batch: class, bookings and waitlist entries go together.
-      // If bookings went first, each booking-delete trigger could notify the waitlist
-      // and write a hold onto a class that is about to disappear.
-      const [snap, waitSnap] = await Promise.all([
-        this.db.collection('bookings').where('classId','==',id).get(),
-        this.db.collection('waitlists').where('classId','==',id).get()
-      ]);
-      const batch = this.db.batch();
-      batch.delete(this.db.collection('classes').doc(id));
-      snap.forEach(doc=>batch.delete(doc.ref));
-      waitSnap.forEach(doc=>batch.delete(doc.ref));
-      await batch.commit();
-      this.showToast({ title:'Clase eliminada', message:`Se borraron ${snap.size} reservas` });
+      if (this.auth.currentUser) await this.auth.currentUser.getIdToken(true);
+      const { data } = await this.functions.httpsCallable('cancelClass')({ classId: id, reason });
+      // People staff must still contact by hand: push turned off, or booked through WhatsApp.
+      const manual = [];
+      if (data.unreachable?.length) manual.push(`Sin notificaciones: ${data.unreachable.join(', ')}.`);
+      const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+      if (data.manualBookings) manual.push(`${plural(data.manualBookings, 'reserva', 'reservas')} de WhatsApp: avísales por WhatsApp.`);
+      const notified = data.pushError
+        ? 'No se pudo enviar el aviso.'
+        : `Se avisó a ${plural(data.notifiedPeople, 'persona', 'personas')}.`;
+      this.showToast({
+        title: 'Clase eliminada',
+        message: [notified, ...manual].join(' '),
+        variant: (data.pushError || manual.length) ? 'warn' : 'success',
+        timeout: (data.pushError || manual.length) ? 0 : 4000 // stays open until closed when action is needed
+      });
       this.hideClassModal();
     }catch(e){
       this.showToast({ title:'No se pudo eliminar', message:e.message, variant:'error' });
+    }finally{
+      if (btn){ btn.disabled = false; btn.textContent = 'Eliminar'; }
     }
   },
 

@@ -20,7 +20,7 @@ Object.assign(AdminPanel, {
           return {
             id: d.id,
             ...data,
-            className: cls?.data()?.name || cls?.data()?.title || data.classId || '',
+            className: cls?.data()?.name || cls?.data()?.title || data.className || data.classId || '',
             userName: usr?.data()?.displayName || usr?.data()?.email || data.userId || ''
           };
         }));

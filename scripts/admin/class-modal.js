@@ -146,17 +146,18 @@ Object.assign(AdminPanel, {
     }
 
     // Event handlers for modal buttons
-    // Red confirm dialog that says how many bookings and waitlist entries go with the class.
+    // Red confirm dialog: says who is affected and accepts an optional reason for the push.
     document.getElementById('delete-button').onclick = async () => {
       const booked = (this.state.bookingsMap.get(cls.id) || []).length;
       const waiting = (this.state.waitlistsMap.get(cls.id) || []).length;
-      const ok = await this.confirmDialog({
+      const answer = await this.confirmDialog({
         title: `¿Eliminar ${cls.name || 'esta clase'}?`,
-        message: `También se borrarán ${booked} reservas y ${waiting} personas en lista de espera. No se puede deshacer.`,
-        confirmLabel: 'Eliminar clase',
-        danger: true
+        message: `Se borrarán ${booked} reservas y ${waiting} personas en lista de espera, y se les avisará con una notificación. No se puede deshacer.`,
+        confirmLabel: 'Eliminar y avisar',
+        danger: true,
+        reasonLabel: 'Motivo (opcional, se incluye en el aviso)'
       });
-      if (ok) this.deleteClass();
+      if (answer) this.deleteClass(answer.reason);
     };
     document.getElementById('cancel-button').onclick = () => this.hideClassModal();
     document.getElementById('save-button').onclick = () => this.saveClass();
