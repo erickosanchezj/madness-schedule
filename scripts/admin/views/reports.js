@@ -3,10 +3,11 @@
 // Two templates: subscriptions go to "Miembros", the report goes to "Reportes".
 // RELEVANT FILES: admin.html, scripts/admin/subscriptions.js, scripts/admin/reports-charts.js
 
-// Fills the "Miembros" tab placeholder with the subscriptions table.
+// Fills the "Miembros" tab placeholder with the members table and the detail card slot.
 document.querySelector('[data-view="subscriptions"]').outerHTML = `
       <section aria-labelledby="subscription-title" class="admin-card">
-        <h2 id="subscription-title" class="admin-card-title">Suscripciones</h2>
+        <h2 id="subscription-title" class="admin-card-title">Lista de miembros</h2>
+        <p class="text-sm text-zinc-400 mb-4">Toca el nombre de un miembro para ver strikes, dispositivos y reinicio de contraseña.</p>
 
         <div id="subscription-section-body">
           <div class="mb-4 flex gap-3 flex-wrap">
@@ -30,6 +31,8 @@ document.querySelector('[data-view="subscriptions"]').outerHTML = `
               <i data-lucide="refresh-cw" class="inline-block -mt-1 mr-2"></i>Actualizar
             </button>
           </div>
+
+          <div id="user-details-container" class="mb-4 hidden space-y-4"></div>
 
           <div class="overflow-x-auto">
             <table class="w-full text-sm">

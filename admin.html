@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261104">
     <script src="./scripts/app-accessibility.js" defer></script>
     <link rel="stylesheet" href="./styles/admin.css?v=20261118-3days">
-    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261118-hoy">
   </head>
   <body data-app="admin" class="bg-zinc-900 text-white">
     <a class="skip-link" href="#main-content">Ir al contenido</a>
@@ -72,7 +72,7 @@
       </nav>
 
       <div class="admin-content">
-        <!-- SEMANA: calendar, weekly bookings and the two class actions. -->
+        <!-- SEMANA: today's classes, calendar, weekly bookings and the two class actions. -->
         <div id="panel-semana" role="tabpanel" aria-labelledby="tab-btn-semana" data-tab-panel="semana" class="admin-panel-view">
           <div class="admin-view-head">
             <div>
@@ -91,7 +91,7 @@
           <div data-view="week"></div>
         </div>
 
-        <!-- MIEMBROS: subscriptions, user search, blacklist and password reset. -->
+        <!-- MIEMBROS: one members table (tap a name for details) and the blacklist. -->
         <div id="panel-miembros" role="tabpanel" aria-labelledby="tab-btn-miembros" data-tab-panel="miembros" class="admin-panel-view" hidden>
           <div class="admin-view-head">
             <div>
@@ -102,45 +102,16 @@
 
           <div data-view="subscriptions"></div>
 
-          <section class="admin-card" aria-labelledby="usuarios-title">
-            <h2 id="usuarios-title" class="admin-card-title">Buscar usuario</h2>
-            <label for="find-user-query-input" class="block text-sm font-medium text-zinc-300 mb-2">Nombre o correo</label>
-            <div class="flex gap-2 admin-input-row">
-              <input type="text" id="find-user-query-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md"
-                     placeholder="Ej: Valery, Erick o alguien@correo.com">
-              <button id="find-user-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-md">Buscar</button>
-              <button id="list-users-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Listar</button>
+          <section class="admin-card" aria-labelledby="blacklist-title">
+            <h2 id="blacklist-title" class="admin-card-title">Lista negra</h2>
+            <p class="text-sm text-zinc-400 mb-4">Revisa usuarios bloqueados por cancelaciones tardías y rehabilítalos cuando sea necesario.</p>
+            <div class="flex flex-wrap gap-2">
+              <button id="list-blacklisted-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-md">Listar usuarios en lista negra</button>
+              <button id="reset-strikes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md">Resetear strikes (todos)</button>
             </div>
-            <p id="user-results-hint" class="text-zinc-400 text-xs mt-2 hidden"></p>
-            <div id="user-pagination-controls" class="mt-2 hidden flex flex-wrap gap-2">
-              <button id="user-prev-page-btn" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página anterior</button>
-              <button id="user-next-page-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded-md text-sm">Página siguiente</button>
-              <button id="user-show-all-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-1 px-3 rounded-md text-sm">Mostrar todos</button>
-            </div>
-            <div id="user-details-container" class="mt-4 hidden space-y-4"></div>
+            <p id="blacklisted-users-feedback" class="text-xs text-zinc-400 mt-3 hidden"></p>
+            <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
           </section>
-
-          <div class="admin-grid-2">
-            <section class="admin-card" aria-labelledby="blacklist-title">
-              <h2 id="blacklist-title" class="admin-card-title">Lista negra</h2>
-              <p class="text-sm text-zinc-400 mb-4">Revisa usuarios bloqueados por cancelaciones tardías y rehabilítalos cuando sea necesario.</p>
-              <div class="flex flex-wrap gap-2">
-                <button id="list-blacklisted-btn" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-4 rounded-md">Listar usuarios en lista negra</button>
-                <button id="reset-strikes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-md">Resetear strikes (todos)</button>
-              </div>
-              <p id="blacklisted-users-feedback" class="text-xs text-zinc-400 mt-3 hidden"></p>
-              <div id="blacklisted-users-container" class="mt-4 grid grid-cols-1 gap-4"></div>
-            </section>
-
-            <section class="admin-card" aria-labelledby="password-reset-title">
-              <h2 id="password-reset-title" class="admin-card-title">Reinicio de contraseña</h2>
-              <label for="user-email-input" class="block text-sm font-medium text-zinc-300 mb-2">Correo del usuario</label>
-              <div class="flex gap-2 admin-input-row">
-                <input type="email" id="user-email-input" class="flex-1 bg-zinc-700 text-white p-2 rounded-md" placeholder="alguien@correo.com">
-                <button id="send-reset-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">Enviar</button>
-              </div>
-            </section>
-          </div>
         </div>
 
         <!-- REPORTES: attendance, capacity and revenue dashboard. -->
@@ -229,6 +200,7 @@
     <script src="./scripts/admin/generation.js"></script>
     <script src="./scripts/admin/calendar.js"></script>
     <script src="./scripts/admin/weekly-bookings.js"></script>
+    <script src="./scripts/admin/today.js"></script>
     <script src="./scripts/admin/reports-data.js"></script>
     <script src="./scripts/admin/reports-charts.js"></script>
     <script src="./scripts/admin/reports-fetch.js"></script>

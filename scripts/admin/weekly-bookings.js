@@ -46,39 +46,42 @@ Object.assign(AdminPanel, {
       }
 
       const blocks = classesArr.map(cls=>{
-        const attendees = this.state.bookingsMap.get(cls.id)||[];
-        const manualBookings = attendees.filter(booking=>booking.isManualBooking);
-        const regularBookings = attendees.filter(booking=>!booking.isManualBooking);
-        const waiters = (this.state.waitlistsMap.get(cls.id)||[])
-          .sort((a,b)=>(a.position||0)-(b.position||0))
-          .map(w=>w.userName||w.userId||'Anónimo');
-        const enrolled = Number(cls.enrolledCount||0);
-        const cap = Number(cls.capacity||0);
-        const manualLabel = manualBookings.length === 1 ? 'Whatsapp booking' : 'Whatsapp bookings';
-        const manualRow = manualBookings.length
-          ? `<li class="text-zinc-400 ml-4">- ${manualBookings.length} ${manualLabel}</li>`
-          : '';
-        const names = regularBookings.map(booking=>{
-          const safeName = DOMPurify.sanitize(booking.userName || 'Anónimo');
-          return `<li class="text-zinc-400 ml-4">- ${safeName}</li>`;
-        }).join('');
-        const waitNames = waiters.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
         const safeTime = DOMPurify.sanitize(cls.localTime || cls.time || '');
         const safeName = DOMPurify.sanitize(cls.name || '');
-        const waitHTML = waiters.length ? `
-            <p class="text-sm text-amber-400 mt-2">Lista de espera (${waiters.length})</p>
-            <ul class="list-none">${waitNames}</ul>
-        ` : '';
         return `
           <div class="mb-3">
-            <p class="font-bold">${safeTime} - ${safeName} (${enrolled} de ${cap})</p>
-            <ul class="list-none">${manualRow}${names}</ul>
-            ${waitHTML}
+            <p class="font-bold">${safeTime} - ${safeName} (${Number(cls.enrolledCount||0)} de ${Number(cls.capacity||0)})</p>
+            ${this.classRosterHTML(cls)}
           </div>`;
       });
 
       container.innerHTML = blocks.join('') || '<p class="text-zinc-500 text-sm">No hay reservas.</p>';
     });
+  },
+
+  // Who is booked (manual WhatsApp count + member names) and who is waiting.
+  // Shared by the weekly bookings list and the "Hoy" panel (today.js).
+  classRosterHTML(cls){
+    const attendees = this.state.bookingsMap.get(cls.id)||[];
+    const manualBookings = attendees.filter(booking=>booking.isManualBooking);
+    const regularBookings = attendees.filter(booking=>!booking.isManualBooking);
+    const waiters = (this.state.waitlistsMap.get(cls.id)||[])
+      .sort((a,b)=>(a.position||0)-(b.position||0))
+      .map(w=>w.userName||w.userId||'Anónimo');
+    const manualLabel = manualBookings.length === 1 ? 'Whatsapp booking' : 'Whatsapp bookings';
+    const manualRow = manualBookings.length
+      ? `<li class="text-zinc-400 ml-4">- ${manualBookings.length} ${manualLabel}</li>`
+      : '';
+    const names = regularBookings.map(booking=>{
+      const safeName = DOMPurify.sanitize(booking.userName || 'Anónimo');
+      return `<li class="text-zinc-400 ml-4">- ${safeName}</li>`;
+    }).join('');
+    const waitNames = waiters.map(n=>`<li class="text-zinc-400 ml-4">- ${DOMPurify.sanitize(n)}</li>`).join('');
+    const waitHTML = waiters.length ? `
+        <p class="text-sm text-amber-400 mt-2">Lista de espera (${waiters.length})</p>
+        <ul class="list-none">${waitNames}</ul>
+    ` : '';
+    return `<ul class="list-none">${manualRow}${names}</ul>${waitHTML}`;
   },
 
   // Render manual bookings so admins can free spots quickly.

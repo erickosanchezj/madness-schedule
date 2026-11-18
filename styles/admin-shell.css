@@ -122,6 +122,8 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
   .admin-input-row > input { flex-basis: 100%; }
   .admin-logout span { display: none; }
   .admin-card { padding: var(--space-md); }
+  /* Leaves room for the sticky top bar when a member card scrolls into view. */
+  #user-details-container { scroll-margin-top: 72px; }
 }
 
 /* --- Desktop: fixed sidebar with logo, vertical tabs and logout --- */
@@ -161,6 +163,19 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
   /* The calendar asks for 960px; next to the sidebar 840px fits a 1280px screen. */
   .admin-card .lg\:min-w-\[960px\] { min-width: 840px; }
 }
+
+/* --- "Hoy" panel: one small card per class today --- */
+.admin-today-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: var(--space-md); }
+.admin-today-class { display: flex; flex-direction: column; padding: var(--space-md); border: 1px solid var(--color-rule); border-radius: var(--radius-input); background: rgb(0 0 0 / 22%); }
+/* The button stays at the bottom even when rosters have different lengths. */
+.admin-today-class > button { margin-top: auto; }
+.admin-today-class > .text-sm { margin-bottom: var(--space-sm); }
+.admin-today-count { flex-shrink: 0; padding: 2px var(--space-xs); border-radius: 999px; background: rgb(68 214 44 / 14%); color: var(--madness-green); font-size: .75rem; font-weight: 700; }
+.admin-today-count.is-full { background: rgb(253 164 175 / 14%); color: var(--color-error); }
+
+/* Member names in the members table open the detail card. */
+.admin-member-link { min-height: 0; padding: 0; color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent); text-underline-offset: .2em; }
+.admin-member-link:hover { color: var(--color-accent-text); }
 
 @media (prefers-reduced-motion: reduce) {
   .admin-login-logo { filter: none; }

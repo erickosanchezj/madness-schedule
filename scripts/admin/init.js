@@ -30,7 +30,6 @@ Object.assign(AdminPanel, {
     document.getElementById('logout-btn').onclick = () => this.logout();
     document.getElementById('gen-classes-btn').onclick = () => this.generateDailyClasses();
     document.getElementById('create-class-btn').onclick = () => this.showCreateClassModal();
-    document.getElementById('send-reset-btn').onclick = () => this.sendPasswordReset();
     document.getElementById('att-refresh').onclick = () => this.fetchAttendanceData(true);
     const blacklistBtn = document.getElementById('list-blacklisted-btn');
     if (blacklistBtn) blacklistBtn.onclick = () => this.listBlacklistedUsers();
@@ -114,16 +113,6 @@ Object.assign(AdminPanel, {
 
     this.expandTodayBookingsAccordion();
 
-    // Users: find + list
-    document.getElementById('find-user-btn').onclick = () => this.findUsersByQuery();
-    document.getElementById('list-users-btn').onclick = () => this.startUsersPagination();
-    const userPrevBtn = document.getElementById('user-prev-page-btn');
-    const userNextBtn = document.getElementById('user-next-page-btn');
-    const userShowAllBtn = document.getElementById('user-show-all-btn');
-    if (userPrevBtn) userPrevBtn.onclick = () => this.listUsersPreviousPage();
-    if (userNextBtn) userNextBtn.onclick = () => this.listUsersPage();
-    if (userShowAllBtn) userShowAllBtn.onclick = () => this.listAllUsers();
-
     const subscriptionFilter = document.getElementById('subscription-filter');
     const userSearchInput = document.getElementById('user-search');
     const refreshUsersBtn = document.getElementById('refresh-users-btn');
@@ -131,7 +120,8 @@ Object.assign(AdminPanel, {
       subscriptionFilter.addEventListener('change', ()=> this.listenSubscriptionUsers());
     }
     if (userSearchInput){
-      userSearchInput.addEventListener('input', ()=> this.listenSubscriptionUsers());
+      // Search filters in memory; only the filter dropdown reopens the Firestore listener.
+      userSearchInput.addEventListener('input', ()=> this.applySubscriptionSearch());
     }
     if (refreshUsersBtn){
       refreshUsersBtn.onclick = () => this.listenSubscriptionUsers();
@@ -169,6 +159,7 @@ Object.assign(AdminPanel, {
         if (this.state.unsubDailyMessages) this.state.unsubDailyMessages();
         this.state.unsubDailyMessages = null;
         if (this.state.unsubSubscriptionUsers){ this.state.unsubSubscriptionUsers(); this.state.unsubSubscriptionUsers = null; }
+        this.state.subscriptionAllUsers = [];
         this.state.subscriptionUsers = [];
         this.renderSubscriptionUsers();
         this.state.recentNotifications = [];

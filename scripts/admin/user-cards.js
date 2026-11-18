@@ -1,6 +1,6 @@
 // scripts/admin/user-cards.js
 // User cards: devices, direct push, token prune and the 3-strikes button.
-// Per-member actions shown after a search or listing.
+// Per-member actions shown when staff open a member from the members table.
 // RELEVANT FILES: scripts/admin/users.js, scripts/admin/blacklist.js, functions/index.js
 
 Object.assign(AdminPanel, {
@@ -15,6 +15,7 @@ Object.assign(AdminPanel, {
     const strikesCount = Number.isFinite(strikesRaw) ? Math.max(0, strikesRaw) : 0;
     const safeStrikes = DOMPurify.sanitize(String(strikesCount));
     const safeUid = DOMPurify.sanitize(userDoc.id);
+    const safeEmailAttr = safeEmail.replace(/"/g, '&quot;');
     const strikesBtnLabel = strikesCount >= 3 ? 'Ya tiene 3 Strikes' : '3 Strikes';
     const strikesBtnDisabled = strikesCount >= 3 ? ' disabled' : '';
     const strikesBtnClass = strikesCount >= 3
@@ -25,10 +26,14 @@ Object.assign(AdminPanel, {
         <h4 class="font-bold">${safeName}</h4>
         <p class="text-sm text-zinc-400">${safeEmail}</p>
         <p class="text-xs text-amber-300 mt-1">Strikes: ${safeStrikes} / 3</p>
-        <div class="mt-3">
+        <div class="mt-3 flex flex-wrap gap-2">
           <button data-action="set-three-strikes" data-user-id="${safeUid}"${strikesBtnDisabled}
                   class="${strikesBtnClass} font-semibold py-2 px-3 rounded-md text-sm">
             ${strikesBtnLabel}
+          </button>
+          <button data-action="password-reset" data-email="${safeEmailAttr}"
+                  class="bg-zinc-600 hover:bg-zinc-700 text-white font-semibold py-2 px-3 rounded-md text-sm">
+            Reiniciar contraseña
           </button>
         </div>
     `;
@@ -114,6 +119,12 @@ Object.assign(AdminPanel, {
     });
     document.querySelectorAll('[data-action="set-three-strikes"]').forEach(btn=>{
       btn.onclick = () => this.setUserToThreeStrikes(btn.dataset.userId);
+    });
+    document.querySelectorAll('[data-action="password-reset"]').forEach(btn=>{
+      btn.onclick = () => this.sendPasswordReset(btn.dataset.email);
+    });
+    document.querySelectorAll('[data-action="close-member"]').forEach(btn=>{
+      btn.onclick = () => this.closeMemberCard();
     });
   },
 

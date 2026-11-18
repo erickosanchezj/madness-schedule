@@ -1,10 +1,15 @@
 // scripts/admin/views/week.js
-// Markup for "Clases de la Semana" and "Reservas de la Semana".
+// Markup for "Hoy", "Clases de la Semana" and "Reservas de la Semana".
 // Moved out of admin.html to keep it short; inserted before AdminPanel starts.
 // RELEVANT FILES: admin.html, scripts/admin/calendar.js, scripts/admin/weekly-bookings.js
 
 // Replaces the placeholder in admin.html (inside the "Semana" tab).
 document.querySelector('[data-view="week"]').outerHTML = `
+      <section class="admin-card" aria-labelledby="today-title">
+        <h2 id="today-title" class="admin-card-title">Hoy</h2>
+        <div id="today-classes" class="admin-today-grid"></div>
+      </section>
+
       <div class="space-y-6">
         <section class="admin-card" aria-labelledby="week-title">
           <h2 id="week-title" class="admin-card-title">Clases de la semana</h2>

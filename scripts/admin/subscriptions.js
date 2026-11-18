@@ -5,13 +5,13 @@
 
 Object.assign(AdminPanel, {
 
+  // Opens one live listener for the selected filter.
+  // Typing in the search box does NOT call this; see applySubscriptionSearch().
   listenSubscriptionUsers(){
     const filterEl = document.getElementById('subscription-filter');
-    const searchEl = document.getElementById('user-search');
     const loadingEl = document.getElementById('subscription-loading');
     const tbody = document.getElementById('subscription-users-list');
     const filter = filterEl?.value || 'all';
-    const searchTerm = (searchEl?.value || '').toLowerCase();
 
     if (loadingEl) loadingEl.classList.remove('hidden');
     if (tbody) tbody.innerHTML = '';
@@ -35,22 +35,23 @@ Object.assign(AdminPanel, {
     }
 
     this.state.unsubSubscriptionUsers = query.onSnapshot(snapshot => {
-      this.state.subscriptionUsers = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
-
-      if (searchTerm) {
-        this.state.subscriptionUsers = this.state.subscriptionUsers.filter(user => {
-          const name = (user.displayName || '').toLowerCase();
-          const email = (user.email || '').toLowerCase();
-          return name.includes(searchTerm) || email.includes(searchTerm);
-        });
-      }
-
-      this.renderSubscriptionUsers();
+      this.state.subscriptionAllUsers = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
+      this.applySubscriptionSearch();
     }, err => {
       console.error('Error escuchando usuarios', err);
       if (loadingEl) loadingEl.classList.add('hidden');
       this.showToast({ title:'Error', message:err.message, variant:'error' });
     });
+  },
+
+  // Filters the users we already have in memory, so typing costs no Firestore reads.
+  // normalizeStr drops accents, so "valeria" also finds "Valéria".
+  applySubscriptionSearch(){
+    const term = this.normalizeStr(document.getElementById('user-search')?.value || '');
+    this.state.subscriptionUsers = this.state.subscriptionAllUsers.filter(user => !term
+      || this.normalizeStr(user.displayName || '').includes(term)
+      || this.normalizeStr(user.email || '').includes(term));
+    this.renderSubscriptionUsers();
   },
 
   renderSubscriptionUsers(){
@@ -182,7 +183,7 @@ Object.assign(AdminPanel, {
       return `
         <tr>
           <td class="p-3">
-            <div class="font-medium">${safeName}</div>
+            <button type="button" onclick="AdminPanel.openMemberCard('${user.id}')" class="admin-member-link font-medium text-left">${safeName}</button>
             <div class="text-xs text-zinc-400">${safeEmail}</div>
           </td>
           <td class="p-3">

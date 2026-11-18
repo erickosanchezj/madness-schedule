@@ -30,14 +30,7 @@ const AdminPanel = {
     unsubCapacity: null,
     attendanceRangeKey: '',
     attendanceTickTimer: null,
-    userSearchResults: [],
-    userPageSize: 20,
-    userPage: 1,
-    lastUserDoc: null,
-    userPageStart: 0,
-    userPageEnd: 0,
-    hasNextUserPage: false,
-    userHasPreviousPage: false,
+    userSearchResults: [], // the member open in the detail card (0 or 1 docs)
     blacklistedUsers: [],
     analyticsTracker: {
       bookingTimeline: {}
@@ -51,7 +44,8 @@ const AdminPanel = {
     dailyMessages: [],
     unsubDailyMessages: null,
     userCache: new Map(),
-    subscriptionUsers: [],
+    subscriptionAllUsers: [], // everyone the live listener returned
+    subscriptionUsers: [],    // the same list after the search box filter
     unsubSubscriptionUsers: null
   },
 

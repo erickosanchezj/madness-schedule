@@ -7,6 +7,7 @@ Object.assign(AdminPanel, {
 
   // --- RENDER ---
   renderAll(){
+    this.renderTodayPanel();
     this.renderCalendarGrid();
     this.renderDailyBookings();
     this.renderManualBookingsList(this.state.selectedClass?.id || null);
