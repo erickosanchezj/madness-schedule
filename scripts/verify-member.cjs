@@ -107,7 +107,7 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
      const main=document.querySelector('.class-detail-content'),cta=document.querySelector('.class-detail-cta'),button=cta.querySelector('button');
      main.scrollTop=main.scrollHeight;
      const b=button.getBoundingClientRect(),nav=document.querySelector('nav').getBoundingClientRect();
-     return {overflow:document.documentElement.scrollWidth>innerWidth,buttonVisible:b.top>=0&&b.bottom<=nav.top+1,hitTarget:b.height>=44,active:document.querySelector('#nav-bar [data-screen="agenda"]').getAttribute('aria-current'),unknown:document.querySelector('.class-detail-value:last-child')?.textContent};
+     return {overflow:document.documentElement.scrollWidth>innerWidth,buttonVisible:b.top>=0&&b.bottom<=nav.top+1,hitTarget:b.height>=44,active:document.querySelector('#nav-bar [data-screen="agenda"]').getAttribute('aria-current'),unknown:document.querySelector('.class-fact:last-child b')?.textContent};
     });
     if(result.overflow||!result.buttonVisible||!result.hitTarget||result.active!=='page')throw Error(`Class state ${scenario} at ${width}x${height}: ${JSON.stringify(result)}`);
     if(width===320||scenario==='long-content')await page.screenshot({path:prefix+`-detail-${scenario}-${width}x${height}.png`,fullPage:true});
@@ -140,7 +140,7 @@ window.turnstile={render:()=>{},getResponse:()=> 'fixture-only'};
     if(Math.abs(metrics.gap)>1||Math.abs(metrics.mainGap)>1||Math.abs(metrics.brandGap-metrics.brandOffset)>1||metrics.navHeight!==73+(iosStandalone&&width>height?21:34)||metrics.rootScroll||!metrics.absolute||!metrics.sibling||metrics.accent!=='#db3eb1')throw Error('PWA shell '+JSON.stringify({width,height,scroll,...metrics}));
    }
    await page.evaluate(()=>{
-    const row=document.querySelector('.class-row');row.scrollIntoView({block:'end'});
+    const row=document.querySelector('.schedule-row');row.scrollIntoView({block:'end'});
     const dock=document.getElementById('agenda-background');dock.style.pointerEvents='auto';
     const r=row.getBoundingClientRect(), y=Math.min(r.bottom-8,document.querySelector('nav').getBoundingClientRect().top-8);
     if(!row.contains(document.elementFromPoint(r.left+8,y)))throw Error('Brand artwork covers a class row');
