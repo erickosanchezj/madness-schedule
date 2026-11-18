@@ -125,12 +125,17 @@ Object.assign(AdminPanel, {
 
     listEl.innerHTML = rows.join('');
     listEl.querySelectorAll('[data-manual-booking-id]').forEach(btn=>{
-      btn.onclick = (evt)=>{
+      btn.onclick = async (evt)=>{
         const target = evt.currentTarget;
         const bookingId = target?.dataset?.manualBookingId;
         const clsId = target?.dataset?.manualClassId || classId;
         if (bookingId && clsId){
-          const shouldDelete = confirm('¿Liberar este lugar manual?');
+          const shouldDelete = await this.confirmDialog({
+            title: 'Liberar lugar',
+            message: 'Se borrará esta reserva de WhatsApp y el lugar quedará libre.',
+            confirmLabel: 'Liberar lugar',
+            danger: true
+          });
           if (shouldDelete){
             this.deleteManualBooking(clsId, bookingId);
           }

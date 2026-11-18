@@ -137,7 +137,7 @@ Object.assign(AdminPanel, {
     }
   },
 
-  handleDailyMessageListClick(event){
+  async handleDailyMessageListClick(event){
     const btn = event.target.closest('[data-daily-action]');
     if (!btn) return;
     const id = btn.dataset.id;
@@ -150,7 +150,12 @@ Object.assign(AdminPanel, {
       const active = btn.dataset.active === 'true';
       this.toggleDailyMessage(id, active);
     } else if (action === 'delete'){
-      const confirmed = window.confirm('¿Eliminar este mensaje? Esta acción no se puede deshacer.');
+      const confirmed = await this.confirmDialog({
+        title: 'Eliminar mensaje',
+        message: 'El mensaje se borrará y dejará de verse en la app. No se puede deshacer.',
+        confirmLabel: 'Eliminar',
+        danger: true
+      });
       if (confirmed) this.deleteDailyMessage(id);
     }
   },

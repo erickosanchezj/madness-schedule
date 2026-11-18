@@ -150,10 +150,11 @@ Object.assign(AdminPanel, {
     document.getElementById('delete-button').onclick = async () => {
       const booked = (this.state.bookingsMap.get(cls.id) || []).length;
       const waiting = (this.state.waitlistsMap.get(cls.id) || []).length;
-      const ok = await this.confirmDanger({
+      const ok = await this.confirmDialog({
         title: `¿Eliminar ${cls.name || 'esta clase'}?`,
         message: `También se borrarán ${booked} reservas y ${waiting} personas en lista de espera. No se puede deshacer.`,
-        confirmLabel: 'Eliminar clase'
+        confirmLabel: 'Eliminar clase',
+        danger: true
       });
       if (ok) this.deleteClass();
     };

@@ -149,7 +149,12 @@ Object.assign(AdminPanel, {
       return;
     }
 
-    const confirmed = confirm(`¿Dar 3 strikes a ${userLabel}? El usuario quedará bloqueado para reservar.`);
+    const confirmed = await this.confirmDialog({
+      title: 'Dar 3 strikes',
+      message: `${userLabel} quedará en lista negra y no podrá reservar hasta que lo rehabilites.`,
+      confirmLabel: 'Dar 3 strikes',
+      danger: true
+    });
     if (!confirmed) return;
 
     try{
@@ -204,7 +209,12 @@ Object.assign(AdminPanel, {
       // Heurística de token inválido/no registrado
       const looksInvalid = /not[-\s]?registered|unregistered|invalid[-\s]?registration|registration[-\s]?token|mismatch/i.test(msg);
       if (looksInvalid && uid && token){
-        const ok = confirm('Este token parece inválido. ¿Quieres eliminarlo del perfil del usuario?');
+        const ok = await this.confirmDialog({
+          title: 'Token inválido',
+          message: 'Este dispositivo ya no recibe notificaciones. ¿Quitarlo del perfil del usuario?',
+          confirmLabel: 'Quitar token',
+          danger: true
+        });
         if (ok){
           try{
             await this.db.collection('users').doc(uid).set({
@@ -226,7 +236,12 @@ Object.assign(AdminPanel, {
     const btn = event.target;
     const { token, uid } = btn.dataset;
     if (!uid || !token) return;
-    const ok = confirm('¿Eliminar este token del usuario?');
+    const ok = await this.confirmDialog({
+      title: 'Quitar dispositivo',
+      message: 'Este dispositivo dejará de recibir notificaciones de Madness.',
+      confirmLabel: 'Quitar token',
+      danger: true
+    });
     if (!ok) return;
     btn.disabled = true;
     try{

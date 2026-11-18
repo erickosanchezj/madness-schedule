@@ -31,6 +31,9 @@ const AdminPanel = {
     attendanceRangeKey: '',
     attendanceTickTimer: null,
     userSearchResults: [], // the member open in the detail card (0 or 1 docs)
+    todayAttendance: new Set(), // ids of today's classes that already have attendance saved
+    todayAttendanceKey: '',
+    unsubTodayAttendance: null,
     analyticsTracker: {
       bookingTimeline: {}
     },
@@ -39,7 +42,6 @@ const AdminPanel = {
     selectedPeriod: 'range',
     selectedClassType: 'all',
     selectedInstructor: 'all',
-    selectedExportFormat: 'capacity',
     dailyMessages: [],
     unsubDailyMessages: null,
     userCache: new Map(),

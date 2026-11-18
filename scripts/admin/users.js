@@ -8,7 +8,12 @@ Object.assign(AdminPanel, {
   // ---- Password reset for the member shown in the card ----
   async sendPasswordReset(email){
     if (!email){ this.showToast({ title:'Este usuario no tiene correo', variant:'warn' }); return; }
-    if (!confirm(`¿Enviar correo de reinicio de contraseña a ${email}?`)) return;
+    const ok = await this.confirmDialog({
+      title: 'Reiniciar contraseña',
+      message: `Se enviará un correo a ${email} con un enlace para elegir una contraseña nueva.`,
+      confirmLabel: 'Enviar correo'
+    });
+    if (!ok) return;
     try{
       await this.auth.sendPasswordResetEmail(email);
       this.showToast({ title:'Correo enviado', message:`Revisa ${email}` });

@@ -23,10 +23,11 @@ Object.assign(AdminPanel, {
   async resetAllStrikesForEveryone(){
     const btn = document.getElementById('reset-strikes-btn');
     // Typing RESET makes an accidental global reset very unlikely.
-    const confirmed = await this.confirmDanger({
+    const confirmed = await this.confirmDialog({
       title: 'Resetear strikes de todos',
       message: 'Pone en 0 los strikes de todos los miembros y desbloquea a todos los que están en lista negra. No se puede deshacer.',
       confirmLabel: 'Resetear todo',
+      danger: true,
       requireText: 'RESET'
     });
     if (!confirmed) return;

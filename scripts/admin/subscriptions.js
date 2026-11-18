@@ -1,7 +1,7 @@
 // scripts/admin/subscriptions.js
-// Subscription table: live list, paid status, TotalPass review and type changes.
-// Staff track monthly payments and TotalPass approvals.
-// RELEVANT FILES: scripts/admin/views/reports.js, scripts/admin/users.js, functions/index.js
+// Members table: one live Firestore listener per filter, in-memory search and row rendering.
+// Staff track monthly payments and TotalPass approvals; row buttons call subscription-actions.js.
+// RELEVANT FILES: scripts/admin/subscription-actions.js, scripts/admin/views/reports.js, scripts/admin/users.js
 
 Object.assign(AdminPanel, {
 
@@ -200,94 +200,5 @@ Object.assign(AdminPanel, {
     }).join('');
 
     lucide.createIcons({ attrs:{ 'aria-hidden':'true' } });
-  },
-
-  async markUserAsPaid(userId){
-    if (!confirm('¿Marcar a este usuario como pagado para el mes actual?')) return;
-
-    try {
-      await this.db.collection('users').doc(userId).update({
-        subscriptionStatus:'paid',
-        subscriptionPaidDate: firebase.firestore.FieldValue.serverTimestamp(),
-        subscriptionGraceUntil: firebase.firestore.FieldValue.delete()
-      });
-
-      this.showToast({ title:'Usuario actualizado', message:'El usuario ha sido marcado como pagado' });
-    } catch (err) {
-      this.showToast({ title:'Error', message:err.message, variant:'error' });
-    }
-  },
-
-  async verifyTotalPass(userId, approve){
-    const action = approve ? 'verificar' : 'rechazar';
-    if (!confirm(`¿Confirmar ${action} el estado TotalPass de este usuario?`)) return;
-
-    try {
-      const updates = { totalPassVerified: approve };
-
-      if (approve) {
-        // TotalPass users stay in good standing without extra charges.
-        updates.totalPass = true;
-        updates.subscriptionType = 'totalpass';
-        updates.subscriptionStatus = 'totalpass';
-        updates.subscriptionGraceUntil = firebase.firestore.FieldValue.delete();
-      } else {
-        // Reset manual flag so we avoid repeated review requests.
-        updates.totalPass = false;
-        updates.subscriptionType = 'dropin';
-        updates.subscriptionStatus = 'unpaid';
-        updates.subscriptionGraceUntil = firebase.firestore.FieldValue.delete();
-      }
-
-      await this.db.collection('users').doc(userId).update(updates);
-
-      this.showToast({
-        title: approve ? 'TotalPass Verificado' : 'TotalPass Rechazado',
-        message: approve ? 'El usuario ha sido verificado como TotalPass' : 'Se ha rechazado el estado TotalPass del usuario'
-      });
-    } catch (err) {
-      this.showToast({ title:'Error', message:err.message, variant:'error' });
-    }
-  },
-
-  showSubscriptionTypeModal(userId, selectEl){
-    const user = this.state.subscriptionUsers.find(u => u.id === userId);
-    if (!user) {
-      if (selectEl) selectEl.value = '';
-      return;
-    }
-
-    if (selectEl && selectEl.value) {
-      const newType = selectEl.value;
-      const validTypes = ['monthly','totalpass','dropin'];
-      if (!validTypes.includes(newType)) {
-        this.showToast({ title:'Tipo inválido', message:'Debe ser: monthly, totalpass, o dropin', variant:'error' });
-        selectEl.value = '';
-        return;
-      }
-
-      const labels = {
-        monthly:'Mensual',
-        totalpass:'TotalPass',
-        dropin:'Por Clase'
-      };
-      const targetLabel = labels[newType] || newType;
-      const userLabel = user.displayName || user.email || 'este usuario';
-
-      const confirmed = confirm(`¿Cambiar tipo de suscripción de ${userLabel} a ${targetLabel}?`);
-      if (!confirmed) {
-        selectEl.value = '';
-        return;
-      }
-
-      this.db.collection('users').doc(userId).update({ subscriptionType:newType }).then(() => {
-        this.showToast({ title:'Tipo actualizado', message:`Tipo de suscripción cambiado a: ${newType}` });
-      }).catch(err => {
-        this.showToast({ title:'Error', message:err.message, variant:'error' });
-      }).finally(() => {
-        selectEl.value = '';
-      });
-      return;
-    }
   },
 });

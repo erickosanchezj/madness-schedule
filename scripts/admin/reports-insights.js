@@ -1,5 +1,5 @@
 // scripts/admin/reports-insights.js
-// Report projections, recommendations and CSV export.
+// Report projections, key numbers (KPIs), price per class and CSV export.
 // Gives staff simple suggestions and downloadable reports.
 // RELEVANT FILES: scripts/admin/reports-data.js, scripts/admin/reports-fetch.js, scripts/admin/views/reports.js
 
@@ -121,55 +121,63 @@ Object.assign(AdminPanel, {
     data.aggregates = this.buildAttendanceAggregates({ labels: data.labels, report, aggregateContext, userStats });
   },
 
+  // One CSV with the same period and filters as the charts (Periodo, Tipo de clase, Instructor).
   exportCapacityReport(){
     const data = this.state.attendanceData;
     if (!data) return;
-    const format = this.state.selectedExportFormat || 'capacity';
-    const { report, aggregates, userStats } = data;
     const start = document.getElementById('att-start-date')?.value || 'inicio';
     const end = document.getElementById('att-end-date')?.value || 'fin';
-    let rows = [];
-    if (format === 'capacity'){
-      rows = [['Fecha','Asistieron','Faltaron','Reservaron','Capacidad','Utilización %','Ingresos estimados','Meta','Retención %']];
-      Object.entries(report).forEach(([date,d])=>{
-        rows.push([date,d.attended,d.absent,d.booked,d.totalCapacity,d.utilizationRate,d.revenue,d.revenueTarget,d.memberRetention]);
-      });
-    } else if (format === 'demographics'){
-      rows = [['Usuario','Reservas','Primer ingreso','Ingresos estimados','Cancelaciones']];
-      if (userStats instanceof Map){
-        userStats.forEach((stat,key)=>{
-          rows.push([key,stat.count,stat.firstDate||'',stat.revenue||0,stat.cancellations||0]);
-        });
-      }
-    } else if (format === 'instructors'){
-      rows = [['Instructor','Clases','Asistentes','Utilización promedio %']];
-      Object.entries(aggregates?.instructorMetrics || {}).forEach(([name,metrics])=>{
-        rows.push([name,metrics.classes,metrics.attendees,metrics.avgUtilization]);
-      });
-    } else if (format === 'revenue'){
-      const projection = this.calculateCapacityProjections();
-      rows = [['Fecha','Ingresos estimados','Meta','Pronóstico %']];
-      (aggregates?.revenueSeries || []).forEach(item=>{
-        rows.push([item.date,item.revenue,item.target,projection?.projectedUtilization||0]);
-      });
-    } else if (format === 'optimization'){
-      rows = [['Recomendación','Detalle']];
-      this.buildOptimizationRows(aggregates).forEach(pair=>rows.push(pair));
-    } else if (format === 'custom-range'){
-      const totals = aggregates?.totals || {};
-      rows = [['Indicador','Valor'],
-        ['Ingresos estimados totales', totals.revenue||0],
-        ['Meta de ingresos', totals.target||0],
-        ['Retención promedio %', aggregates?.retention?.retentionRate||0],
-        ['Cancelaciones', totals.cancellations||0],
-        ['No shows', totals.noShows||0],
-        ['Periodo', `${start} a ${end}`]
-      ];
-    } else {
-      return;
-    }
-    const filename = `reporte-${format}-${start}-a-${end}.csv`;
-    this.downloadCSV(filename, rows);
+    const rows = [['Fecha inicio','Periodo','Asistieron','Faltaron','Reservaron','Capacidad','Utilización %','Ingresos estimados','Meta','Retención %']];
+    this.aggregateReportByPeriod(data, this.state.selectedPeriod).forEach(({ key, label, data: d }) => {
+      rows.push([key, label, d.attended, d.absent, d.booked, d.totalCapacity, d.utilizationRate, d.revenue, d.revenueTarget, d.memberRetention]);
+    });
+    this.downloadCSV(`reporte-${start}-a-${end}.csv`, rows);
+  },
+
+  // Four headline numbers for the selected dates and filters, shown above the charts.
+  renderReportKpis(){
+    const el = document.getElementById('report-kpis');
+    const data = this.state.attendanceData;
+    if (!el || !data) return;
+    const days = data.labels.map(l => data.report[l.date]).filter(Boolean);
+    const sum = key => days.reduce((total, d) => total + (Number(d[key]) || 0), 0);
+    const attended = sum('attended');
+    const absent = sum('absent');
+    const booked = sum('booked');
+    const capacity = sum('totalCapacity');
+    const revenue = sum('revenue');
+    const pct = (part, whole) => whole > 0 ? `${Math.round((part / whole) * 100)}%` : '—';
+    const tiles = [
+      ['Asistencia', pct(attended, attended + absent), `${attended} de ${attended + absent} con asistencia registrada`],
+      ['Uso de capacidad', pct(booked, capacity), `${booked} reservas / ${capacity} lugares`],
+      ['No-shows', String(absent), 'Reservaron y faltaron'],
+      ['Ingresos estimados', `$${revenue.toLocaleString('es-MX')}`, `Con $${this.DEFAULT_TICKET_PRICE} por clase`]
+    ];
+    el.innerHTML = tiles.map(([label, value, hint]) => `
+      <div class="admin-kpi">
+        <p class="admin-kpi-label">${label}</p>
+        <p class="admin-kpi-value">${value}</p>
+        <p class="admin-kpi-hint">${hint}</p>
+      </div>`).join('');
+  },
+
+  // Price per class used for "Ingresos estimados". Saved in this browser only, so no database change.
+  setupTicketPrice(){
+    const input = document.getElementById('att-ticket-price');
+    if (!input) return;
+    try {
+      const saved = Number(localStorage.getItem('madness.ticketPrice'));
+      if (saved > 0) this.DEFAULT_TICKET_PRICE = saved;
+    } catch {}
+    input.value = this.DEFAULT_TICKET_PRICE;
+    input.addEventListener('change', () => {
+      const price = Number(input.value);
+      if (!(price > 0)){ input.value = this.DEFAULT_TICKET_PRICE; return; }
+      this.DEFAULT_TICKET_PRICE = price;
+      try { localStorage.setItem('madness.ticketPrice', String(price)); } catch {}
+      // Revenue is recalculated from the cached report; no new Firestore reads.
+      this.renderAttendanceDashboardFromCache();
+    });
   },
 
   downloadCSV(filename, rows){
@@ -181,25 +189,5 @@ Object.assign(AdminPanel, {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  },
-
-  buildOptimizationRows(aggregates){
-    const rows = [];
-    const bi = aggregates?.bi || {};
-    const schedule = bi.optimalScheduling?.suggestions || [];
-    const capacity = bi.capacityVsDemand?.status;
-    const instructors = bi.instructorUtilization || {};
-    schedule.forEach(text=>rows.push(['Horario', text]));
-    if (capacity) rows.push(['Capacidad vs demanda', capacity]);
-    if (Array.isArray(instructors.leaders) && instructors.leaders.length){
-      rows.push(['Instructores top', instructors.leaders.join(' | ')]);
-    }
-    if (Array.isArray(instructors.underutilized) && instructors.underutilized.length){
-      rows.push(['Instructores con espacio', instructors.underutilized.join(' | ')]);
-    }
-    if (!rows.length){
-      rows.push(['Resumen','Sin recomendaciones registradas']);
-    }
-    return rows;
   },
 });

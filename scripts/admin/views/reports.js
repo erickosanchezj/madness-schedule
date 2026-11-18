@@ -97,16 +97,9 @@ document.querySelector('[data-view="reports"]').outerHTML = `
               <select id="instructor-filter" class="bg-zinc-700 text-white p-1 rounded-md min-w-[8rem]">
                 <option value="all">Todos</option>
               </select>
-              <label for="att-export-format">Exportar:</label>
-              <select id="att-export-format" class="bg-zinc-700 text-white p-1 rounded-md">
-                <option value="capacity">Capacidad</option>
-                <option value="demographics">Demográficos</option>
-                <option value="instructors">Instructores</option>
-                <option value="revenue">Ingresos estimados</option>
-                <option value="optimization">Optimización</option>
-                <option value="custom-range">Rango personalizado</option>
-              </select>
-              <button id="att-export" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-2 rounded-md">Exportar</button>
+              <label for="att-ticket-price">Precio por clase ($):</label>
+              <input type="number" id="att-ticket-price" min="1" step="10" class="bg-zinc-700 text-white p-1 rounded-md w-24">
+              <button id="att-export" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-1 px-2 rounded-md">Exportar CSV</button>
             </div>
             <div class="flex flex-wrap items-center gap-2 xl:col-span-2">
               <span>Métricas:</span>
@@ -127,6 +120,8 @@ document.querySelector('[data-view="reports"]').outerHTML = `
               </label>
             </div>
           </div>
+          <!-- Key numbers for the selected dates and filters (filled by renderReportKpis). -->
+          <div id="report-kpis" class="admin-kpis"></div>
           <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4 space-y-4">
             <div class="w-full bg-zinc-700 h-2 rounded">
               <div id="capacity-gauge-fill" class="h-2 bg-emerald-500 rounded" style="width:0%"></div>

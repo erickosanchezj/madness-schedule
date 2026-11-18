@@ -43,7 +43,6 @@ Object.assign(AdminPanel, {
     const periodEl = document.getElementById('att-period');
     const classFilter = document.getElementById('class-filter');
     const instructorFilter = document.getElementById('instructor-filter');
-    const exportFormatEl = document.getElementById('att-export-format');
     const dailyForm = document.getElementById('daily-message-form');
     const dailyResetBtn = document.getElementById('daily-message-reset');
     const dailyList = document.getElementById('daily-messages-list');
@@ -87,14 +86,10 @@ Object.assign(AdminPanel, {
         this.renderAttendanceDashboardFromCache();
       });
     });
-    if (exportFormatEl){
-      exportFormatEl.addEventListener('change',()=>{
-        this.state.selectedExportFormat = exportFormatEl.value;
-      });
-    }
     if (exportBtn){
       exportBtn.onclick = () => this.exportCapacityReport();
     }
+    this.setupTicketPrice();
 
     if (dailyForm){
       dailyForm.addEventListener('submit', (e)=>this.submitDailyMessage(e));
@@ -151,6 +146,7 @@ Object.assign(AdminPanel, {
         this.teardownBookingsListeners();
         if (this.state.unsubClasses) this.state.unsubClasses();
         this.stopAttendancePolling();
+        this.stopTodayAttendance();
         if (this.state.unsubRecentNotifs) this.state.unsubRecentNotifs();
         if (this.state.unsubDailyMessages) this.state.unsubDailyMessages();
         this.state.unsubDailyMessages = null;

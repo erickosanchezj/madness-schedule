@@ -112,6 +112,7 @@ Object.assign(AdminPanel, {
       return;
     }
     this.injectBookingsIntoReport();
+    this.renderReportKpis();
     const periodBuckets = this.aggregateReportByPeriod(dataCache, this.state.selectedPeriod);
     if (!periodBuckets.length){
       this.destroyAttendanceCharts();

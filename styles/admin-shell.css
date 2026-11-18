@@ -173,6 +173,11 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
 .admin-today-count { flex-shrink: 0; padding: 2px var(--space-xs); border-radius: 999px; background: rgb(68 214 44 / 14%); color: var(--madness-green); font-size: .75rem; font-weight: 700; }
 .admin-today-count.is-full { background: rgb(253 164 175 / 14%); color: var(--color-error); }
 
+/* Attendance status line in each "Hoy" card. */
+.admin-today-status { margin-bottom: var(--space-xs); font-size: .75rem; font-weight: 700; }
+.admin-today-status.is-done { color: var(--madness-green); }
+.admin-today-status.is-pending { color: var(--color-warning); }
+
 /* Member names in the members table open the detail card. */
 .admin-member-link { min-height: 0; padding: 0; color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent); text-underline-offset: .2em; }
 .admin-member-link:hover { color: var(--color-accent-text); }
@@ -182,12 +187,21 @@ body[data-app='admin'] .text-indigo-400 { color: var(--color-accent-text) !impor
 .admin-danger-btn:hover { background: #e11d48; }
 .admin-danger-zone { border-color: rgb(225 29 72 / 45%); border-top-color: rgb(225 29 72 / 70%); }
 .admin-danger-zone .admin-card-title::before { background: #e11d48; }
-.admin-confirm { width: min(420px, calc(100% - 32px)); padding: var(--space-lg); border: 1px solid rgb(225 29 72 / 50%); border-radius: var(--radius-card); background: var(--color-paper-2); color: var(--color-ink); }
+.admin-confirm { width: min(420px, calc(100% - 32px)); padding: var(--space-lg); border: 1px solid var(--color-rule); border-radius: var(--radius-card); background: var(--color-paper-2); color: var(--color-ink); }
+.admin-confirm.is-danger { border-color: rgb(225 29 72 / 50%); }
 .admin-confirm::backdrop { background: var(--color-overlay); }
 .admin-confirm h2 { margin-bottom: var(--space-sm); font-size: 1.125rem; font-weight: 700; }
 .admin-confirm p { margin-bottom: var(--space-md); color: var(--color-ink-2); font-size: .9375rem; }
 .admin-confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-xs); margin-top: var(--space-lg); }
 .admin-blocked-badge { display: inline-block; margin-left: var(--space-2xs); padding: 0 var(--space-xs); border-radius: 999px; background: rgb(225 29 72 / 18%); color: var(--color-error); font-size: .6875rem; font-weight: 700; }
+
+/* --- Reports: key numbers row --- */
+.admin-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-sm); }
+.admin-kpi { padding: var(--space-md); border: 1px solid var(--color-rule); border-radius: var(--radius-input); background: rgb(0 0 0 / 22%); }
+.admin-kpi-label { color: var(--color-muted); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.admin-kpi-value { margin-block: 2px; font-family: var(--font-display); font-size: 1.5rem; line-height: 1.2; }
+.admin-kpi-hint { color: var(--color-muted); font-size: .75rem; }
+@media (min-width: 1024px) { .admin-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 /* --- Reports: chart titles and the collapsible "Más detalle" block --- */
 .admin-chart-title { margin-bottom: var(--space-xs); color: var(--color-ink-2); font-size: .875rem; font-weight: 600; }
