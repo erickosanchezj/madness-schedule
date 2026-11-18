@@ -1,0 +1,167 @@
+<!-- docs/mockups/agenda-mockup.html -->
+<!-- Visual mockup of a reimagined member Agenda screen, with fake data and no Firebase. -->
+<!-- Lets the owner review the new layout on a phone before the real screen is changed. -->
+<!-- RELEVANT FILES: scripts/member/screens/agenda.js, styles/madness-theme.css, styles/member-shell.css -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Agenda (maqueta)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+  <style>
+    /* Same palette as the member app (styles/madness-theme.css). */
+    :root {
+      --paper: #111015; --paper-2: #1b1a21; --paper-3: #28262f; --rule: #3c3942;
+      --ink: #f4f4f5; --ink-2: #d4d4d8; --muted: #a1a1aa;
+      --pink: #db3eb1; --pink-text: #e855bd; --pink-ink: #25091d; --green: #44d62c;
+      --amber: #fcd34d; --rose: #fda4af;
+      --display: 'Archivo Black', 'Inter', sans-serif; --body: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { min-height: 100dvh; background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .app { position: relative; isolation: isolate; max-width: 480px; margin: 0 auto; min-height: 100dvh; padding-bottom: 150px;
+      background: var(--paper) url('../../images/backgrounds/madness-texture.webp') center / cover; }
+    .app::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .4; pointer-events: none;
+      background: url('../../images/backgrounds/madness-green-light.webp') right top / auto 60% no-repeat; }
+    .screen { padding: 20px 16px; display: grid; gap: 20px; }
+
+    /* 1. Greeting instead of "Tu Agenda" + subtitle */
+    .hello { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .hello h1 { font: 400 28px/1.15 var(--display); }
+    .hello time { color: var(--muted); font-size: 14px; white-space: nowrap; }
+
+    .message { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px;
+      border: 1px solid rgb(68 214 44 / 12%); border-left: 3px solid var(--green); background: rgb(12 15 13 / 90%); font-size: 14px; }
+    .message p { flex: 1; }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+
+    /* 2. Next class: one big card */
+    .next { position: relative; overflow: hidden; display: grid; align-content: end; gap: 6px; min-height: 196px; padding: 16px;
+      border-radius: 18px; border: 1px solid rgb(219 62 177 / 35%); background: center / cover; }
+    .next::before { content: ''; position: absolute; inset: 0; z-index: 0; background: linear-gradient(to top, rgb(17 16 21 / 96%) 25%, rgb(17 16 21 / 40%)); }
+    .next > * { position: relative; }
+    .next h2 { font: 400 26px/1.1 var(--display); text-transform: uppercase; }
+    .next .meta { color: var(--ink-2); font-size: 14px; }
+    .pill { justify-self: start; padding: 2px 10px; border-radius: 999px; background: rgb(219 62 177 / 22%); color: var(--pink-text); font-size: 13px; font-weight: 700; }
+    .next .actions { display: flex; gap: 8px; margin-top: 8px; }
+    .btn { min-height: 44px; padding: 0 18px; border-radius: 12px; font-weight: 700; font-size: 15px; }
+    .btn-primary { background: var(--pink); color: var(--pink-ink); box-shadow: 0 5px 18px rgb(219 62 177 / 25%); }
+    .btn-ghost { color: var(--rose); }
+    .more { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 8px; padding: 10px 14px;
+      border-radius: 12px; background: rgb(27 26 33 / 85%); font-size: 14px; color: var(--ink-2); }
+    .more b { color: var(--ink); }
+
+    /* 3. Day strip instead of Hoy/Mañana */
+    .days { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
+    .day { flex: 0 0 auto; display: grid; justify-items: center; min-width: 64px; padding: 8px 10px; border-radius: 14px;
+      background: rgb(27 26 33 / 85%); border: 1px solid var(--rule); }
+    .day small { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+    .day b { font-size: 18px; }
+    .day[aria-pressed='true'] { background: var(--pink); border-color: var(--pink); color: var(--pink-ink); }
+    .day[aria-pressed='true'] small { color: var(--pink-ink); }
+
+    /* 4. Compact timeline rows */
+    .list { display: grid; gap: 10px; }
+    .row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; align-items: stretch; text-align: left; width: 100%; }
+    .row time { padding-top: 12px; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+    .card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px;
+      border-radius: 14px; background: linear-gradient(145deg, rgb(16 20 18 / 92%), rgb(8 11 9 / 89%));
+      border: 1px solid rgb(68 214 44 / 12%); }
+    .card img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
+    .card .name { display: block; font-size: 16px; font-weight: 700; line-height: 1.3; }
+    .card .name span { color: var(--muted); font-weight: 400; font-size: 14px; }
+    .status { font-size: 13px; font-weight: 600; }
+    .ok { color: var(--green); } .low { color: var(--amber); } .full { color: var(--rose); } .mine { color: var(--pink-text); }
+    .chev { color: var(--muted); font-size: 22px; }
+    .row.is-mine .card { border-color: rgb(219 62 177 / 55%); }
+    .soon { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: rgb(68 214 44 / 16%); color: var(--green); font-size: 12px; font-weight: 700; }
+
+    /* Bottom: banner + menu, as in the app today */
+    .bottom { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; transform: translateX(-50%); background: var(--paper-2); }
+    .banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--pink); border-bottom: 1px solid var(--rule); font-size: 14px; }
+    .banner small { display: block; color: var(--pink-text); text-decoration: underline; }
+    .nav { display: grid; grid-template-columns: repeat(3, 1fr); height: 68px; }
+    .nav span { display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
+    .nav .on { color: var(--pink-text); }
+    .note { margin: 8px 16px 0; color: var(--muted); font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main class="screen">
+      <header class="hello"><h1>Hola, Valeria</h1><time>mié 18 nov</time></header>
+
+      <section class="message"><p>Hoy cerramos a las 21:00 por mantenimiento.</p><span aria-hidden="true">✕</span></section>
+
+      <section aria-labelledby="next-title">
+        <p class="eyebrow" id="next-title">Tu próxima clase</p>
+        <article class="next" style="background-image:url('../../images/yoga.png')">
+          <span class="pill">Empieza en 6 h 20 min</span>
+          <h2>Yoga · 19:00</h2>
+          <p class="meta">Hoy · con Sofía · 60 min</p>
+          <div class="actions"><button class="btn btn-primary">Ver detalle</button><button class="btn btn-ghost">Cancelar</button></div>
+        </article>
+        <button class="more"><span>+1 reserva: <b>TRX mañana 07:00</b></span><span class="chev">›</span></button>
+      </section>
+
+      <section aria-labelledby="schedule-title">
+        <p class="eyebrow" id="schedule-title">Horario</p>
+        <div class="days" id="days" role="group" aria-label="Elegir día"></div>
+        <div class="list" id="list" style="margin-top:14px"></div>
+      </section>
+      <p class="note">Maqueta con datos de ejemplo. Toca los días para ver otros horarios.</p>
+    </main>
+
+    <div class="bottom">
+      <div class="banner"><span>🔗</span><span style="flex:1">Queremos escucharte<small>Responder formulario ↗</small></span><span>›</span></div>
+      <nav class="nav"><span class="on">📅<br>Agenda</span><span>🕘<br>Historial</span><span>👤<br>Perfil</span></nav>
+    </div>
+  </div>
+
+  <script>
+    // Fake schedule. status: ok = spots left, low = few left, full = waitlist, mine = booked, wait = in waitlist.
+    const img = n => `../../images/${n}.png`;
+    const DAYS = [
+      { label: 'Hoy', day: 18, classes: [
+        { t: '13:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'ok', text: '9 lugares', soon: 'en 20 min' },
+        { t: '18:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', status: 'full', text: 'Lleno · lista de espera' },
+        { t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', status: 'mine', text: '✓ Tu reserva' },
+        { t: '20:00', name: 'Functional', who: 'Leo', pic: 'functional', status: 'low', text: 'Quedan 4' } ] },
+      { label: 'Mañana', day: 19, classes: [
+        { t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'mine', text: '✓ Tu reserva' },
+        { t: '18:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', status: 'full', text: 'En lista · posición 2' },
+        { t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', status: 'ok', text: '11 lugares' } ] },
+      { label: 'vie', day: 20, classes: [
+        { t: '07:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', status: 'ok', text: '13 lugares' },
+        { t: '19:00', name: 'Functional', who: 'Leo', pic: 'functional', status: 'low', text: 'Quedan 2' } ] },
+      { label: 'sáb', day: 21, classes: [
+        { t: '09:00', name: 'TRX', who: 'Ana', pic: 'trx', status: 'ok', text: '10 lugares' },
+        { t: '10:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', status: 'ok', text: '12 lugares' } ] },
+    ];
+    let current = 0;
+    function render() {
+      document.getElementById('days').innerHTML = DAYS.map((d, i) =>
+        `<button class="day" aria-pressed="${i === current}" data-i="${i}"><small>${d.label}</small><b>${d.day}</b></button>`).join('');
+      document.getElementById('list').innerHTML = DAYS[current].classes.map(c => `
+        <button class="row${c.status === 'mine' ? ' is-mine' : ''}">
+          <time>${c.t}</time>
+          <span class="card">
+            <img src="${img(c.pic)}" alt="">
+            <span><span class="name">${c.name} <span>· ${c.who}</span></span>
+              <span class="status ${c.status === 'wait' ? 'full' : c.status}">${c.text}</span>${c.soon ? `<span class="soon">${c.soon}</span>` : ''}</span>
+            <span class="chev">›</span>
+          </span>
+        </button>`).join('');
+    }
+    document.getElementById('days').addEventListener('click', e => {
+      const btn = e.target.closest('[data-i]');
+      if (btn) { current = Number(btn.dataset.i); render(); }
+    });
+    render();
+  </script>
+</body>
+</html>
