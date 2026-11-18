@@ -10,26 +10,27 @@ function getClassDetailsScreenHTML(classId){
   const start = classStart(cls);
   const minutes = classDuration(cls);
   const hhmm = timeFmt.format(start);
-  const end = timeFmt.format(new Date(start.getTime() + minutes * 60000));
   const countdown = todayCountdown(start, minutes);
   const safeId = DOMPurify.sanitize(cls.id);
   const safeName = DOMPurify.sanitize(cls.name || '');
   const day = [dayWord(start), shortDate(start)].filter(Boolean).join(' ');
+  // The hero shows the start time only; the Duración tile gives the length.
   const durationLabel = minutes % 60 === 0 && minutes >= 120 ? `${minutes / 60} h` : `${minutes} min`;
   const spotsLabel = s.holdActive && !s.holdForMe ? 'Apartado'
     : s.capacity <= 0 ? '—' : s.available > 0 ? `Quedan ${s.available}` : 'Llena';
   const description = DOMPurify.sanitize(cls.description || '').trim().replace(/\n/g, '<br>');
 
   // Cancelling 2 h or less before class adds a strike (same rule as the server, functions/index.js).
+  // Short sentences, no parentheticals: what blocks bookings is explained in Perfil.
   const cancelBy = new Date(start.getTime() - TWO_HOURS_MS);
   const lateNow = Date.now() >= cancelBy.getTime();
   const policy = lateNow
     ? (s.isBooked
-      ? 'Faltan menos de 2 h: si cancelas, cuenta como strike (con 3 se bloquean tus reservas).'
-      : 'Faltan menos de 2 h: si reservas ahora y luego cancelas, cuenta como strike.')
+      ? 'Faltan menos de 2 h. Si cancelas, cuenta como strike.'
+      : 'Faltan menos de 2 h. Si reservas y luego cancelas, cuenta como strike.')
     : s.isBooked
-      ? `Puedes cancelar sin strike hasta las ${timeFmt.format(cancelBy)}. Después cuenta como strike (con 3 se bloquean tus reservas).`
-      : `Si reservas, puedes cancelar sin strike hasta las ${timeFmt.format(cancelBy)} (2 h antes).`;
+      ? `Puedes cancelar sin strike hasta las ${timeFmt.format(cancelBy)}. Después cuenta como strike.`
+      : `Si reservas, puedes cancelar sin strike hasta las ${timeFmt.format(cancelBy)}.`;
 
   return `
     <div class="class-detail-screen">
@@ -44,7 +45,7 @@ function getClassDetailsScreenHTML(classId){
           <div class="class-detail-hero-content">
             ${countdown ? `<span class="class-pill">${countdown}</span>` : ''}
             <h1 class="class-detail-title">${safeName}</h1>
-            <p class="class-meta">${DOMPurify.sanitize(day)} · ${hhmm}–${end}</p>
+            <p class="class-meta">${DOMPurify.sanitize(day)} · ${hhmm}</p>
           </div>
         </header>
         <div class="class-detail-body class-body">
@@ -55,7 +56,7 @@ function getClassDetailsScreenHTML(classId){
               ${s.capacity > 0 ? `<meter class="class-detail-progress" aria-label="Ocupación de la clase" min="0" max="${s.capacity}" value="${Math.min(s.enrolled, s.capacity)}">${s.enrolled}/${s.capacity}</meter>` : ''}</li>
           </ul>
           ${description ? `<section class="class-about" aria-labelledby="class-about-title"><h2 id="class-about-title">Sobre la clase</h2><p>${description}</p></section>` : ''}
-          <p class="class-policy"><i data-lucide="info" aria-hidden="true"></i><span>${policy}</span></p>
+          <p class="class-policy">${policy}</p>
         </div>
       </div>
       <div class="class-detail-feedback"></div>
@@ -73,7 +74,7 @@ function classActionHTML(cls, s, safeId, hhmm, countdown){
     </button>`;
 
   if (s.isBooked){
-    return status('mine', `✓ Reservada · te esperamos a las ${hhmm}`)
+    return status('mine', 'Reservada')
       + (countdown !== 'En curso' ? `<button data-action="cancel-booking" data-class-id="${safeId}" class="w-full class-detail-booking-button class-btn-outline">Cancelar reserva</button>` : '');
   }
 
@@ -83,13 +84,13 @@ function classActionHTML(cls, s, safeId, hhmm, countdown){
   const grace = state.subscriptionGraceUntil instanceof Date && !Number.isNaN(state.subscriptionGraceUntil.getTime()) ? state.subscriptionGraceUntil : null;
   const withinGrace = grace ? Date.now() <= grace.getTime() : false;
   if (type === 'monthly' && paid !== 'paid' && !withinGrace){
-    return `<div class="class-alert" role="alert"><p class="font-semibold">Suscripción mensual no pagada.</p><p>Tu periodo de gracia terminó el ${formatGraceDeadline(grace)}. Paga para seguir reservando.</p></div>
+    return `<div class="class-alert" role="alert"><p class="font-semibold">Pago vencido</p><p>Tu periodo de gracia terminó el ${formatGraceDeadline(grace)}. Paga para seguir reservando.</p></div>
       <button class="w-full class-detail-booking-button class-btn-disabled" disabled>Reserva bloqueada</button>`;
   }
 
   if (s.effectiveAvailable <= 0 && !s.notified){
     if (s.waitEntry){
-      return status('warn', `Estás en la lista · posición ${DOMPurify.sanitize(String(s.waitEntry.position || 1))}`)
+      return status('warn', `Posición ${DOMPurify.sanitize(String(s.waitEntry.position || 1))} en la lista`)
         + `<button data-action="leave-waitlist" data-class-id="${safeId}" class="w-full class-detail-booking-button class-btn-outline">Salir de la lista</button>`;
     }
     if (s.holdActive && !s.holdForMe){
@@ -101,8 +102,8 @@ function classActionHTML(cls, s, safeId, hhmm, countdown){
       + status('warn', 'Si se libera un lugar te avisamos y tendrás 5 min para tomarlo.');
   }
   if (s.notified || s.holdForMe){
-    return status('ok', '¡Se liberó un lugar! Tienes 5 minutos para tomarlo.') + primary('confirm-booking', 'Tomar mi lugar');
+    return status('ok', 'Se liberó un lugar. Tienes 5 minutos para tomarlo.') + primary('confirm-booking', 'Tomar mi lugar');
   }
-  return primary('confirm-booking', `Reservar · ${hhmm}`)
-    + (s.capacity > 0 ? status('ok', `${s.available} ${s.available === 1 ? 'lugar disponible' : 'lugares disponibles'}`) : '');
+  // No "N lugares disponibles" line: the Lugares tile above already shows it.
+  return primary('confirm-booking', `Reservar a las ${hhmm}`);
 }

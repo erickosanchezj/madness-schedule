@@ -47,11 +47,8 @@ function agendaNextClassHTML(dataError){
     }).sort((a, b) => classStart(a) - classStart(b));
 
     if (!upcoming.length){
-      body = `
-        <div class="card-panel p-5 text-center space-y-4">
-          <p class="text-zinc-300">Aún no tienes reservas. ¡Anímate a agendar una clase!</p>
-          <button data-action="scroll-to-schedule" class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold btn-primary rounded-lg text-zinc-900">Ver Horario</button>
-        </div>`;
+      // No button: the Horario section is right below.
+      body = '<div class="card-panel p-5 text-center text-zinc-300">Aún no tienes reservas.</div>';
     } else {
       const [next, ...rest] = upcoming;
       const related = state.classes.find(cls => cls.id === next.classId);
@@ -62,7 +59,8 @@ function agendaNextClassHTML(dataError){
       const name = DOMPurify.sanitize(next.className || related?.name || '');
       const instructor = DOMPurify.sanitize(related?.instructor || '');
       const day = dayWord(start) || shortDate(start);
-      const meta = [day, instructor ? `con ${instructor}` : '', `${minutes} min`].filter(Boolean).join(' · ');
+      // Day and instructor only; the duration is on the class screen.
+      const meta = instructor ? `${day} con ${instructor}` : day;
       const others = rest.map(b => {
         const s = classStart(b);
         const label = `${DOMPurify.sanitize(b.className || '')} ${(dayWord(s) || shortDate(s)).toLowerCase()} ${timeFmt.format(s)}`;
