@@ -1,0 +1,259 @@
+<!-- docs/mockups/reels-mockup.html -->
+<!-- Visual mockup of the reel layout options R1–R7: alignment, text position, title size, logo, background, frequency and preview. -->
+<!-- Lets the owner compare each option on fake reels (next to today's look) before the real editor and reel template change. -->
+<!-- RELEVANT FILES: scripts/reel-template.js, scripts/admin/views/reels.js, styles/member-feedback.css, docs/mockups/class-mockup.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Reels (maqueta)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Archivo+Black&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #111015; --paper-2: #1b1a21; --rule: #3c3942; --ink: #f4f4f5; --ink-2: #d4d4d8; --muted: #a1a1aa;
+      --pink: #db3eb1; --pink-text: #e855bd; --pink-ink: #25091d; --green: #44d62c;
+      --display: 'Archivo Black', 'Inter', sans-serif; --body: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .page { display: grid; gap: 24px; max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+    @media (min-width: 960px) { .page { grid-template-columns: 380px minmax(0, 1fr); align-items: start; } .controls { position: sticky; top: 16px; } }
+    h1 { font: 400 26px/1.2 var(--display); text-transform: uppercase; }
+    .lead { margin-top: 6px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- Editor controls (what the admin would see) ---------- */
+    .panel { display: grid; gap: 16px; margin-top: 16px; padding: 16px; border: 1px solid var(--rule); border-radius: 16px; background: var(--paper-2); }
+    .label { display: block; margin-bottom: 6px; color: var(--ink-2); font-size: 13px; font-weight: 700; }
+    .label b { margin-right: 6px; color: var(--green); }
+    .hint { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+    .seg button { flex: 1 1 auto; min-height: 40px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); font-size: 14px; }
+    .seg button[aria-pressed='true'] { border-color: var(--pink); background: rgb(219 62 177 / 18%); color: var(--pink-text); font-weight: 700; }
+    .thumbs button { display: grid; justify-items: center; gap: 4px; flex: 0 0 64px; padding: 4px; font-size: 11px; }
+    .thumbs button span { width: 52px; height: 52px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper) center / cover; }
+    .tabs button { flex: 0 1 auto; border-radius: 999px; }
+    input, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; font-size: 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .btn { min-height: 44px; padding: 8px 16px; border-radius: 12px; font-weight: 800; }
+    .primary { background: var(--pink); color: var(--pink-ink); }
+    .ghost { border: 1px solid var(--rule); min-height: 40px; padding: 6px 12px; font-size: 14px; font-weight: 600; }
+    .check { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; }
+    .log { display: grid; gap: 2px; max-height: 132px; overflow: auto; font-size: 13px; color: var(--ink-2); }
+    .log .yes { color: var(--green); } .log .no { color: var(--muted); }
+
+    /* ---------- Phones ---------- */
+    .stage { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+    .phone-wrap { display: grid; gap: 8px; justify-items: center; }
+    .phone-wrap > p { color: var(--muted); font-size: 13px; font-weight: 700; }
+    /* container-type lets the title size follow the phone width (cqw units), like it would on a real phone. */
+    .phone { container-type: inline-size; width: 320px; height: 568px; overflow: hidden; border: 1px solid var(--rule); border-radius: 28px; background: var(--paper); box-shadow: 0 20px 50px rgb(0 0 0 / 45%); }
+    .phone.large { width: 390px; height: 844px; }
+
+    /* ---------- The reel (same structure as styles/member-feedback.css) ---------- */
+    .reel { position: relative; isolation: isolate; display: flex; flex-direction: column; height: 100%; padding: 20px 24px 16px; }
+    .reel::before, .reel::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+    /* R5 backgrounds */
+    .bg-texture { background: url('../../images/backgrounds/madness-texture.webp') center / cover; }
+    .bg-texture::before { background: url('../../images/backgrounds/madness-green-light.webp') right top / 100% 100% no-repeat; opacity: .45; }
+    .bg-texture::after, .bg-arcs::after { background: url('../../images/backgrounds/madness-pink-arcs.webp') center bottom / 100% 100% no-repeat; opacity: .8; }
+    .bg-plain, .bg-arcs { background: var(--paper); }
+    .bg-photo { background: var(--photo) center / cover; }
+    .bg-photo::before { background: linear-gradient(to bottom, rgb(17 16 21 / 25%), rgb(17 16 21 / 60%) 50%, rgb(17 16 21 / 94%)); }
+    .steps { display: flex; flex: 0 0 4px; gap: 4px; }
+    .step { flex: 1; height: 4px; overflow: hidden; border-radius: 4px; background: var(--rule); }
+    .step i { display: block; width: var(--fill, 0%); height: 100%; background: var(--pink); }
+    .head { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin-top: 8px; font-size: 14px; font-weight: 700; }
+    .head small { margin-left: 8px; color: var(--muted); font-weight: 400; }
+    .logo { display: block; width: 100%; height: auto; margin-block: 24px 32px; }
+    .phone:not(.large) .logo { width: 75%; align-self: center; margin-block: 8px 12px; } /* short screens, as in the app today */
+    /* R2: the text block floats inside the free space; the button always stays at the bottom. */
+    .copy { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+    .pos-middle .copy { justify-content: center; } .pos-bottom .copy { justify-content: flex-end; }
+    /* R1 */
+    .align-center { text-align: center; }
+    .eyebrow { margin-bottom: 14px; color: var(--green); font-size: 15px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    /* R3: S / M (today) / L, each clamped to the phone width so long words never get cut. */
+    .title { font: 400 var(--title)/1.08 var(--display); text-transform: uppercase; overflow-wrap: anywhere; }
+    .title span { display: block; color: var(--pink-text); }
+    .size-s { --title: clamp(22px, 8cqw, 30px); } .size-m { --title: clamp(28px, 10.5cqw, 40px); } .size-l { --title: clamp(34px, 13.5cqw, 54px); }
+    .desc { margin-top: 20px; font-size: 16px; line-height: 1.5; }
+    .phone:not(.large) .desc { margin-top: 14px; font-size: 15px; }
+    .action { padding-top: 24px; }
+    .cta { display: flex; align-items: center; justify-content: center; min-height: 54px; border-radius: 18px; background: var(--pink); color: var(--pink-ink); font-weight: 800; }
+    .action p { margin-top: 12px; color: var(--ink-2); font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="controls" aria-labelledby="mock-title">
+      <h1 id="mock-title">Reels · opciones R1–R7</h1>
+      <p class="lead">Maqueta con datos de ejemplo. Elige un reel y prueba cada opción. A la izquierda del teléfono ves cómo se ve hoy.</p>
+      <div class="panel">
+        <div><span class="label">Reel que editas</span><div class="seg tabs" id="tabs"></div></div>
+        <div id="options"></div>
+        <div><label class="label" for="f-title">Título (prueba textos largos)</label><textarea id="f-title" rows="2"></textarea></div>
+        <div><label class="label" for="f-highlight">Parte en rosa</label><input id="f-highlight"></div>
+        <div>
+          <span class="label"><b>R6</b>Simulador de frecuencia</span>
+          <div class="row"><button type="button" class="btn ghost" id="sim-open">Abrir la app</button><button type="button" class="btn ghost" id="sim-day">Día siguiente</button><button type="button" class="btn ghost" id="sim-reset">Reiniciar</button></div>
+          <div class="log" id="sim-log" aria-live="polite"></div>
+        </div>
+        <div>
+          <span class="label"><b>R7</b>Vista previa</span>
+          <div class="seg" id="device"><button type="button" data-device="small">Teléfono chico</button><button type="button" data-device="large">Teléfono grande</button></div>
+          <div class="row" style="margin-top:8px">
+            <button type="button" class="btn primary" id="play">▶ Reproducir</button>
+            <label class="check"><input type="checkbox" id="compare" checked style="width:auto"> Comparar con el actual</label>
+          </div>
+          <p class="hint">Reproducir pasa por los reels activos en orden, como los verán los miembros. Toca el teléfono para avanzar.</p>
+        </div>
+      </div>
+    </section>
+    <section class="stage" id="stage" aria-label="Vista previa"></section>
+  </main>
+
+  <script>
+    // Fake reels. Each one has the six new fields (align, position, size, logo, background, frequency).
+    const reels = [
+      { name: 'Formulario', eyebrow: 'El reto es contigo', title: 'Tu voz nos\nhace', highlight: 'más fuertes.',
+        description: 'Queremos escucharte, team.\nAyúdanos a mejorar tu experiencia.', ctaText: 'Responder formulario', footer: 'Tu opinión impulsa a Madness', seconds: 5,
+        align: 'left', position: 'top', size: 'm', logo: 'on', background: 'texture', frequency: 'daily' },
+      { name: 'Capoeira', eyebrow: 'Nuevo en Madness', title: 'Capoeira\nlos sábados', highlight: '10:00 a.m.',
+        description: 'Ritmo, fuerza y música. Cupo de 15 lugares.', ctaText: 'Ver horario', footer: 'Primera clase sin costo para miembros', seconds: 5,
+        align: 'center', position: 'bottom', size: 'l', logo: 'off', background: 'photo:capoeira', frequency: 'daily' },
+      { name: 'Fin de año', eyebrow: 'Aviso', title: 'Cerramos el', highlight: '24 y 25 de dic.',
+        description: 'El 26 volvemos con horario normal.\n¡Felices fiestas, team!', ctaText: '', footer: '', seconds: 5,
+        align: 'center', position: 'middle', size: 'm', logo: 'on', background: 'arcs', frequency: 'once' },
+    ];
+    // Today's look: every reel is left, top, medium title, logo, texture.
+    const TODAY = { align: 'left', position: 'top', size: 'm', logo: 'on', background: 'texture' };
+    const PHOTOS = { trx: 'TRX', yoga: 'Yoga', HIIT: 'HIIT', functional: 'Funcional', capoeira: 'Capoeira' };
+    const photoUrl = key => `../../images/${key}.png`;
+    const OPTIONS = [
+      ['align', 'R1', 'Alineación', [['left', 'Izquierda'], ['center', 'Centrado']]],
+      ['position', 'R2', 'Posición del texto', [['top', 'Arriba'], ['middle', 'En medio'], ['bottom', 'Abajo']], 'El botón siempre queda abajo, fácil de tocar.'],
+      ['size', 'R3', 'Tamaño del título', [['s', 'S'], ['m', 'M (hoy)'], ['l', 'L']], 'Se ajusta al ancho del teléfono, nunca se corta.'],
+      ['logo', 'R4', 'Logo', [['on', 'Mostrar'], ['off', 'Ocultar']], 'Sin logo, el título gana espacio.'],
+      ['background', 'R5', 'Fondo', [['texture', 'Textura'], ['arcs', 'Arcos'], ['plain', 'Liso'], ...Object.entries(PHOTOS).map(([k, v]) => [`photo:${k}`, v])], 'Imágenes que ya tiene la app: sin subir archivos.'],
+      ['frequency', 'R6', '¿Cada cuándo se muestra?', [['always', 'Cada vez que abre'], ['daily', 'Una vez al día'], ['once', 'Solo una vez']], 'Hoy se muestra cada vez que la app vuelve a primer plano.'],
+    ];
+    let selected = 0, device = 'small', compare = true, playing = null;
+    const $ = id => document.getElementById(id);
+
+    const esc = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const lines = text => esc(text).replace(/\n/g, '<br>');
+
+    // One reel screen. `current` is the index whose segment is filling; earlier segments are full.
+    function reelHTML(r, current, fill) {
+      const photo = r.background.startsWith('photo:') ? r.background.slice(6) : '';
+      const bg = photo ? `bg-photo" style="--photo:url('${photoUrl(photo)}')` : `bg-${r.background}`;
+      const steps = reels.map((_, i) => `<span class="step"><i style="--fill:${i < current ? 100 : i === current ? fill : 0}%"></i></span>`).join('');
+      return `<div class="reel align-${r.align} pos-${r.position} size-${r.size} ${bg}">
+        <div class="steps">${steps}</div>
+        <div class="head"><span>Comunidad Madness <small>${r.seconds} s</small></span><span aria-hidden="true">✕</span></div>
+        ${r.logo === 'on' ? '<img class="logo" src="../../images/madness-cross-training-logo.png" alt="">' : ''}
+        <div class="copy">
+          ${r.eyebrow ? `<p class="eyebrow">${esc(r.eyebrow)}</p>` : ''}
+          <h2 class="title">${lines(r.title)}${r.highlight ? ` <span>${esc(r.highlight)}</span>` : ''}</h2>
+          ${r.description ? `<p class="desc">${lines(r.description)}</p>` : ''}
+        </div>
+        <div class="action">${r.ctaText ? `<span class="cta">${esc(r.ctaText)} ↗</span>` : ''}${r.footer ? `<p>${esc(r.footer)}</p>` : ''}</div>
+      </div>`;
+    }
+
+    // Draws the phone(s). While playing, only the right phone plays; the "today" phone is hidden.
+    function renderStage() {
+      const index = playing ? playing.index : selected;
+      const reel = reels[index];
+      const phone = (label, r, id) => `<div class="phone-wrap"><p>${label}</p><div class="phone ${device}" id="${id}">${reelHTML(r, index, playing ? 0 : 40)}</div></div>`;
+      $('stage').innerHTML = (compare && !playing ? phone('Hoy (sin opciones)', { ...reel, ...TODAY }, 'phone-today') : '')
+        + phone(playing ? `Reproduciendo ${index + 1} de ${reels.length}` : 'Con tus opciones', reel, 'phone-new');
+    }
+
+    // Builds the option buttons once; only aria-pressed changes after that.
+    function renderControls() {
+      $('tabs').innerHTML = reels.map((r, i) => `<button type="button" data-tab="${i}" aria-pressed="${i === selected}">${i + 1} · ${r.name}</button>`).join('');
+      $('options').innerHTML = OPTIONS.map(([key, tag, label, values, hint]) => `
+        <div style="margin-bottom:16px"><span class="label"><b>${tag}</b>${label}</span>
+          <div class="seg${key === 'background' ? ' thumbs' : ''}" data-key="${key}">${values.map(([value, text]) => key === 'background'
+            ? `<button type="button" data-value="${value}"><span class="${value.startsWith('photo:') ? '' : `bg-${value}`}" style="${value.startsWith('photo:') ? `background-image:url('${photoUrl(value.slice(6))}')` : ''}"></span>${text}</button>`
+            : `<button type="button" data-value="${value}">${text}</button>`).join('')}</div>
+          ${hint ? `<p class="hint">${hint}</p>` : ''}</div>`).join('');
+      // The texture/arcs thumbnails reuse the reel background classes; give them the texture image directly.
+      document.querySelectorAll('.thumbs .bg-texture, .thumbs .bg-arcs').forEach(el => el.style.backgroundImage = `url('../../images/backgrounds/madness-${el.classList.contains('bg-arcs') ? 'pink-arcs' : 'texture'}.webp')`);
+      syncControls();
+    }
+    function syncControls() {
+      const reel = reels[selected];
+      document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.tab) === selected));
+      document.querySelectorAll('[data-key] button').forEach(b => b.setAttribute('aria-pressed', reel[b.parentElement.dataset.key] === b.dataset.value));
+      document.querySelectorAll('#device button').forEach(b => b.setAttribute('aria-pressed', b.dataset.device === device));
+      $('f-title').value = reel.title;
+      $('f-highlight').value = reel.highlight;
+    }
+
+    // R6 simulator: day, number of opens and when this reel was last shown.
+    let sim;
+    function resetSim() { sim = { day: 1, opens: 0, lastDay: 0, log: [] }; drawSim(); }
+    function drawSim() { $('sim-log').innerHTML = sim.log.length ? sim.log.join('') : '<span class="no">Toca "Abrir la app" varias veces y cambia de día.</span>'; }
+    $('sim-open').onclick = () => {
+      const f = reels[selected].frequency;
+      sim.opens += 1;
+      const show = f === 'always' || (f === 'daily' && sim.lastDay !== sim.day) || (f === 'once' && !sim.lastDay);
+      if (show) sim.lastDay = sim.day;
+      const why = f === 'daily' ? 'ya lo vio hoy' : 'ya lo vio una vez';
+      sim.log.unshift(`<span class="${show ? 'yes' : 'no'}">Día ${sim.day} · apertura ${sim.opens}: ${show ? 'se muestra ✓' : `no se muestra (${why})`}</span>`);
+      drawSim();
+    };
+    $('sim-day').onclick = () => { sim.day += 1; sim.opens = 0; sim.log.unshift(`<span>— Día ${sim.day} —</span>`); drawSim(); };
+    $('sim-reset').onclick = resetSim;
+
+    // R7 "Reproducir": each reel fills its segment for its seconds, then the next one starts. Tap = next.
+    function play() {
+      playing = { index: 0, start: performance.now() };
+      renderStage();
+      const tick = now => {
+        if (!playing) return;
+        const pct = Math.min(100, (now - playing.start) / (reels[playing.index].seconds * 10));
+        document.querySelectorAll('#phone-new .step i')[playing.index]?.style.setProperty('--fill', `${pct}%`);
+        if (pct >= 100) next(); else requestAnimationFrame(tick);
+      };
+      playing.tick = tick;
+      requestAnimationFrame(tick);
+    }
+    function next() {
+      const tick = playing.tick;
+      if (playing.index + 1 >= reels.length) { playing = null; renderStage(); return; }
+      playing = { index: playing.index + 1, start: performance.now(), tick };
+      renderStage();
+      requestAnimationFrame(tick);
+    }
+
+    // Wiring
+    document.addEventListener('click', event => {
+      const tab = event.target.closest('[data-tab]');
+      const option = event.target.closest('[data-key] button');
+      const size = event.target.closest('[data-device]');
+      if (tab) { selected = Number(tab.dataset.tab); playing = null; resetSim(); }
+      else if (option) { reels[selected][option.parentElement.dataset.key] = option.dataset.value; if (option.parentElement.dataset.key === 'frequency') resetSim(); }
+      else if (size) device = size.dataset.device;
+      else if (event.target.closest('#phone-new') && playing) return next();
+      else return;
+      syncControls();
+      renderStage();
+    });
+    $('play').onclick = () => play();
+    $('compare').onchange = event => { compare = event.target.checked; renderStage(); };
+    $('f-title').oninput = event => { reels[selected].title = event.target.value; renderStage(); };
+    $('f-highlight').oninput = event => { reels[selected].highlight = event.target.value; renderStage(); };
+
+    renderControls();
+    resetSim();
+    renderStage();
+  </script>
+</body>
+</html>
