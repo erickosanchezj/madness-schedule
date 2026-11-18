@@ -15,6 +15,7 @@ let state = {
   selectedClassId: null,
   subscriptionType: 'monthly',
   isTotalPass: false,
+  isBlacklisted: false, // users/{uid}.blacklisted (set after 3 strikes; only an admin clears it)
   cancellationStrikes: 0,
   dailyMessage: null,
   errors: { classes: false, bookings: false },
@@ -85,17 +86,20 @@ function startDailyMessageRotation(messages){
   }, DAILY_MESSAGE_ROTATION_MS);
 }
 
+// Strike count (0–3), a short message, and whether bookings are blocked.
+// Blacklisted members stay blocked after the monthly strike reset until an admin unlocks them.
 function getStrikeInfo(){
   const strikesRaw = Number(state.cancellationStrikes);
   const strikeCount = Number.isFinite(strikesRaw) && strikesRaw > 0 ? Math.min(strikesRaw, 3) : 0;
-  const strikeMessage = strikeCount >= 3
-    ? 'Llegaste al límite de 3 strikes. Tu cuenta queda bloqueada temporalmente.'
+  const blocked = strikeCount >= 3 || state.isBlacklisted === true;
+  const strikeMessage = blocked
+    ? 'Tus reservas están bloqueadas. Escríbenos para desbloquearlas.'
     : strikeCount === 2
-      ? 'Estás a 1 strike del bloqueo. Cancela con tiempo.'
+      ? 'Te queda 1 antes del bloqueo. Cancela con más de 2 horas.'
       : strikeCount === 1
-        ? 'Tienes 1 strike. Cancela con más de 2 horas de anticipación.'
-        : 'Evita cancelar tarde para no llegar a 3 strikes.';
-  return { strikeCount, strikeMessage };
+        ? 'Cancela con más de 2 horas de anticipación para no sumar otro.'
+        : 'Sin strikes. Cancelar con más de 2 horas no cuenta.';
+  return { strikeCount, strikeMessage, blocked };
 }
 
 // ---- Render batching

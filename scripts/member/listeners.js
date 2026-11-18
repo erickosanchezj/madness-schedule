@@ -69,6 +69,7 @@ function applyUserData(data){
   state.subscriptionGraceUntil = graceUntil;
   const strikesRaw = Number(data.lateCancellations);
   state.cancellationStrikes = Number.isFinite(strikesRaw) && strikesRaw > 0 ? strikesRaw : 0;
+  state.isBlacklisted = data.blacklisted === true;
 }
 function attachAgendaListeners(){
   if (listenersAttached || !state.currentUser) return;

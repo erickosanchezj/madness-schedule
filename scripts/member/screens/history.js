@@ -1,107 +1,152 @@
 // scripts/member/screens/history.js
-// History screen: classes finished today and in the last 14 days, with attendance.
-// Shows members their attendance and the TotalPass token button.
-// RELEVANT FILES: scripts/member/render.js, scripts/member/helpers.js, scripts/member/interactions.js
+// History screen: TotalPass token card, this month's summary with a 14-day strip, and finished classes grouped by day.
+// Shows members their attendance at a glance and lets TotalPass members send today's token.
+// RELEVANT FILES: scripts/member/screens/class-helpers.js, scripts/member/interactions.js, styles/member-screens.css, docs/mockups/history-mockup.html
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Attendance of one booking: 'att' (attended), 'abs' (absence recorded) or 'none' (staff did not take attendance).
+function historyStatus(booking){
+  const raw = state.attendanceRecords?.[booking.classId]?.status
+    ?? (typeof booking.attendanceStatus === 'string' ? booking.attendanceStatus : '');
+  const status = String(raw).trim().toLowerCase();
+  return status === 'attended' ? 'att' : status === 'absent' ? 'abs' : 'none';
+}
+
+// "YYYY-MM-DD" of the Mexico City day `daysAgo` days before today (UTC noon keeps the date stable).
+function historyYMD(daysAgo){
+  const [y, m, d] = dateHelper.today.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - daysAgo, 12)).toISOString().slice(0, 10);
+}
+
+// Monday of the week that contains a "YYYY-MM-DD" day, as "YYYY-MM-DD".
+function historyWeek(ymd){
+  const [y, m, d] = ymd.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d, 12));
+  date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 6) % 7);
+  return date.toISOString().slice(0, 10);
+}
+
+// Weeks in a row with at least one attended class. The current week does not break it while it is still empty.
+function historyStreak(items){
+  const weeks = new Set(items.filter(item => item.status === 'att').map(item => historyWeek(item.ymd)));
+  const cursor = new Date(`${historyWeek(dateHelper.today)}T12:00:00Z`);
+  if (!weeks.has(cursor.toISOString().slice(0, 10))) cursor.setUTCDate(cursor.getUTCDate() - 7);
+  let streak = 0;
+  while (weeks.has(cursor.toISOString().slice(0, 10))){ streak += 1; cursor.setUTCDate(cursor.getUTCDate() - 7); }
+  return streak;
+}
 
 function getHistoryScreenHTML(){
   const now = Date.now();
-  const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
-  const completed = state.myBookings
-    .filter(Boolean)
-    .map(booking => {
-      const startObj = booking.startAt
-        ? asDate(booking.startAt)
-        : (booking.classDate ? new Date(`${booking.classDate}T${booking.time||'00:00'}:00Z`) : null);
-      if (!startObj || Number.isNaN(startObj.getTime())) return null;
-      const relatedClass = state.classes.find(cls => cls.id === booking.classId);
-      const durationRaw = booking.duration ?? relatedClass?.duration;
-      const durationValue = Number(durationRaw);
-      const durationMinutes = Number.isFinite(durationValue) && durationValue > 0 ? durationValue : 60;
-      const endTime = startObj.getTime() + durationMinutes * 60000;
-      const ymdLocal = dateHelper.getYYYYMMDD(startObj);
-      return { booking, relatedClass, startObj, endTime, ymdLocal };
-    })
-    .filter(Boolean)
-    .filter(item => now > item.endTime)
-    .sort((a, b) => b.startObj.getTime() - a.startObj.getTime());
+  const month = new Date().toLocaleDateString('es-MX', { timeZone: MX_TZ, month: 'long' });
+  const header = `<header class="agenda-hello"><h1 class="heading-display">Tu historial</h1><time>${DOMPurify.sanitize(month)}</time></header>`;
+  const wrap = body => `<div class="history-screen screen-layout p-6 space-y-6">${header}${body}</div>`;
+  if (state.errors.bookings) return wrap('<div class="card-panel p-4" role="alert"><p>No pudimos cargar tu historial. Revisa tu conexión.</p><button type="button" data-action="retry-agenda" class="btn-primary px-4 mt-3">Reintentar</button></div>');
+  if (state.loading?.bookings) return wrap(skeletonLoaders.bookingCard());
 
-  const todayYMD = dateHelper.today;
-  const todays = completed.filter(item => item.ymdLocal === todayYMD);
-  const recent = completed.filter(item => (now - item.startObj.getTime()) <= fourteenDaysMs);
-  const recentPast = recent.filter(item => item.ymdLocal !== todayYMD);
+  // Finished bookings (class already ended), newest first.
+  const finished = state.myBookings.filter(Boolean).map(booking => {
+    const start = classStart(booking);
+    if (Number.isNaN(start.getTime())) return null;
+    const related = state.classes.find(cls => cls.id === booking.classId);
+    const end = start.getTime() + classDuration(booking, related) * 60000;
+    return { booking, related, start, end, ymd: dateHelper.getYYYYMMDD(start), status: historyStatus(booking) };
+  }).filter(item => item && now > item.end).sort((a, b) => b.start - a.start);
 
-  const renderCard = ({ booking, relatedClass, startObj, ymdLocal }) => {
-    const className = booking.className || relatedClass?.name || '';
-    const cover = relatedClass ? coverHelper.forClass(relatedClass) : coverHelper.forClassName(className);
-    const safeClassName = DOMPurify.sanitize(className);
-    const hhmm = timeFmt.format(startObj);
-    const dayLabel = dateHelper.human(ymdLocal);
-    const safeDayLabel = DOMPurify.sanitize(dayLabel);
-    const attendance = (() => {
-      const classId = booking.classId;
-      if (classId && state.attendanceRecords?.[classId]) return state.attendanceRecords[classId];
-      if (typeof booking.attendanceStatus === 'string') return { status: booking.attendanceStatus.trim().toLowerCase() };
-      return null;
-    })();
-    const badge = (() => {
-      const status = attendance?.status || '';
-      const normalized = status.toLowerCase();
-      if (normalized === 'attended'){
-        return `<span class="inline-flex items-center gap-1 rounded-full border border-orange-500/40 bg-orange-500/20 px-3 py-1 text-xs font-medium text-orange-300">Asististe</span>`;
-      }
-      if (normalized === 'absent'){
-        return `<span class="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-medium text-rose-300">Falta registrada</span>`;
-      }
-      return `<span class="inline-flex items-center gap-1 rounded-full border border-zinc-600/60 bg-zinc-700/60 px-3 py-1 text-xs font-medium text-zinc-300">Sin registro</span>`;
-    })();
-    return `
-      <div class="card-panel p-4 flex items-center gap-4">
-        <img src="${cover}" alt="${safeClassName}" class="w-16 h-16 rounded-lg object-cover bg-zinc-700" loading="lazy" decoding="async">
-        <div class="flex-1">
-          <p class="font-bold text-lg">${safeClassName}</p>
-          <p class="text-zinc-400 text-sm">${safeDayLabel} • ${hhmm}</p>
-          <div class="mt-2">${badge}</div>
-        </div>
-      </div>`;
-  };
-
-  const todayList = todays.length
-    ? todays.map(renderCard).join('')
-    : `<div class="card-panel p-5 text-center text-zinc-400">Aún no terminas clases hoy.</div>`;
-
-  const tokenButton = (state.isTotalPass && todays.length)
-    ? (() => {
-        const firstId = todays[0].booking.classId ? DOMPurify.sanitize(todays[0].booking.classId) : '';
-        const dataAttr = firstId ? ` data-class-id="${firstId}"` : '';
-        return `<button data-action="send-totalpass-daily"${dataAttr} class="w-full btn-primary py-3 rounded-lg text-zinc-900 font-bold">Enviar Token del Día</button>`;
-      })()
-    : '';
-
-  let historyList = '';
-  if (recentPast.length) {
-    historyList = recentPast.map(renderCard).join('');
-  } else if (todays.length) {
-    historyList = `<div class="card-panel p-5 text-center text-zinc-400">No hay clases anteriores en los últimos 14 días.</div>`;
-  } else {
-    historyList = `<div class="card-panel p-5 text-center text-zinc-400">No hay clases completadas en los últimos 14 días.</div>`;
+  if (!finished.length){
+    return wrap(`
+      <div class="history-panel history-empty">
+        <p>Aquí verás las clases que termines y tu asistencia.</p>
+        <button type="button" data-action="navigate" data-screen="agenda" class="btn-primary px-4">Reservar una clase</button>
+      </div>`);
   }
 
+  const todays = finished.filter(item => item.ymd === dateHelper.today);
+  const recent = finished.filter(item => now - item.start.getTime() <= 14 * DAY_MS);
+  return wrap(`${historyTokenHTML(todays)}${historySummaryHTML(finished)}${historyListHTML(recent)}`);
+}
+
+// TotalPass: send today's token after a finished class (opens WhatsApp, see interactions.js).
+function historyTokenHTML(todays){
+  if (!state.isTotalPass || !todays.length) return '';
+  const last = todays[0];
+  const name = DOMPurify.sanitize(last.booking.className || last.related?.name || 'tu clase');
   return `
-    <div class="screen-layout p-6 space-y-6">
-      <header class="screen-header">
-        <h1 class="text-3xl font-bold tracking-tight heading-display">Historial</h1>
-        <p class="text-zinc-400">Revisa las clases que ya terminaste.</p>
-      </header>
-      <section aria-labelledby="terminadas-hoy">
-        <h2 id="terminadas-hoy" class="text-xl font-semibold mb-3">Clases Terminadas Hoy</h2>
-        <div class="space-y-4">
-          ${todayList}
-          ${tokenButton ? `<div>${tokenButton}</div>` : ''}
+      <section class="history-token" aria-labelledby="token-title">
+        <h2 id="token-title" class="agenda-eyebrow">TotalPass</h2>
+        <p>Terminaste <b>${name} de las ${timeFmt.format(last.start)}</b>. Envía tu token para que tu visita cuente.</p>
+        <button type="button" data-action="send-totalpass-daily" data-class-id="${DOMPurify.sanitize(last.booking.classId || '')}" class="w-full btn-primary">Enviar token del día</button>
+      </section>`;
+}
+
+// "Este mes": classes attended, bookings, absences, streak and one mark per day for the last 14 days.
+function historySummaryHTML(finished){
+  const monthKey = dateHelper.today.slice(0, 7);
+  const thisMonth = finished.filter(item => item.ymd.startsWith(monthKey));
+  const attended = thisMonth.filter(item => item.status === 'att').length;
+  const absent = thisMonth.filter(item => item.status === 'abs').length;
+  const streak = historyStreak(finished);
+  const words = { att: 'asististe', abs: 'falta', none: 'sin registro' };
+
+  // One mark per day, oldest first. Several classes: the number goes inside; the color is the best result of the day.
+  const strip = Array.from({ length: 14 }, (_, i) => historyYMD(13 - i)).map(ymd => {
+    const day = finished.filter(item => item.ymd === ymd);
+    const statuses = day.map(item => item.status);
+    const top = statuses.includes('att') ? 'att' : statuses.includes('abs') ? 'abs' : statuses.length ? 'none' : '';
+    const date = new Date(`${ymd}T12:00:00Z`);
+    const letter = date.toLocaleDateString('es-MX', { timeZone: 'UTC', weekday: 'narrow' });
+    const label = `${DOMPurify.sanitize(shortDate(date))}: ${day.length ? `${day.length} ${day.length === 1 ? 'clase' : 'clases'}, ${statuses.map(s => words[s]).join(', ')}` : 'sin clase'}`;
+    return `<li class="${ymd === dateHelper.today ? 'is-today' : ''}" title="${label}">
+          <span class="history-dot${top ? ` is-${top}` : ''}" aria-hidden="true">${day.length > 1 ? day.length : ''}</span><span aria-hidden="true">${letter}</span><span class="sr-only">${label}</span></li>`;
+  }).join('');
+
+  return `
+      <section aria-labelledby="month-title">
+        <h2 id="month-title" class="agenda-eyebrow">Este mes</h2>
+        <div class="history-panel">
+          <p class="history-big"><b>${attended}</b><span>${attended === 1 ? 'clase a la que asististe' : 'clases a las que asististe'}</span></p>
+          <ul class="class-facts history-facts">
+            <li class="class-fact"><small>Reservas</small><b>${thisMonth.length}</b></li>
+            <li class="class-fact"><small>Faltas</small><b>${absent}</b></li>
+            <li class="class-fact"><small>Racha</small><b>${streak ? `${streak} sem.` : '—'}</b></li>
+          </ul>
+          <ul class="history-strip" aria-label="Asistencia de los últimos 14 días">${strip}</ul>
+          <p class="history-legend" aria-hidden="true"><span><i class="is-att"></i>Asististe</span><span><i class="is-abs"></i>Falta</span><span><i class="is-none"></i>Sin registro</span><span><i></i>Sin clase</span></p>
         </div>
-      </section>
-      <section aria-labelledby="historial-reciente">
-        <h2 id="historial-reciente" class="text-xl font-semibold mb-3">Últimos 14 días</h2>
-        <div class="space-y-4">${historyList}</div>
-      </section>
-    </div>`;
+      </section>`;
+}
+
+// Finished classes of the last 14 days, grouped by day ("Hoy", "Ayer", "lun 16 nov"), same rows as the Agenda.
+function historyListHTML(recent){
+  const chips = { att: ['ok', '✓ Asististe'], abs: ['full', '✕ Falta registrada'], none: ['none', 'Sin registro de asistencia'] };
+  const yesterday = historyYMD(1);
+  const days = [...new Set(recent.map(item => item.ymd))];
+  const groups = days.map(ymd => {
+    const items = recent.filter(item => item.ymd === ymd);
+    const title = ymd === dateHelper.today ? 'Hoy' : ymd === yesterday ? 'Ayer' : shortDate(items[0].start);
+    const rows = items.map(({ booking, related, start, status }) => {
+      const name = DOMPurify.sanitize(booking.className || related?.name || '');
+      const instructor = DOMPurify.sanitize(related?.instructor || '');
+      const cover = related ? coverHelper.forClass(related) : coverHelper.forClassName(booking.className || '');
+      const [tone, text] = chips[status];
+      return `
+          <div class="schedule-row history-row">
+            <time class="schedule-time">${timeFmt.format(start)}</time>
+            <span class="schedule-card">
+              <img src="${cover}" alt="" loading="lazy" decoding="async">
+              <span class="schedule-info">
+                <span class="schedule-name">${name}${instructor ? ` <span>· ${instructor}</span>` : ''}</span>
+                <span class="schedule-status is-${tone}">${text}</span>
+              </span>
+            </span>
+          </div>`;
+    }).join('');
+    return `<div><h3 class="history-day">${DOMPurify.sanitize(title)}</h3><div class="schedule-list">${rows}</div></div>`;
+  }).join('');
+  return `
+      <section aria-labelledby="recent-title">
+        <h2 id="recent-title" class="agenda-eyebrow">Últimos 14 días</h2>
+        ${groups ? `<div class="history-groups">${groups}</div>` : '<div class="card-panel p-5 text-center text-zinc-400">No terminaste clases en los últimos 14 días.</div>'}
+      </section>`;
 }
