@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="./styles/app.css?v=20261119-clean">
     <script src="./scripts/app-accessibility.js" defer></script>
     <link rel="stylesheet" href="./styles/admin.css?v=20261118-hours">
-    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261119-layout">
+    <link rel="stylesheet" href="./styles/admin-shell.css?v=20261119-unslop">
     <!-- Member reel styles, reused by the reel preview so it looks exactly like the app. -->
     <link rel="stylesheet" href="./styles/member-feedback.css?v=20261119-layout">
   </head>
@@ -46,8 +46,8 @@
     <div id="login-screen" class="admin-login min-h-screen flex items-center justify-center p-4">
       <div class="admin-login-card w-full max-w-sm">
         <img src="./images/madness-cross-training-logo.png" alt="Madness Cross Training" class="admin-login-logo" width="1200" height="300">
-        <h1 class="text-2xl font-bold text-center mb-6">Acceso de Administrador</h1>
-        <input type="email" id="email-input" aria-label="Correo de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de Admin" autocomplete="email">
+        <h1 class="text-2xl font-bold text-center mb-6">Acceso de administrador</h1>
+        <input type="email" id="email-input" aria-label="Correo de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Correo de admin" autocomplete="email">
         <input type="password" id="password-input" aria-label="Contraseña de administrador" class="w-full bg-zinc-700 text-white p-3 rounded-md mb-4" placeholder="Contraseña" autocomplete="current-password">
         <div class="cf-turnstile mb-4" data-sitekey="0x4AAAAAABwCDMFGoF_Z-wjY"></div>
         <button id="login-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-md">Entrar</button>
@@ -77,10 +77,7 @@
         <!-- SEMANA: today's classes, calendar, weekly bookings and the two class actions. -->
         <div id="panel-semana" role="tabpanel" aria-labelledby="tab-btn-semana" data-tab-panel="semana" class="admin-panel-view">
           <div class="admin-view-head">
-            <div>
-              <p class="admin-eyebrow">Operación diaria</p>
-              <h1 class="admin-view-title">Semana</h1>
-            </div>
+            <h1 class="admin-view-title">Semana</h1>
             <div class="admin-actions">
               <button id="gen-classes-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg">
                 <i data-lucide="calendar-check" class="inline-block -mt-1 mr-2"></i>Completar semana
@@ -96,10 +93,7 @@
         <!-- MIEMBROS: one members table (tap a name for details) and the danger zone. -->
         <div id="panel-miembros" role="tabpanel" aria-labelledby="tab-btn-miembros" data-tab-panel="miembros" class="admin-panel-view" hidden>
           <div class="admin-view-head">
-            <div>
-              <p class="admin-eyebrow">Alumnos y pagos</p>
-              <h1 class="admin-view-title">Miembros</h1>
-            </div>
+            <h1 class="admin-view-title">Miembros</h1>
           </div>
 
           <div data-view="subscriptions"></div>
@@ -115,10 +109,7 @@
         <!-- REPORTES: attendance, capacity and revenue dashboard. -->
         <div id="panel-reportes" role="tabpanel" aria-labelledby="tab-btn-reportes" data-tab-panel="reportes" class="admin-panel-view" hidden>
           <div class="admin-view-head">
-            <div>
-              <p class="admin-eyebrow">Asistencia y proyección</p>
-              <h1 class="admin-view-title">Reportes</h1>
-            </div>
+            <h1 class="admin-view-title">Reportes</h1>
           </div>
           <div data-view="reports"></div>
         </div>
@@ -126,10 +117,7 @@
         <!-- AVISOS: daily message, menu banner, push history and the reels editor (full width below). -->
         <div id="panel-avisos" role="tabpanel" aria-labelledby="tab-btn-avisos" data-tab-panel="avisos" class="admin-panel-view" hidden>
           <div class="admin-view-head">
-            <div>
-              <p class="admin-eyebrow">Comunicación con alumnos</p>
-              <h1 class="admin-view-title">Avisos</h1>
-            </div>
+            <h1 class="admin-view-title">Avisos</h1>
           </div>
 
           <div class="admin-grid-2">
@@ -159,7 +147,7 @@
                   Mostrar mensaje en la app
                 </label>
                 <div class="flex flex-wrap gap-2">
-                  <button type="submit" id="daily-message-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar Mensaje</button>
+                  <button type="submit" id="daily-message-submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar mensaje</button>
                   <button type="button" id="daily-message-reset" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded-md">Limpiar</button>
                 </div>
               </form>

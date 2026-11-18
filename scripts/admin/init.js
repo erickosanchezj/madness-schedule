@@ -193,7 +193,7 @@ Object.assign(AdminPanel, {
 
       // 2. Check if the token exists
       if (!turnstileToken) {
-          errEl.textContent = 'Por favor, completa la verificación de seguridad.';
+          errEl.textContent = 'Completa la verificación de seguridad.';
           errEl.classList.remove('hidden');
           return; // Stop the login attempt if no token
       }

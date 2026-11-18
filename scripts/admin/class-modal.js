@@ -54,8 +54,8 @@ Object.assign(AdminPanel, {
     }
     this.switchTab('details');
 
-    document.getElementById('modal-title').textContent = 'Crear Nueva Clase';
-    document.getElementById('save-button').textContent = 'Crear Clase';
+    document.getElementById('modal-title').textContent = 'Nueva clase';
+    document.getElementById('save-button').textContent = 'Crear clase';
     document.getElementById('delete-button').style.display = 'none';
 
     document.getElementById('cancel-button').onclick = () => this.hideClassModal();
@@ -171,8 +171,8 @@ Object.assign(AdminPanel, {
     if (modal) modal.classList.remove('hidden');
     saveBtnEl?.focus();
     await this.refreshClassTimeLock(cls);
-    document.getElementById('modal-title').textContent = 'Editar Clase';
-    document.getElementById('save-button').textContent = 'Guardar Cambios';
+    document.getElementById('modal-title').textContent = 'Editar clase';
+    document.getElementById('save-button').textContent = 'Guardar cambios';
     document.getElementById('delete-button').style.display = 'block';
   },
 

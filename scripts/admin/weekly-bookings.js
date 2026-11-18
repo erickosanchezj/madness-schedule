@@ -68,7 +68,7 @@ Object.assign(AdminPanel, {
     const waiters = (this.state.waitlistsMap.get(cls.id)||[])
       .sort((a,b)=>(a.position||0)-(b.position||0))
       .map(w=>w.userName||w.userId||'Anónimo');
-    const manualLabel = manualBookings.length === 1 ? 'Whatsapp booking' : 'Whatsapp bookings';
+    const manualLabel = manualBookings.length === 1 ? 'reserva por WhatsApp' : 'reservas por WhatsApp';
     const manualRow = manualBookings.length
       ? `<li class="text-zinc-400 ml-4">- ${manualBookings.length} ${manualLabel}</li>`
       : '';

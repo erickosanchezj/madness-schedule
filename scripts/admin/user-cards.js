@@ -16,7 +16,7 @@ Object.assign(AdminPanel, {
     const safeStrikes = DOMPurify.sanitize(String(strikesCount));
     const safeUid = DOMPurify.sanitize(userDoc.id);
     const safeEmailAttr = safeEmail.replace(/"/g, '&quot;');
-    const strikesBtnLabel = strikesCount >= 3 ? 'Ya tiene 3 Strikes' : '3 Strikes';
+    const strikesBtnLabel = strikesCount >= 3 ? 'Ya tiene 3 strikes' : '3 strikes';
     const strikesBtnDisabled = strikesCount >= 3 ? ' disabled' : '';
     const strikesBtnClass = strikesCount >= 3
       ? 'bg-zinc-600 text-zinc-300 cursor-not-allowed'
@@ -101,7 +101,7 @@ Object.assign(AdminPanel, {
           <div class="flex gap-2">
             <button data-token="${safeToken}" data-index="${indexBase}_${i}" data-uid="${safeUid}"
                     class="send-noti-btn flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-md text-sm">
-              Enviar a este Dispositivo
+              Enviar a este dispositivo
             </button>
             <button data-token="${safeToken}" data-uid="${safeUid}"
                     class="prune-token-btn px-3 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold rounded-md text-sm">
@@ -198,7 +198,7 @@ Object.assign(AdminPanel, {
       const result = await send({ token, title, body });
 
       if (result.data?.success){
-        this.showToast({ title:'Notificación enviada', message:'Dispositivo notificado ✅' });
+        this.showToast({ title:'Notificación enviada', message:'Dispositivo notificado' });
       } else {
         throw new Error(result.data?.error || 'El servidor devolvió un error.');
       }
@@ -228,7 +228,7 @@ Object.assign(AdminPanel, {
       }
     }finally{
       btn.disabled = false;
-      btn.textContent = 'Enviar a este Dispositivo';
+      btn.textContent = 'Enviar a este dispositivo';
     }
   },
 

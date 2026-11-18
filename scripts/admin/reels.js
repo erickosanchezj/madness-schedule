@@ -56,7 +56,7 @@ Object.assign(AdminPanel, {
     const list = document.getElementById('reels-list');
     const reels = this.state.reels;
     if (!reels.length){
-      list.innerHTML = '<p class="text-sm text-zinc-400">Aún no hay reels, así que no se muestra ninguno. Crea uno con "Nuevo reel" (empieza con el texto del reel original).</p>';
+      list.innerHTML = '<p class="text-sm text-zinc-400">Aún no hay reels. Crea uno con "Nuevo reel".</p>';
       return;
     }
     const btn = 'bg-zinc-700 hover:bg-zinc-600 text-white font-semibold py-1 px-3 rounded-md text-sm';

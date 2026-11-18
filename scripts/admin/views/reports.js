@@ -5,19 +5,17 @@
 
 // Fills the "Miembros" tab placeholder with the members table and the detail card slot.
 document.querySelector('[data-view="subscriptions"]').outerHTML = `
-      <section aria-labelledby="subscription-title" class="admin-card">
-        <h2 id="subscription-title" class="admin-card-title">Lista de miembros</h2>
-        <p class="text-sm text-zinc-400 mb-4">Toca el nombre de un miembro para ver strikes, dispositivos y reinicio de contraseña.</p>
+      <section aria-label="Lista de miembros" class="admin-card">
 
         <div id="subscription-section-body">
           <div class="mb-4 flex gap-3 flex-wrap">
             <select id="subscription-filter" aria-label="Filtro de suscripciones" class="bg-zinc-700 text-white p-2 rounded">
               <option value="all">Todos los usuarios</option>
-              <option value="monthly">Solo Mensuales</option>
-              <option value="monthly-unpaid">Mensuales No Pagados</option>
-              <option value="totalpass-pending">TotalPass Pendientes</option>
-              <!-- Default: "No Pagados" is what staff check most, and it loads fewer users on login. -->
-              <option value="unpaid" selected>No Pagados</option>
+              <option value="monthly">Solo mensuales</option>
+              <option value="monthly-unpaid">Mensuales no pagados</option>
+              <option value="totalpass-pending">TotalPass pendientes</option>
+              <!-- Default: "No pagados" is what staff check most, and it loads fewer users on login. -->
+              <option value="unpaid" selected>No pagados</option>
               <option value="blacklisted">En lista negra</option>
             </select>
 
@@ -41,10 +39,10 @@ document.querySelector('[data-view="subscriptions"]').outerHTML = `
               <thead class="bg-zinc-700">
                 <tr>
                   <th class="p-3 text-left">Usuario</th>
-                  <th class="p-3 text-left">Tipo de Suscripción</th>
+                  <th class="p-3 text-left">Tipo de suscripción</th>
                   <th class="p-3 text-left">Estado TotalPass</th>
-                  <th class="p-3 text-left">Estado de Pago</th>
-                  <th class="p-3 text-left">Última Fecha de Pago</th>
+                  <th class="p-3 text-left">Estado de pago</th>
+                  <th class="p-3 text-left">Última fecha de pago</th>
                   <th class="p-3 text-left">Acciones</th>
                 </tr>
               </thead>
@@ -67,10 +65,7 @@ document.querySelector('[data-view="reports"]').outerHTML = `
         <h2 id="asistencia-title" class="admin-card-title">Asistencia y proyección</h2>
         <div id="attendance-section-body" class="space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs text-zinc-400 gap-2">
-            <div class="flex items-center gap-4">
-              <span id="att-last">Última actualización: Sin datos</span>
-              <span id="att-next">Próxima actualización en: Sin datos</span>
-            </div>
+            <span id="att-last">Última actualización: Sin datos</span>
             <button id="att-refresh" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
               <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Actualizar ahora
             </button>
@@ -155,7 +150,7 @@ document.querySelector('[data-view="reports"]').outerHTML = `
           </div>
           <!-- Advanced charts stay closed until staff ask for them. -->
           <details class="admin-more">
-            <summary>Más detalle: horarios, meta de ingresos, retención, popularidad y desglose por día</summary>
+            <summary>Más detalle</summary>
             <div class="space-y-4 admin-more-body">
               <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="bg-zinc-900/60 border border-zinc-700 rounded-lg p-4">

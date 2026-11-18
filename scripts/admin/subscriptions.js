@@ -135,14 +135,14 @@ Object.assign(AdminPanel, {
         statusClass = 'text-green-400';
       } else if (graceActive) {
         statusDisplay = safeGraceLabel
-          ? `No Pagado (Gracia hasta ${safeGraceLabel})`
-          : 'No Pagado (Período de Gracia)';
+          ? `No pagado (gracia hasta ${safeGraceLabel})`
+          : 'No pagado (periodo de gracia)';
         statusClass = 'text-amber-400';
       } else if (subscriptionStatus === 'grace_period') {
-        statusDisplay = 'Período de Gracia';
+        statusDisplay = 'Periodo de gracia';
         statusClass = 'text-amber-400';
       } else if (subscriptionStatus === 'unpaid') {
-        statusDisplay = 'No Pagado';
+        statusDisplay = 'No pagado';
         statusClass = 'text-rose-400';
       }
 
@@ -153,13 +153,13 @@ Object.assign(AdminPanel, {
           ? 'Mensual'
           : type === 'totalpass'
             ? 'TotalPass'
-            : 'Por Clase';
+            : 'Por clase';
         const disabled = type === subscriptionType ? ' disabled' : '';
         return `<option value="${type}"${disabled}>${label}</option>`;
       }).join('');
 
       if (subscriptionType === 'monthly' && subscriptionStatus !== 'paid') {
-        actions += `<button onclick="AdminPanel.markUserAsPaid('${user.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs py-1 px-3 rounded mr-2">Marcar como Pagado</button>`;
+        actions += `<button onclick="AdminPanel.markUserAsPaid('${user.id}')" class="bg-green-600 hover:bg-green-700 text-white text-xs py-1 px-3 rounded mr-2">Marcar como pagado</button>`;
       }
 
       if (totalPassSelfMarked && !totalPassVerified) {
@@ -183,7 +183,7 @@ Object.assign(AdminPanel, {
         ? 'Mensual'
         : subscriptionType === 'totalpass'
           ? 'TotalPass'
-          : 'Por Clase';
+          : 'Por clase';
 
       return `
         <tr>

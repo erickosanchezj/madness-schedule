@@ -59,7 +59,7 @@ Object.assign(AdminPanel, {
       await this.db.collection('users').doc(userId).update(updates);
 
       this.showToast({
-        title: approve ? 'TotalPass Verificado' : 'TotalPass Rechazado',
+        title: approve ? 'TotalPass verificado' : 'TotalPass rechazado',
         message: approve ? 'El usuario ha sido verificado como TotalPass' : 'Se ha rechazado el estado TotalPass del usuario'
       });
     } catch (err) {
@@ -86,7 +86,7 @@ Object.assign(AdminPanel, {
       const labels = {
         monthly:'Mensual',
         totalpass:'TotalPass',
-        dropin:'Por Clase'
+        dropin:'Por clase'
       };
       const targetLabel = labels[newType] || newType;
       const userLabel = user.displayName || user.email || 'este usuario';

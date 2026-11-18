@@ -144,7 +144,7 @@ Object.assign(AdminPanel, {
       statusEl.textContent = '';
       statusEl.classList.add('hidden');
     }
-    if (submitBtn) submitBtn.textContent = 'Guardar Mensaje';
+    if (submitBtn) submitBtn.textContent = 'Guardar mensaje';
   },
 
   populateDailyMessageForm(msg){
@@ -164,7 +164,7 @@ Object.assign(AdminPanel, {
     const expiresInput = document.getElementById('daily-message-expires');
     if (expiresInput) expiresInput.value = msg.expiresAt?.toDate ? this.dateHelper.ymd(msg.expiresAt.toDate()) : '';
     this.renderDailyMessagePreview();
-    if (submitBtn) submitBtn.textContent = 'Actualizar Mensaje';
+    if (submitBtn) submitBtn.textContent = 'Actualizar mensaje';
     if (statusEl){
       const createdAt = msg.createdAt?.toDate ? msg.createdAt.toDate() : null;
       const label = createdAt ? `${this.dayShortFmt.format(createdAt)} ${this.timeFmt.format(createdAt)}` : 'Sin fecha';

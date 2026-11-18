@@ -204,13 +204,11 @@ Object.assign(AdminPanel, {
 
   updateAttendanceLegend(){
     const lastEl = document.getElementById('att-last');
-    const nextEl = document.getElementById('att-next');
-    if (!lastEl || !nextEl) return;
+    if (!lastEl) return;
     if (this.state.attendanceLastAt){
       const fmt = new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit'});
       lastEl.textContent = `Última actualización: ${fmt.format(new Date(this.state.attendanceLastAt))}`;
     } else lastEl.textContent = 'Última actualización: Sin datos';
-    nextEl.textContent = 'Actualización en vivo';
   },
 
   // Today's occupancy bar plus one recommendation for the selected range.

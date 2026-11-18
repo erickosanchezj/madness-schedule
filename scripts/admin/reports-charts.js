@@ -108,7 +108,7 @@ Object.assign(AdminPanel, {
     if (!trendCtx || !details){ return; }
     const dataCache = this.state.attendanceData;
     if (!dataCache){
-      details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte… se actualizará automáticamente.</div>`;
+      details.innerHTML = `<div class="bg-zinc-900 p-3 rounded-md text-zinc-400">Cargando reporte…</div>`;
       return;
     }
     this.injectBookingsIntoReport();

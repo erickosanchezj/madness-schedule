@@ -36,10 +36,9 @@ document.querySelector('[data-view="reels"]').outerHTML = `
     <!-- Master switch (scripts/admin/feedback-reel.js): off = no reel at all. -->
     <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
       <input type="checkbox" role="switch" id="feedback-reel-enabled" class="w-4 h-4 accent-indigo-600"
-        aria-describedby="feedback-reel-description feedback-reel-status" disabled>
+        aria-describedby="feedback-reel-status" disabled>
       Mostrar reels al abrir la app
     </label>
-    <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Los reels activos se muestran uno tras otro, en este orden. Si ninguno está activo, no se muestra nada. El banner del formulario sigue disponible.</p>
     <p id="feedback-reel-status" class="text-sm text-zinc-400 mt-2" role="status">Cargando configuración…</p>
 
     <div class="flex items-center justify-between gap-2 mt-6 mb-3">
@@ -61,15 +60,15 @@ document.querySelector('[data-view="reels"]').outerHTML = `
         ${reelField('reel-footer', 'Texto bajo el botón', `<input id="reel-footer" maxlength="80" class="${reelInput}">`)}
         ${reelField('reel-seconds', 'Duración (3 a 15 segundos)', `<input id="reel-seconds" type="number" min="3" max="15" class="${reelInput}">`)}
         ${reelChoice('align', 'Alineación del texto')}
-        ${reelChoice('position', 'Posición del texto', 'El botón siempre queda abajo, fácil de tocar.')}
-        ${reelChoice('size', 'Tamaño del título', 'Se ajusta al ancho del teléfono.')}
+        ${reelChoice('position', 'Posición del texto')}
+        ${reelChoice('size', 'Tamaño del título')}
         <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
           <input type="checkbox" id="reel-logo" class="w-4 h-4 accent-indigo-600"> Mostrar el logo
         </label>
-        ${reelChoice('background', 'Fondo', 'Las fotos son las de las clases; se oscurecen para que el texto se lea.')}
-        ${reelChoice('frequency', '¿Cada cuándo se muestra?', 'Se cuenta por teléfono y por día. Solo una vez = la primera vez que el miembro lo ve.')}
+        ${reelChoice('background', 'Fondo')}
+        ${reelChoice('frequency', '¿Cada cuándo se muestra?', 'Se cuenta por teléfono y por día.')}
         <label class="inline-flex items-center gap-2 text-sm text-zinc-300">
-          <input type="checkbox" id="reel-active" class="w-4 h-4 accent-indigo-600"> Activo (los miembros lo ven)
+          <input type="checkbox" id="reel-active" class="w-4 h-4 accent-indigo-600"> Activo
         </label>
         <div class="flex flex-wrap gap-2">
           <button type="submit" id="reel-save-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md">Guardar reel</button>

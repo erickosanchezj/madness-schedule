@@ -7,7 +7,7 @@
 document.querySelector('[data-view="class-modal"]').outerHTML = `
     <div id="class-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
       <div class="bg-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6 space-y-4 max-h-screen overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <h2 id="modal-title" class="text-2xl font-bold">Editar Clase</h2>
+        <h2 id="modal-title" class="text-2xl font-bold">Editar clase</h2>
         <input type="hidden" id="class-id">
         <div class="border-b border-zinc-700">
           <nav class="flex space-x-4" role="tablist" aria-label="Tabs">
@@ -16,11 +16,10 @@ document.querySelector('[data-view="class-modal"]').outerHTML = `
           </nav>
         </div>
         <div id="details-content" role="tabpanel" aria-labelledby="tab-details">
-          <!-- Every field has a visible label; the small text under it explains what to enter. -->
+          <!-- Every field has a visible label tied to its input. -->
           <div class="mt-4">
             <label for="class-name" class="field-label">Nombre de la clase</label>
             <input type="text" id="class-name" placeholder="Ej: TRX" class="w-full bg-zinc-700 p-2 rounded">
-            <p class="text-xs text-zinc-400 mt-1">Es el nombre que verán los alumnos en el horario.</p>
           </div>
           <div class="mt-4">
             <label for="class-instructor" class="field-label">Instructor</label>
@@ -58,10 +57,9 @@ document.querySelector('[data-view="class-modal"]').outerHTML = `
           <div class="mt-4">
             <label for="class-image" class="field-label">URL de imagen</label>
             <input type="url" id="class-image" placeholder="https://…" class="w-full bg-zinc-700 p-2 rounded">
-            <p class="text-xs text-zinc-400 mt-1">Pega la URL de la foto o banner de la clase.</p>
           </div>
           <div class="mt-4 p-4 bg-zinc-700 rounded-lg border border-zinc-600">
-            <h3 class="text-lg font-semibold mb-3">Reservas Manuales (WhatsApp)</h3>
+            <h3 class="text-lg font-semibold mb-3">Reservas por WhatsApp</h3>
             <div class="flex gap-3 items-end">
               <div class="flex-1">
                 <label for="manual-bookings-count" class="block text-sm font-medium text-zinc-300 mb-2">
@@ -80,24 +78,21 @@ document.querySelector('[data-view="class-modal"]').outerHTML = `
                 id="generate-manual-bookings-btn"
                 class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
               >
-                Generar Reservas
+                Generar reservas
               </button>
             </div>
             <div id="manual-bookings-existing" class="mt-4 space-y-2"></div>
-            <p class="text-xs text-zinc-400 mt-2">
-              Esto creará reservas de prueba con emails placeholder para simular las reservas recibidas por WhatsApp.
-            </p>
           </div>
         </div>
         <div id="attendance-content" class="hidden" role="tabpanel" aria-labelledby="tab-attendance" hidden>
           <div id="attendance-status-message" class="text-center text-zinc-400 p-4"></div>
           <div id="attendance-list" class="space-y-2"></div>
-          <button id="save-attendance-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 hidden">Guardar Asistencia</button>
+          <button id="save-attendance-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4 hidden">Guardar asistencia</button>
         </div>
         <div class="flex justify-end gap-3 pt-2">
           <button id="delete-button" class="admin-danger-btn">Eliminar</button>
           <button id="cancel-button" class="bg-zinc-600 hover:bg-zinc-700 text-white font-bold py-2 px-4 rounded">Cancelar</button>
-          <button id="save-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar Cambios</button>
+          <button id="save-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">Guardar cambios</button>
         </div>
       </div>
     </div>
