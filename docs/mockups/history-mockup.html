@@ -45,13 +45,18 @@
 
     /* 2. Last 14 days: one dot per day */
     .strip { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 4px; margin-top: 14px; }
-    .strip span { display: grid; justify-items: center; gap: 4px; color: var(--muted); font-size: 10px; }
-    .strip i { width: 100%; max-width: 20px; aspect-ratio: 1; border: 1px solid var(--rule); border-radius: 50%; }
-    .strip .att i { border-color: var(--green); background: var(--green); }
-    .strip .abs i { border-color: var(--rose); background: rgb(253 164 175 / 35%); }
+    .strip > span { display: grid; align-content: end; justify-items: center; gap: 4px; color: var(--muted); font-size: 10px; }
+    .strip i { display: grid; place-items: center; width: 100%; max-width: 20px; aspect-ratio: 1; border: 1px solid var(--rule); border-radius: 50%;
+      color: #0b1209; font-size: 11px; font-style: normal; font-weight: 800; }
+    .strip .att, .legend .att { border-color: var(--green); background: var(--green); }
+    .strip .abs, .legend .abs { border-color: var(--rose); background: var(--rose); }
+    .strip .none, .legend .none { border-color: #6b6876; background: #6b6876; }
+    .strip i.pie { border: 0; } /* "Gajos": one slice per class, drawn with conic-gradient */
+    .stack { display: grid; justify-items: center; gap: 3px; } /* "Puntos": one small dot per class, stacked */
+    .stack b { width: 10px; height: 10px; border: 1px solid var(--rule); border-radius: 50%; }
     .strip .today { color: var(--ink); font-weight: 700; }
     .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 12px; }
-    .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 50%; vertical-align: -1px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border: 1px solid var(--rule); border-radius: 50%; vertical-align: -1px; }
 
     /* 3. TotalPass token: only when the member is TotalPass and finished a class today */
     .token { display: grid; gap: 10px; padding: 14px; border: 1px solid rgb(219 62 177 / 45%); border-radius: 16px; background: rgb(27 26 33 / 92%); }
@@ -105,10 +110,13 @@
       { d: 0, t: '08:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'att' },
       { d: 1, t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', st: 'att' },
       { d: 2, t: '18:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', st: 'abs' },
+      { d: 2, t: '07:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', st: 'att' },
       { d: 4, t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'none' },
       { d: 6, t: '20:00', name: 'Functional', who: 'Leo', pic: 'functional', st: 'att' },
       { d: 6, t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'att' },
       { d: 9, t: '18:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', st: 'att' },
+      { d: 9, t: '13:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', st: 'none' },
+      { d: 9, t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'att' },
       { d: 13, t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', st: 'att' },
     ];
     const STATES = { normal: 'Mensual', totalpass: 'TotalPass con clase hoy', empty: 'Sin historial' };
@@ -120,18 +128,34 @@
     const dayName = d => d === 0 ? 'Hoy' : d === 1 ? 'Ayer'
       : `${part(d, { weekday: 'short' })} ${part(d, { day: 'numeric' })} ${part(d, { month: 'short' })}`;
     let state = 'normal';
+    // Several classes on one day: three ways to draw the 14-day strip (mockup-only selector).
+    const MULTI = { pie: 'Gajos', number: 'Número', stack: 'Puntos' };
+    const COLOR = { att: 'var(--green)', abs: 'var(--rose)', none: '#6b6876' };
+    let multi = 'pie';
+    function dayDot(day) {
+      const sts = day.map(c => c.st);
+      if (multi === 'stack') return `<span class="stack">${(sts.length ? sts : ['']).map(st => `<b class="${st}"></b>`).join('')}</span>`;
+      if (!sts.length) return '<i></i>';
+      if (multi === 'number') {
+        const top = sts.includes('att') ? 'att' : sts.includes('abs') ? 'abs' : 'none';
+        return `<i class="${top}">${sts.length > 1 ? sts.length : ''}</i>`;
+      }
+      // Pie: equal slices with a small gap between them (the gap shows the card behind).
+      const slice = 360 / sts.length, gap = sts.length > 1 ? 8 : 0;
+      const stops = sts.map((st, i) => `${COLOR[st]} ${i * slice + gap / 2}deg ${(i + 1) * slice - gap / 2}deg, transparent ${(i + 1) * slice - gap / 2}deg ${(i + 1) * slice + gap / 2}deg`);
+      return `<i class="pie" style="background:conic-gradient(transparent 0deg ${gap / 2}deg, ${stops.join(', ')})"></i>`;
+    }
 
     function render() {
       const list = state === 'empty' ? [] : CLASSES;
       const attended = list.filter(c => c.st === 'att').length;
       const absent = list.filter(c => c.st === 'abs').length;
 
-      // One dot per day, oldest first; a day with any attended class is green.
+      // One mark per day, oldest first (see dayDot for days with several classes).
       const strip = Array.from({ length: 14 }, (_, i) => 13 - i).map(d => {
         const day = list.filter(c => c.d === d);
-        const cls = day.some(c => c.st === 'att') ? 'att' : day.some(c => c.st === 'abs') ? 'abs' : '';
         const letter = dayAgo(d).toLocaleDateString('es-MX', { weekday: 'narrow' });
-        return `<span class="${cls}${d === 0 ? ' today' : ''}"><i></i>${letter}</span>`;
+        return `<span class="${d === 0 ? 'today' : ''}" title="${day.length} ${day.length === 1 ? 'clase' : 'clases'}">${dayDot(day)}${letter}</span>`;
       }).join('');
 
       // Rows grouped by day, newest first.
@@ -164,7 +188,9 @@
               <div class="fact"><small>Racha</small><b>3 sem.</b></div>
             </div>
             <div class="strip" aria-label="Asistencia de los últimos 14 días">${strip}</div>
-            <div class="legend"><span><i style="background:var(--green)"></i>Asististe</span><span><i style="background:rgb(253 164 175 / 35%);border:1px solid var(--rose)"></i>Falta</span><span><i style="border:1px solid var(--rule)"></i>Sin clase</span></div>
+            <div class="legend"><span><i class="att"></i>Asististe</span><span><i class="abs"></i>Falta</span><span><i class="none"></i>Sin registro</span><span><i></i>Sin clase</span></div>
+            <div class="states" style="margin-top:12px"><p>Maqueta: ¿cómo mostrar varias clases el mismo día?</p>
+              ${Object.entries(MULTI).map(([k, label]) => `<button data-multi="${k}" aria-pressed="${k === multi}">${label}</button>`).join('')}</div>
           </div>
         </section>
         <section aria-labelledby="list-title">
@@ -179,6 +205,8 @@
     document.addEventListener('click', e => {
       const btn = e.target.closest('[data-state]');
       if (btn) { state = btn.dataset.state; render(); }
+      const option = e.target.closest('[data-multi]');
+      if (option) { multi = option.dataset.multi; render(); }
     });
     render();
   </script>
