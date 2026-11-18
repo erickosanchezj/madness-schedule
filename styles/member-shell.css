@@ -15,17 +15,7 @@ body[data-app='member'] .class-detail-hero-image { position: absolute; inset: 0;
 body[data-app='member'] .class-detail-back { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid var(--color-muted); border-radius: var(--radius-input); background: var(--color-paper-2); color: var(--color-ink); }
 body[data-app='member'] .class-detail-hero-content { width: 100%; padding: calc(48px + var(--space-xs) + var(--space-lg)) var(--space-lg) var(--space-md); }
 body[data-app='member'] .class-detail-title { font-family: var(--font-display); font-size: 2.074rem; font-weight: 400; line-height: 1.2; letter-spacing: 0; }
-body[data-app='member'] .class-detail-pills { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); margin-top: var(--space-md); }
-body[data-app='member'] .class-detail-pill { display: inline-flex; align-items: center; gap: var(--space-xs); max-width: 100%; padding: var(--space-xs) var(--space-sm); background: var(--color-paper-2); color: var(--color-ink); border-radius: var(--radius-input); font-size: .875rem; font-weight: 600; }
-body[data-app='member'] .class-detail-pill svg, body[data-app='member'] .class-detail-icon svg { flex-shrink: 0; width: 20px; height: 20px; color: var(--color-accent); }
 body[data-app='member'] .class-detail-body { padding-inline: var(--space-lg); }
-body[data-app='member'] .class-detail-card { background: var(--color-paper-2); color: var(--color-ink); border-radius: var(--radius-card); padding: var(--space-md); }
-body[data-app='member'] .class-detail-card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: var(--space-xs); }
-body[data-app='member'] .class-detail-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--space-sm); align-items: center; padding-block: var(--space-sm); }
-body[data-app='member'] .class-detail-row + .class-detail-row { border-top: 1px solid var(--color-rule); }
-body[data-app='member'] .class-detail-icon { display: inline-flex; align-items: center; justify-content: center; }
-body[data-app='member'] .class-detail-label { color: var(--color-muted); font-size: .875rem; }
-body[data-app='member'] .class-detail-value { color: var(--color-ink); font-size: 1rem; font-weight: 600; overflow-wrap: break-word; }
 body[data-app='member'] .class-detail-progress { display: block; width: 100%; height: 8px; margin-top: var(--space-xs); border: 0; border-radius: var(--radius-input); background: var(--color-rule); accent-color: var(--color-accent); }
 body[data-app='member'] .class-detail-progress::-webkit-meter-bar { background: var(--color-rule); border: 0; border-radius: var(--radius-input); }
 body[data-app='member'] .class-detail-progress::-webkit-meter-optimum-value { background: var(--color-accent); border-radius: var(--radius-input); }
@@ -34,7 +24,7 @@ body[data-app='member'] .class-detail-cta { position: static; z-index: 10; paddi
 body[data-app='member'] .class-detail-booking-button { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); min-height: 48px; padding: var(--space-sm); border-radius: var(--radius-input); font-size: 1rem; }
 body[data-app='member'] .class-detail-booking-button svg { flex-shrink: 0; }
 @media (max-width: 374px) { body[data-app='member'] .class-detail-body { padding-inline: var(--space-md); } body[data-app='member'] .class-detail-hero-content { padding-inline: var(--space-md); } body[data-app='member'] .class-detail-cta { padding-inline: var(--space-md); } }
-@media (max-height: 700px) { body[data-app='member'] .class-detail-hero { min-height: 224px; } body[data-app='member'] .class-detail-row { padding-block: var(--space-xs); } }
+@media (max-height: 700px) { body[data-app='member'] .class-detail-hero { min-height: 224px; } }
 @media (prefers-reduced-motion: reduce) { body[data-app='member'] .class-detail-booking-button { transition: none; } }
 
 /* Float only the back control over the photo; feedback and booking keep their own rows. */
