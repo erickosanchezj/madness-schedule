@@ -1,0 +1,192 @@
+<!-- docs/mockups/profile-mockup.html -->
+<!-- Visual mockup of a reimagined member Perfil screen (membership, strikes, reminders, settings, contact), with fake data. -->
+<!-- Lets the owner review the new layout and every account state on a phone before scripts/member/screens/profile.js changes. -->
+<!-- RELEVANT FILES: scripts/member/screens/profile.js, docs/mockups/agenda-mockup.html, docs/mockups/history-mockup.html, styles/member-screens.css -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Perfil (maqueta)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+  <style>
+    /* Same palette as the member app (styles/madness-theme.css) and the Agenda mockup. */
+    :root {
+      --paper: #111015; --paper-2: #1b1a21; --paper-3: #28262f; --rule: #3c3942;
+      --ink: #f4f4f5; --ink-2: #d4d4d8; --muted: #a1a1aa;
+      --pink: #db3eb1; --pink-text: #e855bd; --pink-ink: #25091d; --green: #44d62c;
+      --amber: #fcd34d; --rose: #fda4af;
+      --display: 'Archivo Black', 'Inter', sans-serif; --body: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { min-height: 100dvh; background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
+    button, a { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: none; }
+    .app { position: relative; isolation: isolate; max-width: 480px; margin: 0 auto; min-height: 100dvh; padding-bottom: 150px;
+      background: var(--paper) url('../../images/backgrounds/madness-texture.webp') center / cover; }
+    .app::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .4; pointer-events: none;
+      background: url('../../images/backgrounds/madness-green-light.webp') right top / auto 60% no-repeat; }
+    .screen { display: grid; gap: 18px; padding: 20px 16px; }
+    .eyebrow { margin-bottom: 8px; color: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .panel { padding: 14px; border: 1px solid rgb(68 214 44 / 12%); border-radius: 16px; background: linear-gradient(145deg, rgb(16 20 18 / 92%), rgb(8 11 9 / 89%)); }
+
+    /* 1. Who you are: initial avatar instead of the generic logo, edit right there */
+    .me { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+    .avatar { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--pink), #7c1f63); color: var(--pink-ink); font: 400 28px/1 var(--display); }
+    .me h1 { font: 400 22px/1.2 var(--display); overflow-wrap: anywhere; }
+    .me p { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+    .icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--rule); border-radius: 12px; font-size: 18px; }
+
+    /* 2. Membership: type + status in one card */
+    .member-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .member-row h2 { font-size: 18px; }
+    .tag { padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .tag.ok { background: rgb(68 214 44 / 16%); color: var(--green); }
+    .tag.warn { background: rgb(252 211 77 / 16%); color: var(--amber); }
+    .tag.bad { background: rgb(253 164 175 / 16%); color: var(--rose); }
+    .tag.tp { background: rgb(219 62 177 / 20%); color: var(--pink-text); }
+    .sub { margin-top: 6px; color: var(--ink-2); font-size: 14px; }
+    .panel.is-bad { border-color: rgb(253 164 175 / 50%); }
+    .panel.is-warn { border-color: rgb(252 211 77 / 45%); }
+
+    /* 3. Strikes: three segments instead of a big red number */
+    .meter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+    .meter i { height: 8px; border-radius: 8px; background: var(--paper-3); }
+    .meter i.on { background: var(--amber); }
+    .meter.full i.on { background: var(--rose); }
+    .small { margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+    /* 4. Reminders: a clear call to action when they are off */
+    .remind { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+    .remind .bell { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgb(219 62 177 / 18%); font-size: 20px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 12px; font-weight: 800; }
+    .btn-primary { background: var(--pink); color: var(--pink-ink); box-shadow: 0 5px 18px rgb(219 62 177 / 25%); }
+    .btn-line { border: 1px solid var(--rule); font-weight: 700; }
+
+    /* 5. Settings list */
+    .settings { padding: 4px 14px; }
+    .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 8px 0; text-align: left; }
+    .setting + .setting { border-top: 1px solid var(--rule); }
+    .setting small { display: block; color: var(--muted); font-size: 13px; }
+    .switch { position: relative; flex: 0 0 44px; width: 44px; height: 26px; border-radius: 999px; background: var(--paper-3); }
+    .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; }
+    .switch.on { background: var(--pink); } .switch.on::after { transform: translateX(18px); }
+    .logout { color: var(--rose); }
+    .contact { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+
+    /* Bottom: banner + menu, as in the app today */
+    .bottom { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; transform: translateX(-50%); background: var(--paper-2); }
+    .banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--pink); border-bottom: 1px solid var(--rule); font-size: 14px; }
+    .banner small { display: block; color: var(--pink-text); text-decoration: underline; }
+    .nav { display: grid; grid-template-columns: repeat(3, 1fr); height: 68px; }
+    .nav a { display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 600; text-align: center; }
+    .nav .on { color: var(--pink-text); }
+    /* Mockup-only control to preview every state */
+    .states { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--rule); }
+    .states p { width: 100%; color: var(--muted); font-size: 12px; }
+    .states button { padding: 4px 10px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-2); font-size: 12px; }
+    .states button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main class="screen" id="screen"></main>
+    <div class="bottom">
+      <div class="banner"><span>🔗</span><span style="flex:1">Queremos escucharte<small>Responder formulario ↗</small></span><span>›</span></div>
+      <nav class="nav"><a href="agenda-mockup.html">📅<br>Agenda</a><a href="history-mockup.html">🕘<br>Historial</a><a class="on" href="profile-mockup.html">👤<br>Perfil</a></nav>
+    </div>
+  </div>
+
+  <script>
+    // Account states to preview. pay: paid | grace | late | totalpass. push: on | off | none (browser can't).
+    const STATES = {
+      ok: { label: 'Al corriente · 0 strikes', pay: 'paid', strikes: 0, push: 'off' },
+      grace: { label: 'Periodo de gracia · 1 strike', pay: 'grace', strikes: 1, push: 'on' },
+      late: { label: 'Pago vencido · 2 strikes', pay: 'late', strikes: 2, push: 'on' },
+      blocked: { label: '3 strikes (bloqueado)', pay: 'paid', strikes: 3, push: 'on' },
+      totalpass: { label: 'TotalPass', pay: 'totalpass', strikes: 0, push: 'none' },
+    };
+    const WHATSAPP = '<a class="btn btn-line" href="#">💬 WhatsApp</a>';
+    let state = 'ok';
+
+    function membershipHTML(pay) {
+      const card = {
+        paid: ['', 'Mensual', '<span class="tag ok">✓ Al corriente</span>', 'Tu pago de noviembre está registrado.'],
+        grace: ['is-warn', 'Mensual', '<span class="tag warn">Pago pendiente</span>', 'Paga antes del <b>vie 20 nov</b> para seguir reservando.'],
+        late: ['is-bad', 'Mensual', '<span class="tag bad">Pago vencido</span>', 'Tu periodo de gracia terminó el 11 nov. Paga en recepción o escríbenos para volver a reservar.'],
+        totalpass: ['', 'TotalPass', '<span class="tag tp">TotalPass</span>', 'Envía tu token después de cada clase. Te lo recordamos en Historial.'],
+      }[pay];
+      return `<section class="panel ${card[0]}" aria-labelledby="m-title">
+        <p class="eyebrow">Tu membresía</p>
+        <div class="member-row"><h2 id="m-title">${card[1]}</h2>${card[2]}</div>
+        <p class="sub">${card[3]}</p>
+        ${pay === 'late' ? `<div class="contact">${WHATSAPP}</div>` : ''}
+      </section>`;
+    }
+
+    function strikesHTML(n) {
+      const text = n >= 3 ? 'Tus reservas están bloqueadas. Escríbenos para desbloquearlas.'
+        : n === 2 ? 'Te queda 1 antes del bloqueo. Cancela con más de 2 horas.'
+        : n === 1 ? 'Cancela con más de 2 horas de anticipación para no sumar otro.'
+        : 'Sin strikes. Cancelar con más de 2 horas no cuenta.';
+      return `<section class="panel ${n >= 3 ? 'is-bad' : ''}" aria-labelledby="s-title">
+        <div class="member-row"><h2 id="s-title" style="font-size:16px">Strikes por cancelación</h2><span class="tag ${n >= 3 ? 'bad' : n ? 'warn' : 'ok'}">${n} de 3</span></div>
+        <div class="meter${n >= 3 ? ' full' : ''}" aria-hidden="true">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</div>
+        <p class="sub">${text}</p>
+        ${n >= 3 ? `<div class="contact">${WHATSAPP}</div>` : '<p class="small">Se reinician el 1 de diciembre.</p>'}
+      </section>`;
+    }
+
+    function remindersHTML(push) {
+      if (push === 'on') return '';
+      return `<section class="panel remind" aria-labelledby="r-title">
+        <span class="bell" aria-hidden="true">🔔</span>
+        <div>
+          <h2 id="r-title" style="font-size:16px">${push === 'none' ? 'Tu navegador no permite avisos' : 'Activa los recordatorios'}</h2>
+          <p class="sub" style="margin-top:2px">${push === 'none'
+            ? 'Instala la app en tu pantalla de inicio para recibir avisos antes de clase.'
+            : 'Te avisamos 60, 30 y 15 min antes de tu clase, y cuando se libere un lugar de tu lista de espera.'}</p>
+          ${push === 'none' ? '' : '<button class="btn btn-primary" style="margin-top:10px">Activar avisos</button>'}
+        </div>
+      </section>`;
+    }
+
+    function render() {
+      const s = STATES[state];
+      const pushLabel = { on: 'Activados', off: 'Desactivados', none: 'No disponible' }[s.push];
+      document.getElementById('screen').innerHTML = `
+        <header class="me">
+          <span class="avatar" aria-hidden="true">V</span>
+          <div><h1>Valeria Ruiz</h1><p>valeria@example.com</p></div>
+          <button class="icon-btn" aria-label="Editar nombre">✎</button>
+        </header>
+        <div class="states"><p>Maqueta: elige un estado para ver cómo cambia la pantalla.</p>
+          ${Object.entries(STATES).map(([k, v]) => `<button data-state="${k}" aria-pressed="${k === state}">${v.label}</button>`).join('')}</div>
+        ${membershipHTML(s.pay)}
+        ${strikesHTML(s.strikes)}
+        ${remindersHTML(s.push)}
+        <section aria-labelledby="set-title">
+          <p class="eyebrow" id="set-title">Ajustes</p>
+          <div class="panel settings">
+            <button class="setting"><span>Nombre<small>Valeria Ruiz</small></span><span>›</span></button>
+            <button class="setting"><span>Avisos antes de clase<small>${pushLabel}</small></span><span>›</span></button>
+            <button class="setting" data-toggle-tp><span>Uso TotalPass<small>Te recordamos enviar tu token</small></span><span class="switch${s.pay === 'totalpass' ? ' on' : ''}"></span></button>
+            <button class="setting logout"><span>Cerrar sesión</span><span>↪</span></button>
+          </div>
+        </section>
+        <section aria-labelledby="c-title">
+          <p class="eyebrow" id="c-title">¿Dudas? Escríbenos</p>
+          <div class="contact" style="margin-top:0">${WHATSAPP}<a class="btn btn-line" href="#">📷 Instagram</a></div>
+        </section>`;
+    }
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-state]');
+      if (btn) { state = btn.dataset.state; render(); }
+      const tp = e.target.closest('[data-toggle-tp]');
+      if (tp) tp.querySelector('.switch').classList.toggle('on');
+    });
+    render();
+  </script>
+</body>
+</html>

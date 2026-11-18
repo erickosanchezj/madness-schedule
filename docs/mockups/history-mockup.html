@@ -1,0 +1,186 @@
+<!-- docs/mockups/history-mockup.html -->
+<!-- Visual mockup of a reimagined member Historial screen (month summary, 14-day strip, rows by day), with fake data. -->
+<!-- Lets the owner review the new layout on a phone before scripts/member/screens/history.js changes. -->
+<!-- RELEVANT FILES: scripts/member/screens/history.js, docs/mockups/agenda-mockup.html, docs/mockups/profile-mockup.html, styles/member-screens.css -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Historial (maqueta)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+  <style>
+    /* Same palette as the member app (styles/madness-theme.css) and the Agenda mockup. */
+    :root {
+      --paper: #111015; --paper-2: #1b1a21; --paper-3: #28262f; --rule: #3c3942;
+      --ink: #f4f4f5; --ink-2: #d4d4d8; --muted: #a1a1aa;
+      --pink: #db3eb1; --pink-text: #e855bd; --pink-ink: #25091d; --green: #44d62c;
+      --amber: #fcd34d; --rose: #fda4af;
+      --display: 'Archivo Black', 'Inter', sans-serif; --body: 'Inter', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; }
+    body { min-height: 100dvh; background: var(--paper); color: var(--ink); font: 400 16px/1.5 var(--body); }
+    button, a { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-decoration: none; }
+    .app { position: relative; isolation: isolate; max-width: 480px; margin: 0 auto; min-height: 100dvh; padding-bottom: 150px;
+      background: var(--paper) url('../../images/backgrounds/madness-texture.webp') center / cover; }
+    .app::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .4; pointer-events: none;
+      background: url('../../images/backgrounds/madness-green-light.webp') right top / auto 60% no-repeat; }
+    .screen { display: grid; gap: 20px; padding: 20px 16px; }
+    .hello { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .hello h1 { font: 400 28px/1.15 var(--display); }
+    .hello time { color: var(--muted); font-size: 14px; text-transform: capitalize; }
+    .eyebrow { margin-bottom: 8px; color: var(--green); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .panel { padding: 14px; border: 1px solid rgb(68 214 44 / 12%); border-radius: 16px; background: linear-gradient(145deg, rgb(16 20 18 / 92%), rgb(8 11 9 / 89%)); }
+
+    /* 1. Month summary: one big number and three small facts */
+    .big { display: flex; align-items: baseline; gap: 8px; }
+    .big b { font: 400 40px/1 var(--display); }
+    .big span { color: var(--ink-2); font-size: 15px; }
+    .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .fact { padding: 8px 10px; border-radius: 12px; background: var(--paper-2); }
+    .fact small { display: block; color: var(--muted); font-size: 12px; }
+    .fact b { font-size: 16px; }
+
+    /* 2. Last 14 days: one dot per day */
+    .strip { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 4px; margin-top: 14px; }
+    .strip span { display: grid; justify-items: center; gap: 4px; color: var(--muted); font-size: 10px; }
+    .strip i { width: 100%; max-width: 20px; aspect-ratio: 1; border: 1px solid var(--rule); border-radius: 50%; }
+    .strip .att i { border-color: var(--green); background: var(--green); }
+    .strip .abs i { border-color: var(--rose); background: rgb(253 164 175 / 35%); }
+    .strip .today { color: var(--ink); font-weight: 700; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 50%; vertical-align: -1px; }
+
+    /* 3. TotalPass token: only when the member is TotalPass and finished a class today */
+    .token { display: grid; gap: 10px; padding: 14px; border: 1px solid rgb(219 62 177 / 45%); border-radius: 16px; background: rgb(27 26 33 / 92%); }
+    .token p { color: var(--ink-2); font-size: 14px; }
+    .token b { color: var(--ink); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 18px; border-radius: 12px; font-weight: 800; }
+    .btn-primary { background: var(--pink); color: var(--pink-ink); box-shadow: 0 5px 18px rgb(219 62 177 / 25%); }
+
+    /* 4. Rows grouped by day, same look as the Agenda rows */
+    .day-title { margin: 4px 0 8px; color: var(--ink-2); font-size: 14px; font-weight: 700; }
+    .day-title::first-letter { text-transform: uppercase; }
+    .list { display: grid; gap: 10px; }
+    .row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+    .row time { padding-top: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .card { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 12px; padding: 10px 12px;
+      border: 1px solid rgb(68 214 44 / 12%); border-radius: 14px; background: linear-gradient(145deg, rgb(16 20 18 / 92%), rgb(8 11 9 / 89%)); }
+    .card img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
+    .name { display: block; font-weight: 700; line-height: 1.3; }
+    .name span { color: var(--muted); font-weight: 400; font-size: 14px; }
+    .chip { display: inline-block; margin-top: 2px; font-size: 13px; font-weight: 600; }
+    .chip.att { color: var(--green); } .chip.abs { color: var(--rose); } .chip.none { color: var(--muted); }
+    .empty { display: grid; justify-items: center; gap: 12px; padding: 24px 16px; text-align: center; color: var(--ink-2); }
+
+    /* Bottom: banner + menu, as in the app today */
+    .bottom { position: fixed; left: 50%; bottom: 0; width: 100%; max-width: 480px; transform: translateX(-50%); background: var(--paper-2); }
+    .banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--pink); border-bottom: 1px solid var(--rule); font-size: 14px; }
+    .banner small { display: block; color: var(--pink-text); text-decoration: underline; }
+    .nav { display: grid; grid-template-columns: repeat(3, 1fr); height: 68px; }
+    .nav a { display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 600; text-align: center; }
+    .nav .on { color: var(--pink-text); }
+    /* Mockup-only control to preview every state */
+    .states { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--rule); }
+    .states p { width: 100%; color: var(--muted); font-size: 12px; }
+    .states button { padding: 4px 10px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-2); font-size: 12px; }
+    .states button[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main class="screen" id="screen"></main>
+    <div class="bottom">
+      <div class="banner"><span>🔗</span><span style="flex:1">Queremos escucharte<small>Responder formulario ↗</small></span><span>›</span></div>
+      <nav class="nav"><a href="agenda-mockup.html">📅<br>Agenda</a><a class="on" href="history-mockup.html">🕘<br>Historial</a><a href="profile-mockup.html">👤<br>Perfil</a></nav>
+    </div>
+  </div>
+
+  <script>
+    // Fake finished classes. st: att = attended, abs = absence recorded, none = staff did not take attendance.
+    // d = days ago (0 = today). "Today" is Wednesday 18 Nov 2026.
+    const CLASSES = [
+      { d: 0, t: '08:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'att' },
+      { d: 1, t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', st: 'att' },
+      { d: 2, t: '18:00', name: 'HIIT', who: 'Leo', pic: 'HIIT', st: 'abs' },
+      { d: 4, t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'none' },
+      { d: 6, t: '20:00', name: 'Functional', who: 'Leo', pic: 'functional', st: 'att' },
+      { d: 6, t: '07:00', name: 'TRX', who: 'Ana', pic: 'trx', st: 'att' },
+      { d: 9, t: '18:00', name: 'Capoeira', who: 'Iván', pic: 'capoeira', st: 'att' },
+      { d: 13, t: '19:00', name: 'Yoga', who: 'Sofía', pic: 'yoga', st: 'att' },
+    ];
+    const STATES = { normal: 'Mensual', totalpass: 'TotalPass con clase hoy', empty: 'Sin historial' };
+    const CHIP = { att: '✓ Asististe', abs: '✕ Falta registrada', none: 'Sin registro de asistencia' };
+    const TODAY = new Date(2026, 10, 18);
+    const dayAgo = d => new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - d);
+    // "lun 16 nov", like the Agenda dates (scripts/member/screens/class-helpers.js → shortDate).
+    const part = (d, o) => dayAgo(d).toLocaleDateString('es-MX', o).replace('.', '');
+    const dayName = d => d === 0 ? 'Hoy' : d === 1 ? 'Ayer'
+      : `${part(d, { weekday: 'short' })} ${part(d, { day: 'numeric' })} ${part(d, { month: 'short' })}`;
+    let state = 'normal';
+
+    function render() {
+      const list = state === 'empty' ? [] : CLASSES;
+      const attended = list.filter(c => c.st === 'att').length;
+      const absent = list.filter(c => c.st === 'abs').length;
+
+      // One dot per day, oldest first; a day with any attended class is green.
+      const strip = Array.from({ length: 14 }, (_, i) => 13 - i).map(d => {
+        const day = list.filter(c => c.d === d);
+        const cls = day.some(c => c.st === 'att') ? 'att' : day.some(c => c.st === 'abs') ? 'abs' : '';
+        const letter = dayAgo(d).toLocaleDateString('es-MX', { weekday: 'narrow' });
+        return `<span class="${cls}${d === 0 ? ' today' : ''}"><i></i>${letter}</span>`;
+      }).join('');
+
+      // Rows grouped by day, newest first.
+      const days = [...new Set(list.map(c => c.d))];
+      const rows = days.map(d => `
+        <div><p class="day-title">${dayName(d)}</p><div class="list">${list.filter(c => c.d === d).map(c => `
+          <div class="row"><time>${c.t}</time>
+            <span class="card"><img src="../../images/${c.pic}.png" alt="">
+              <span><span class="name">${c.name} <span>· ${c.who}</span></span><span class="chip ${c.st}">${CHIP[c.st]}</span></span>
+            </span></div>`).join('')}</div></div>`).join('');
+
+      document.getElementById('screen').innerHTML = `
+        <header class="hello"><h1>Tu historial</h1><time>noviembre</time></header>
+        <div class="states" id="states"><p>Maqueta: elige un estado para ver cómo cambia la pantalla.</p>
+          ${Object.entries(STATES).map(([k, label]) => `<button data-state="${k}" aria-pressed="${k === state}">${label}</button>`).join('')}</div>
+        ${state === 'totalpass' ? `
+        <section class="token" aria-labelledby="token-title">
+          <p class="eyebrow" id="token-title" style="margin:0">TotalPass</p>
+          <p>Terminaste <b>TRX de las 08:00</b>. Envía tu token para que tu visita cuente.</p>
+          <button class="btn btn-primary">Enviar token del día</button>
+        </section>` : ''}
+        ${list.length ? `
+        <section aria-labelledby="month-title">
+          <p class="eyebrow" id="month-title">Este mes</p>
+          <div class="panel">
+            <div class="big"><b>${attended}</b><span>${attended === 1 ? 'clase' : 'clases'} a las que asististe</span></div>
+            <div class="facts">
+              <div class="fact"><small>Reservas</small><b>${list.length}</b></div>
+              <div class="fact"><small>Faltas</small><b>${absent}</b></div>
+              <div class="fact"><small>Racha</small><b>3 sem.</b></div>
+            </div>
+            <div class="strip" aria-label="Asistencia de los últimos 14 días">${strip}</div>
+            <div class="legend"><span><i style="background:var(--green)"></i>Asististe</span><span><i style="background:rgb(253 164 175 / 35%);border:1px solid var(--rose)"></i>Falta</span><span><i style="border:1px solid var(--rule)"></i>Sin clase</span></div>
+          </div>
+        </section>
+        <section aria-labelledby="list-title">
+          <p class="eyebrow" id="list-title">Últimos 14 días</p>
+          <div style="display:grid;gap:14px">${rows}</div>
+        </section>` : `
+        <div class="panel empty">
+          <p>Aquí verás las clases que termines y tu asistencia.</p>
+          <a class="btn btn-primary" href="agenda-mockup.html">Reservar una clase</a>
+        </div>`}`;
+    }
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-state]');
+      if (btn) { state = btn.dataset.state; render(); }
+    });
+    render();
+  </script>
+</body>
+</html>

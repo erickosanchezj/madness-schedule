@@ -86,7 +86,7 @@
     .banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--pink); border-bottom: 1px solid var(--rule); font-size: 14px; }
     .banner small { display: block; color: var(--pink-text); text-decoration: underline; }
     .nav { display: grid; grid-template-columns: repeat(3, 1fr); height: 68px; }
-    .nav span { display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
+    .nav span, .nav a { display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
     .nav .on { color: var(--pink-text); }
     .note { margin: 8px 16px 0; color: var(--muted); font-size: 12px; text-align: center; }
   </style>
@@ -119,7 +119,7 @@
 
     <div class="bottom">
       <div class="banner"><span>🔗</span><span style="flex:1">Queremos escucharte<small>Responder formulario ↗</small></span><span>›</span></div>
-      <nav class="nav"><span class="on">📅<br>Agenda</span><span>🕘<br>Historial</span><span>👤<br>Perfil</span></nav>
+      <nav class="nav"><span class="on">📅<br>Agenda</span><a href="history-mockup.html">🕘<br>Historial</a><a href="profile-mockup.html">👤<br>Perfil</a></nav>
     </div>
   </div>
 
