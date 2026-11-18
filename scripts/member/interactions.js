@@ -29,8 +29,8 @@ function handleInteraction(e){
       scheduleRender();
       break;
     case 'dismiss-message':
-      // Remember every message currently in the queue, not just the visible one.
-      rememberDismissedMessages(dailyMessageRotation.messages.length ? dailyMessageRotation.messages.map(m => m.id) : [state.dailyMessage?.id]);
+      // Remember every message currently in the queue, not just the visible one (per version, see dismissKey).
+      rememberDismissedMessages(dailyMessageRotation.messages.length ? dailyMessageRotation.messages.map(dismissKey) : [dismissKey(state.dailyMessage)]);
       stopDailyMessageRotation();
       state.dailyMessage = null;
       scheduleRender();

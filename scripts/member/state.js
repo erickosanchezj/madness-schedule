@@ -34,8 +34,15 @@ let dailyMessageRotation = {
   paused: false
 };
 
-// Announcements the member closed on this device (by message id). New messages still show.
+// Announcements the member closed on this device. Saved per message *version* (id + last update),
+// so when staff edit or reactivate a message (which updates updatedAt) it shows again.
 const DISMISSED_MESSAGES_KEY = 'madness:dismissedMessages';
+function dismissKey(msg){
+  const updated = msg?.updatedAt;
+  const ms = updated?.toMillis ? updated.toMillis() : updated?.toDate ? updated.toDate().getTime() : 0;
+  // Old messages without updatedAt keep the plain id, so earlier dismissals still match them.
+  return ms ? `${msg.id}@${ms}` : msg?.id;
+}
 function readDismissedMessages(){
   try { return JSON.parse(localStorage.getItem(DISMISSED_MESSAGES_KEY)) || []; } catch { return []; }
 }

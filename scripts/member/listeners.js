@@ -137,7 +137,7 @@ function attachAgendaListeners(){
         const data = doc.data() || {};
         const rawText = typeof data.message === 'string' ? data.message.trim() : '';
         return { id: doc.id, ...data, message: rawText };
-      }).filter(msg => msg.isActive && msg.message && !expired(msg) && !dismissed.includes(msg.id));
+      }).filter(msg => msg.isActive && msg.message && !expired(msg) && !dismissed.includes(dismissKey(msg)));
       if (!activeMessages.length){
         stopDailyMessageRotation();
         state.dailyMessage = null;
