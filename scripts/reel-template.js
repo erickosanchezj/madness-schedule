@@ -1,5 +1,5 @@
 // scripts/reel-template.js
-// Shared reel pieces: the original reel's content and the safe HTML for a reel's text block.
+// Shared reel pieces: the starting text for "Nuevo reel" and the safe HTML for a reel's text block.
 // Used by the member app and the admin preview, so the editor shows exactly what members see.
 // RELEVANT FILES: scripts/member/feedback.js, scripts/admin/reels.js, styles/member-feedback.css
 (() => {
@@ -13,7 +13,7 @@
   window.madnessReel = {
     escape,
 
-    // The original reel. Shown when no reel is active, and used to pre-fill "Nuevo reel".
+    // The original reel's text. Pre-fills "Nuevo reel" (it is not shown on its own).
     defaults: {
       eyebrow: 'El reto es contigo',
       title: 'Tu voz nos\nhace',

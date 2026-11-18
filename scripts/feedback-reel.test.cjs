@@ -30,7 +30,8 @@ function settingsSource() {
   const writes = [];
   const reelSnapshot = list => ({ docs: list.map(reel => ({ id: reel.id, data: () => reel })), metadata: { fromCache: false } });
   const source = {
-    listeners, reelListeners, writes, reels: [], slowReels: false, failWrite: false, pendingWrite: null,
+    listeners, reelListeners, writes, slowReels: false, failWrite: false, pendingWrite: null,
+    reels: [{ id: 'default', order: 1, title: 'Reel activo', seconds: 5 }], // one active reel unless a test says otherwise
     collection(name) {
       if (name === 'reels') return { where(field, op, value) {
         assert.deepEqual([field, op, value], ['active', '==', true]);
@@ -270,12 +271,14 @@ test('taps move forward and back; past the last reel closes the story', () => {
   assert.equal(app.story.open, false);
 });
 
-test('no active reels (or unreadable reels) show the original reel; editor text is escaped', () => {
+test('no active reels means no story even with the switch on; editor text is escaped', () => {
   let db = settingsSource(), app = member(db);
+  db.reels = [];
   app.controller.setReady(true);
   db.emit(true);
-  assert.match(app.nodes['feedback-copy'].innerHTML, /Tu voz nos<br>hace <span>más fuertes\.<\/span>/);
-  assert.equal(app.nodes['feedback-seconds'].textContent, '5 s');
+  assert.equal(app.story.open, false);
+  app.resume();
+  assert.equal(app.story.open, false, 'resuming the app does not show it either');
 
   db = settingsSource(); app = member(db);
   db.reels = [{ id: 'x', order: 1, title: '<img src=x onerror=alert(1)>' }];
@@ -287,7 +290,7 @@ test('no active reels (or unreadable reels) show the original reel; editor text 
 
 test('the story waits for the reels and keeps its reels while open', () => {
   const db = settingsSource(), app = member(db);
-  // Slow reels answer: the switch is on, but the story must not open with the original reel first.
+  // Slow reels answer: the switch is on, but the story must not open before the reels arrive.
   db.slowReels = true;
   app.controller.setReady(true);
   db.emit(true);
@@ -303,11 +306,11 @@ test('the story waits for the reels and keeps its reels while open', () => {
   assert.equal(db.reelListeners.size, 0, 'logout stops the reels listener');
 });
 
-test('reels read errors fall back to the original reel', () => {
+test('reels read errors show no story', () => {
   const db = settingsSource(), app = member(db);
+  db.slowReels = true;
   app.controller.setReady(true);
   db.failReels();
   db.emit(true);
-  assert.equal(app.story.open, true);
-  assert.match(app.nodes['feedback-copy'].innerHTML, /más fuertes/);
+  assert.equal(app.story.open, false);
 });

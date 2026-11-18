@@ -19,12 +19,12 @@ Editable fields: top label, title (line breaks allowed), pink part of the title,
 
 Active reels play one after another, in the list order, like stories: one segment per reel at the top. Each reel lasts its own seconds. Tapping the left 30% of the screen goes back; tapping anywhere else goes forward; after the last reel the story closes. Pause and close work as before.
 
-If no reel is active, or reels cannot be read, the original reel is shown. The member app waits for both the switch and the reels before opening, so the original reel never flashes first. An open story keeps its reels until it closes.
+Only active reels are shown. If no reel is active, or reels cannot be read, members see no story, even with the switch on. The original reel's text is only a starting point for "Nuevo reel". The member app waits for both the switch and the reels before opening. An open story keeps its reels until it closes.
 
 ## Release requirement
 
-The owner must deploy `firestore.rules`. They let signed-in members read `reels` and only admins write them, with a fixed set of fields and size limits. Until the rules are deployed, the editor cannot save and members keep seeing the original reel.
+The owner must deploy `firestore.rules`. They let signed-in members read `reels` and only admins write them, with a fixed set of fields and size limits. Until the rules are deployed, the editor cannot save and members see no reel.
 
 ## Checks
 
-`npm test` (`scripts/feedback-reel.test.cjs`) covers the switch, the reel sequence and order, per-reel seconds, taps, waiting for reels, escaping editor text and fallbacks. Validation uses in-memory Firebase fakes.
+`npm test` (`scripts/feedback-reel.test.cjs`) covers the switch, the reel sequence and order, per-reel seconds, taps, waiting for reels, escaping editor text, and showing nothing when no reel is active or reels cannot be read. Validation uses in-memory Firebase fakes.

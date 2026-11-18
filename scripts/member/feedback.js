@@ -90,12 +90,12 @@
   }
 
   function open() {
-    if (!ready || !enabled || !reelsLoaded || document.hidden || story.open) return;
+    // Only the reels staff activated are shown; none active means no story, even with the switch on.
+    if (!ready || !enabled || !reelsLoaded || !reels.length || document.hidden || story.open) return;
     // A booking/profile dialog must retain priority over this announcement.
     if (document.querySelector('dialog[open]')) return;
     previousFocus = document.activeElement;
-    // No active reel → the original reel, so the switch alone still controls the announcement.
-    queue = reels.length ? reels : [window.madnessReel?.defaults || {}];
+    queue = reels;
     showStep(0);
     story.showModal();
     setPaused(false);
@@ -173,10 +173,9 @@
           if (firstLoad) open();
         }, error => {
           if (currentSession !== settingsSession) return;
-          // Reels unreadable (e.g. rules not deployed yet): fall back to the original reel.
+          // Reels unreadable (e.g. rules not deployed yet): show nothing rather than a stale reel.
           reels = [];
           reelsLoaded = true;
-          open();
           console.warn('Reels failed:', error);
         });
       }

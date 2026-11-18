@@ -20,7 +20,7 @@ document.querySelector('[data-view="reels"]').outerHTML = `
         aria-describedby="feedback-reel-description feedback-reel-status" disabled>
       Mostrar reels al abrir la app
     </label>
-    <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Los reels activos se muestran uno tras otro, en este orden. Si ninguno está activo, se muestra el reel original. El banner del formulario sigue disponible.</p>
+    <p id="feedback-reel-description" class="text-sm text-zinc-400 mt-2">Los reels activos se muestran uno tras otro, en este orden. Si ninguno está activo, no se muestra nada. El banner del formulario sigue disponible.</p>
     <p id="feedback-reel-status" class="text-sm text-zinc-400 mt-2" role="status">Cargando configuración…</p>
 
     <div class="flex items-center justify-between gap-2 mt-6 mb-3">
